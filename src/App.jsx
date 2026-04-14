@@ -864,7 +864,7 @@ export default function App({ user }) {
           .r-mob-bot { display: none !important; }
           .r-rai-bar { display: block !important; }
           .r-rai-mob { display: none !important; }
-          .r-main { padding: 28px 32px; margin-left: 270px; max-width: 760px; margin-right: auto; }
+          .r-main { padding: 28px 32px; margin-left: 270px; max-width: 900px; }
         }
         @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
         @keyframes fwLaunch {
