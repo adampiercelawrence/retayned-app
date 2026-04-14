@@ -468,7 +468,7 @@ export default function App({ user }) {
     return Math.round(bonusPts * decay);
   };
 
-  const submitNewClient = () => {
+  const submitNewClient = async () => {
     const baseline = calcRetentionScore(profileScores, null);
     const client = {
       id: Date.now(),
@@ -494,18 +494,7 @@ export default function App({ user }) {
   };
 
   // Today — task manager
-  const [tasks, setTasks] = useState([
-    { id: "ai1", text: "Oakline Outdoors: James hasn't responded to last 2 emails. Revenue trending down. Reach out today.", client: "Oakline Outdoors", done: false, ai: true, alert: true, recurring: false },
-    { id: "ai2", text: "Northvane: 3-year anniversary in 26 days. Plan something.", client: "Northvane Studios", done: false, ai: true, recurring: false },
-    { id: "ai3", text: "Ridgeline: 1-year anniversary in 19 days. Prepare Year 2 conversation.", client: "Ridgeline Supply", done: false, ai: true, recurring: false },
-    { id: "ai4", text: "Copper & Sage: Health check due today.", client: "Copper & Sage", done: false, ai: true, recurring: false },
-    { id: "u2", text: "Review Oakline Q1 numbers before call", client: "Oakline Outdoors", done: false, ai: false, recurring: false },
-    { id: "u1", text: "Send creative brief to Marcus", client: "Ridgeline Supply", done: false, ai: false, recurring: false },
-    { id: "u3", text: "Follow up on Broadleaf invoice", client: "Broadleaf Media", done: false, ai: false, recurring: false },
-    { id: "r1", text: "Check all ad accounts for anomalies", client: "All Clients", done: false, ai: false, recurring: true },
-    { id: "r2", text: "Review Slack for client messages", client: "All Clients", done: false, ai: false, recurring: true },
-    { id: "r3", text: "Log time in project tracker", client: "All Clients", done: false, ai: false, recurring: true },
-  ]);
+  const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
   const [newTaskClient, setNewTaskClient] = useState("");
   const [newTaskRecurring, setNewTaskRecurring] = useState(false);
@@ -875,7 +864,7 @@ export default function App({ user }) {
           .r-mob-bot { display: none !important; }
           .r-rai-bar { display: block !important; }
           .r-rai-mob { display: none !important; }
-          .r-main { padding: 28px 32px; margin-left: 270px; max-width: 1080px; }
+          .r-main { padding: 28px 32px; margin-left: 270px; max-width: 760px; margin-right: auto; }
         }
         @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
         @keyframes fwLaunch {
@@ -998,7 +987,7 @@ export default function App({ user }) {
           ))}
         </div>
         <div style={{ padding: "8px 10px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <div onClick={() => setTier(tier === "core" ? "enterprise" : "core")} className="nav-item" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, color: "rgba(255,255,255,0.4)" }}>
+          <div onClick={() => setTier(tier === "core" ? "enterprise" : "core")} className="nav-item" style={{ display: "none", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, color: "rgba(255,255,255,0.4)" }}>
             <span style={{ fontSize: 12, fontWeight: 600 }}>{tier === "enterprise" ? "Enterprise" : "Core"}</span>
             <div style={{ width: 36, height: 20, borderRadius: 10, background: tier === "enterprise" ? C.btn : "rgba(255,255,255,0.15)", position: "relative", transition: "background 0.2s", cursor: "pointer" }}>
               <div style={{ width: 16, height: 16, borderRadius: 8, background: "#fff", position: "absolute", top: 2, left: tier === "enterprise" ? 18 : 2, transition: "left 0.2s" }} />
@@ -1010,8 +999,8 @@ export default function App({ user }) {
         </div>
         <div style={{ padding: "12px 20px 18px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>{(user?.user_metadata?.full_name || "U").split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase()}</div>
-            <div><div style={{ fontSize: 14, fontWeight: 600 }}>{user?.user_metadata?.full_name || "User"}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>{user?.user_metadata?.company || ""}</div></div>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
+            <div><div style={{ fontSize: 14, fontWeight: 600 }}>{user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>{user?.user_metadata?.company || ""}</div></div>
           </div>
         </div>
       </div>
@@ -1021,7 +1010,7 @@ export default function App({ user }) {
         <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
           <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span>
         </div>
-        <div style={{ width: 28, height: 28, borderRadius: 8, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>{(user?.user_metadata?.full_name || "U").split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase()}</div>
+        <div style={{ width: 28, height: 28, borderRadius: 8, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
       </div>
 
       <div className="r-main">
@@ -3110,4 +3099,3 @@ export default function App({ user }) {
     </div>
   );
 }
-
