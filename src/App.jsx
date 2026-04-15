@@ -996,7 +996,8 @@ RESPONSE FORMAT:
           .r-mob-bot { display: none !important; }
           .r-rai-bar { display: block !important; }
           .r-rai-mob { display: none !important; }
-          .r-main { padding: 28px 48px; margin-left: var(--sidebar-w); max-width: calc(720px + 48px + 48px + var(--sidebar-w)); }
+          .r-today-panel { display: block !important; }
+          .r-main { padding: 28px 48px; margin-left: var(--sidebar-w); }
         }
         @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
         @keyframes fwLaunch {
