@@ -985,13 +985,13 @@ RESPONSE FORMAT:
         .r-rai-mob { display: block; }
         .r-main { padding: 16px 16px 80px; }
         @media (min-width: 768px) {
-          :root { --sidebar-w: clamp(270px, 20vw, 400px); }
+          :root { --sidebar-w: 270px; }
           .r-desk { display: flex !important; }
           .r-mob-top { display: none !important; }
           .r-mob-bot { display: none !important; }
           .r-rai-bar { display: block !important; }
           .r-rai-mob { display: none !important; }
-          .r-main { padding: 28px 32px; margin-left: var(--sidebar-w); }
+          .r-main { padding: 28px 48px; margin-left: var(--sidebar-w); max-width: calc(720px + 48px + 48px + var(--sidebar-w)); }
         }
         @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
         @keyframes fwLaunch {
@@ -1103,7 +1103,7 @@ RESPONSE FORMAT:
       )}
 
       {/* SIDEBAR */}
-      <div className="r-desk" style={{ width: "var(--sidebar-w)", background: C.sidebar, color: "#fff", flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50 }}>
+      <div className="r-desk" style={{ width: 270, background: C.sidebar, color: "#fff", flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50 }}>
         <div style={{ padding: "20px 18px 24px" }}><span style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.04em" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
         <div style={{ flex: 1, padding: "0 10px" }}>
           {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => (
@@ -2366,7 +2366,7 @@ RESPONSE FORMAT:
           </div>
         )}
         {page === "coach" && aiMessages.length > 0 && (
-          <div className="r-rai-bar" style={{ position: "fixed", bottom: 0, right: 0, left: "var(--sidebar-w)", borderTop: "1px solid " + C.borderLight, padding: "12px 32px 8px", background: C.bg, zIndex: 30 }}>
+          <div className="r-rai-bar" style={{ position: "fixed", bottom: 0, right: 0, left: 270, borderTop: "1px solid " + C.borderLight, padding: "12px 32px 8px", background: C.bg, zIndex: 30 }}>
             <div style={{ maxWidth: 1080, position: "relative" }}>
               <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 12, padding: "12px 14px 8px" }}>
                 <textarea value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask about a client..." rows={2} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 14, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.5, color: C.text }} />
