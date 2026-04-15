@@ -1105,10 +1105,10 @@ RESPONSE FORMAT:
   };
 
   const ReferralsPanel = () => {
-    const referredClients = clients.filter(c => referrals.some(r => r.referred === c.name || r.to === c.name));
+    const referredClients = clients.filter(c => refs.some(r => r.referred === c.name || r.to === c.name));
     const avgScore = referredClients.length > 0 ? Math.round(referredClients.reduce((a, c) => a + (c.ret || 0), 0) / referredClients.length) : 0;
     const refRev = referredClients.reduce((a, c) => a + (c.revenue || 0), 0);
-    const totalReferred = referrals.length;
+    const totalReferred = refs.length;
     const converted = referredClients.length;
     const convRate = totalReferred > 0 ? Math.round((converted / totalReferred) * 100) : 0;
     const likelyToRefer = [...clients].filter(c => (c.ret || 0) >= 80).sort((a, b) => (b.ret || 0) - (a.ret || 0)).slice(0, 3);
@@ -1158,7 +1158,7 @@ RESPONSE FORMAT:
                   <span style={{ fontSize: 12, fontWeight: 600 }}>{c.name}</span>
                   <div style={{ fontSize: 10, color: C.textMuted }}>{c.months || 0}mo</div>
                 </div>
-                {referrals.some(r => r.from === c.name || r.source === c.name) && <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: C.primarySoft, color: C.primary, fontWeight: 600 }}>Has referred</span>}
+                {refs.some(r => r.from === c.name || r.source === c.name) && <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: C.primarySoft, color: C.primary, fontWeight: 600 }}>Has referred</span>}
               </div>
             ))}
           </PanelCard>
