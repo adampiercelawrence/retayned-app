@@ -42,10 +42,10 @@ const ScoreRing = ({ score, size = 44, strokeWidth = 3.5 }) => {
   const offset = circ - (score / 100) * circ;
   const color = retColor(score);
   return (
-    <svg width={size} height={size} style={{ transform: "rotate(-90deg)", flexShrink: 0 }}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
       <circle cx={size/2} cy={size/2} r={r} stroke={C.borderLight} strokeWidth={strokeWidth} fill="none" />
-      <circle cx={size/2} cy={size/2} r={r} stroke={color} strokeWidth={strokeWidth} fill="none" strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" style={{ transition: "stroke-dashoffset 0.6s ease" }} />
-      <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central" style={{ transform: "rotate(90deg)", transformOrigin: "center", fontSize: size * 0.32, fontWeight: 800, fill: color, fontFamily: "'Outfit', sans-serif" }}>{score}</text>
+      <circle cx={size/2} cy={size/2} r={r} stroke={color} strokeWidth={strokeWidth} fill="none" strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} style={{ transition: "stroke-dashoffset 0.6s ease" }} />
+      <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central" style={{ fontSize: size * 0.32, fontWeight: 800, fill: color, fontFamily: "'Outfit', sans-serif" }}>{score}</text>
     </svg>
   );
 };
@@ -315,7 +315,7 @@ export default function App({ user }) {
   const [importPaste, setImportPaste] = useState("");
   const [importPreview, setImportPreview] = useState([]);
   const [importFile, setImportFile] = useState(null);
-  const [newClient, setNewClient] = useState({ name: "", contact: "", role: "", tag: "", revenue: "", months: "" });
+  const [newClient, setNewClient] = useState({ name: "", contact: "", role: "", tag: "", revenue: "", months: "", latePayments: false, prevTerminated: false, otherVendors: false, fromReferral: false });
   const [profileStep, setProfileStep] = useState(0);
   const [profileScores, setProfileScores] = useState({});
 
@@ -406,7 +406,7 @@ export default function App({ user }) {
   };
 
   // ─── RETENTION SCORE (dimensions + combos + HC blend) ───
-  const calcRetentionScore = (scores, hcAnswersArr) => {
+  const calcRetentionScore = (scores, hcAnswersArr, qualFlags = null, months = 0) => {
     let weightedSum = 0, totalWeight = 0, scored = 0;
     for (const dim of profileDimensions) {
       const raw = scores[dim.key];
@@ -437,6 +437,18 @@ export default function App({ user }) {
     const hcScore = calcHealthCheckScore(hcAnswersArr);
     let finalScore = hcScore != null ? Math.round(baselineScore * 0.80 + hcScore * 0.20) : baselineScore;
 
+    // Qualifying question adjustments
+    if (qualFlags) {
+      if (qualFlags.latePayments) finalScore -= 4;
+      if (qualFlags.prevTerminated) finalScore -= 8;
+      if (qualFlags.otherVendors) finalScore -= 3;
+      if (qualFlags.fromReferral) finalScore += 2;
+    }
+
+    // Tenure bonus: +1 per year, cap +5
+    const tenureYears = Math.floor((months || 0) / 12);
+    finalScore += Math.min(5, tenureYears);
+
     // Block 0 and 100, clamp 1-99
     if (finalScore <= 0) finalScore = 1;
     if (finalScore >= 100) finalScore = 99;
@@ -448,13 +460,29 @@ export default function App({ user }) {
   // ─── PROFILE SCORE (invisible sort layer) ───
   const percentileRank = (arr, val) => { if (arr.length <= 1) return 0.5; const s = [...arr].sort((a, b) => a - b); return s.indexOf(val) / (s.length - 1); };
 
+  // Referral-adjusted LTV: client's own LTV + 50% of revenue from clients they referred
+  const getAdjustedLTV = (client) => {
+    const ownLTV = (client.revenue || 0) * (client.months || 0);
+    const referralRevenue = refs
+      .filter(r => r.from === client.name && (r.status === "converted" || r.converted))
+      .reduce((sum, r) => {
+        // Find the referred client's total revenue
+        const referredClient = clients.find(c => c.name === r.to);
+        const refLTV = referredClient 
+          ? (referredClient.revenue || 0) * (referredClient.months || 0)
+          : (r.revenue || 0) * 12; // estimate if not a client yet
+        return sum + refLTV;
+      }, 0);
+    return ownLTV + (referralRevenue * 0.50);
+  };
+
   const calcProfileScore = (rs, client, allClients) => {
     if (rs == null || allClients.length === 0) return rs || 0;
     const total = allClients.reduce((a, c) => a + (c.revenue || 0), 0);
     const avg = 1 / allClients.length;
     const revFactor = total > 0 ? ((client.revenue || 0) / total) / avg : 1;
     const revNorm = Math.max(0.75, Math.min(1.50, 0.4 + revFactor * 0.6));
-    const ltvF = 0.8 + percentileRank(allClients.map(c => (c.revenue || 0) * (c.months || 0)), (client.revenue || 0) * (client.months || 0)) * 0.4;
+    const ltvF = 0.8 + percentileRank(allClients.map(c => getAdjustedLTV(c)), getAdjustedLTV(client)) * 0.4;
     const tenF = 0.8 + percentileRank(allClients.map(c => c.months || 0), client.months || 0) * 0.4;
     const multiplier = Math.max(0.90, revNorm * 0.60 + ltvF * 0.20 + tenF * 0.20);
     return Math.max(1, Math.min(99, Math.round(rs * multiplier)));
@@ -469,7 +497,8 @@ export default function App({ user }) {
   };
 
   const submitNewClient = async () => {
-    const baseline = calcRetentionScore(profileScores, null);
+    const qualFlags = { latePayments: newClient.latePayments, prevTerminated: newClient.prevTerminated, otherVendors: newClient.otherVendors, fromReferral: newClient.fromReferral };
+    const baseline = calcRetentionScore(profileScores, null, qualFlags, parseInt(newClient.months) || 0);
     
     // Insert into Supabase first
     const { data: created, error } = await clientsDb.create(user.id, {
@@ -481,6 +510,7 @@ export default function App({ user }) {
       months: parseInt(newClient.months) || 0,
       retention_score: baseline || 50,
       profile_scores: { ...profileScores },
+      qualifying_flags: qualFlags,
     });
     
     if (error) { console.error("Failed to create client:", error); return; }
@@ -499,6 +529,7 @@ export default function App({ user }) {
       referrals: 0,
       ret: baseline || 50,
       profileScores: { ...profileScores },
+      qualifyingFlags: qualFlags,
       daysOld: 0,
     };
     setClients([...clients, client].sort((a, b) => (b.ret || 0) - (a.ret || 0)));
@@ -554,6 +585,7 @@ export default function App({ user }) {
       alert: t.is_alert,
       recurring: t.is_recurring,
       sort_order: t.sort_order,
+      raiPriority: t.is_alert || false,
     })));
 
     if (refRes.data) setRefs(refRes.data.map(r => ({
@@ -625,6 +657,7 @@ export default function App({ user }) {
 
     setDataLoaded(true);
   }, [user]);
+
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -775,7 +808,16 @@ export default function App({ user }) {
   const tasksTotal = countableTasks.length;
 
   // Task sorting — by Profile Score (invisible), highest first
-  const getProfileSortScore = (clientName) => {
+  // Rai priority boost — applied to one task per day during sweep
+  const getRaiBoost = (score) => {
+    if (score >= 90) return 5;
+    if (score >= 80) return 10;
+    if (score >= 70) return 15;
+    if (score >= 60) return 20;
+    return 25;
+  };
+
+  const getProfileSortScore = (clientName, hasRaiBoost = false) => {
     if (!clientName || clientName === "All Clients") return 200; // All Clients tasks first
     const c = clients.find(x => x.name === clientName);
     if (!c) return 0;
@@ -783,13 +825,14 @@ export default function App({ user }) {
     const totalRev = clients.reduce((a, x) => a + (x.revenue || 0), 0);
     const revPct = totalRev > 0 ? (c.revenue || 0) / totalRev : 0;
     const boost = calcNewClientBoost(c.ret || 50, revPct, c.daysOld != null ? c.daysOld : 999);
-    return Math.min(99, ps + boost);
+    const raiBoost = hasRaiBoost ? getRaiBoost(ps) : 0;
+    return Math.min(99, ps + boost + raiBoost);
   };
 
   const getSortedTasks = () => {
     return [...countableTasks].sort((a, b) => {
-      const psA = getProfileSortScore(a.client);
-      const psB = getProfileSortScore(b.client);
+      const psA = getProfileSortScore(a.client, a.raiPriority);
+      const psB = getProfileSortScore(b.client, b.raiPriority);
       if (psA !== psB) return psB - psA; // highest profile score first
       if (a.alert !== b.alert) return a.alert ? -1 : 1;
       if (a.recurring !== b.recurring) return a.recurring ? -1 : 1;
@@ -1082,7 +1125,7 @@ RULES:
         <div style={{ padding: "12px 20px 18px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 30, height: 30, borderRadius: 8, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
-            <div><div style={{ fontSize: 14, fontWeight: 600 }}>{user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{user?.user_metadata?.company || ""}</div></div>
+            <div><div style={{ fontSize: 14, fontWeight: 600, textTransform: "capitalize" }}>{user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{user?.user_metadata?.company || ""}</div></div>
           </div>
         </div>
       </div>
@@ -1595,7 +1638,7 @@ RULES:
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>${(c.revenue / 1000).toFixed(1)}k<span style={{ fontSize: 12, fontWeight: 400, color: C.textMuted }}>/mo</span></div>
-                    <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>${Math.round(c.revenue * c.months / 1000)}k LCV</div>
+                    <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>${Math.round(getAdjustedLTV(c) / 1000)}k LCV</div>
                   </div>
                 </div>
               ))}
@@ -2092,7 +2135,7 @@ RULES:
                   notes: newEntry.work,
                 });
                 newEntry.id = createdRolodex?.id || Date.now();
-                setRolodex(prev => [...prev, newEntry]); setNewRolodexEntry({ client: "", contact: "", work: "" }); setShowAddRolodex(false); } }} style={{ flex: 1, padding: "10px", background: ready ? C.btn : C.surface, color: ready ? "#fff" : C.textMuted, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: ready ? "pointer" : "default", fontFamily: "inherit" }}>Add & Start Flow</button>;
+                setRolodex(prev => [...prev, newEntry]); setNewRolodexEntry({ client: "", contact: "", work: "" }); setShowAddRolodex(false); setRolodexFlowOpen(newEntry.id); } }} style={{ flex: 1, padding: "10px", background: ready ? C.btn : C.surface, color: ready ? "#fff" : C.textMuted, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: ready ? "pointer" : "default", fontFamily: "inherit" }}>Add & Start Flow</button>;
                     })()}
                     <button onClick={() => { setShowAddRolodex(false); setNewRolodexEntry({ client: "", contact: "", work: "" }); }} style={{ padding: "10px 14px", background: C.surface, color: C.textMuted, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                   </div>
@@ -2264,8 +2307,8 @@ RULES:
         })()}
         {/* ═══ COACH ═══ */}
         {page === "coach" && (
-          <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 160px)" }}>
-            <div style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch", paddingBottom: aiMessages.length > 0 ? 140 : 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 120px)" }}>
+            <div style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch", paddingBottom: aiMessages.length > 0 ? 200 : 0 }}>
               {aiMessages.length === 0 ? (
                 <div>
                   <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 4 }}>Talk to Rai</h1>
@@ -2303,6 +2346,10 @@ RULES:
                 </div>
               ) : (
                 <div style={{ paddingTop: 4, paddingBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em" }}>Talk to Rai</h1>
+                    <button onClick={() => setAiMessages([])} style={{ padding: "8px 16px", background: C.surface, color: C.textSec, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>New Chat</button>
+                  </div>
                   {aiMessages.map((m, i) => (
                     <div key={i} style={{ marginBottom: 14 }}>
                       {m.role === "user" ? <div style={{ display: "flex", justifyContent: "flex-end" }}><div style={{ background: C.primary, color: "#fff", borderRadius: "14px 14px 4px 14px", padding: "10px 14px", maxWidth: "85%", fontSize: 14, lineHeight: 1.5 }}>{m.text}</div></div>
@@ -2560,7 +2607,7 @@ RULES:
                   {[
                     { label: "Revenue", value: "$" + (sc.revenue / 1000).toFixed(1) + "k/mo" },
                     { label: "Tenure", value: sc.months + "mo" },
-                    { label: "LCV", value: "$" + Math.round(sc.revenue * sc.months / 1000) + "k" },
+                    { label: "LCV", value: "$" + Math.round(getAdjustedLTV(sc) / 1000) + "k" },
                     { label: "Drift", value: (() => { const d = clientDrift[sc.name] || "Stable"; return d === "Something shifted" ? "Shifted" : d; })(), color: C.text },
                   ].map((s, si) => (
                     <div key={si} style={{ background: C.bg, borderRadius: 8, padding: "8px 14px" }}>
@@ -2584,9 +2631,29 @@ RULES:
                   <div>
                     {!editingOverview ? (
                       <>
-                        {[{ l: "Contact", v: sc.contact }, { l: "Role", v: sc.role }, { l: "Industry", v: sc.tag }, { l: "Together", v: sc.months + " months" }, { l: "Last Task", v: sc.lastContact }, { l: "Monthly Revenue", v: "$" + sc.revenue.toLocaleString() }, { l: "Lifetime Value", v: "$" + (sc.revenue * sc.months).toLocaleString() }, { l: "Health Check", v: sc.lastHC ? "Last: " + sc.lastHC : "Pending" }, { l: "Referrals", v: sc.referrals }].map((d, i) => (
-                          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid " + C.borderLight }}>
-                            <span style={{ fontSize: 14, color: C.textMuted }}>{d.l}</span><span style={{ fontSize: 14, fontWeight: 600, color: d.c || C.text }}>{d.v}</span>
+                        {[{ l: "Contact", v: sc.contact }, { l: "Role", v: sc.role }, { l: "Industry", v: sc.tag }, { l: "Together", v: sc.months + " months" }, { l: "Last Task", v: sc.lastContact }, { l: "Monthly Revenue", v: "$" + sc.revenue.toLocaleString() }, { l: "Lifetime Value", v: "$" + Math.round(getAdjustedLTV(sc)).toLocaleString() }, { l: "Health Check", v: sc.lastHC ? "Last: " + sc.lastHC : "Pending" }, { l: "Referrals", v: sc.referrals },
+                          { l: "Late payments", v: sc.qualifyingFlags?.latePayments ? "Yes" : "No", flag: "latePayments" },
+                          { l: "Prev. terminated", v: sc.qualifyingFlags?.prevTerminated ? "Yes" : "No", flag: "prevTerminated" },
+                          { l: "Other vendors", v: sc.qualifyingFlags?.otherVendors ? "Yes" : "No", flag: "otherVendors" },
+                          { l: "From referral", v: sc.qualifyingFlags?.fromReferral ? "Yes" : "No", flag: "fromReferral" },
+                        ].map((d, i) => (
+                          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid " + C.borderLight }}
+                            onClick={d.flag ? async () => {
+                              const newFlags = { ...(sc.qualifyingFlags || {}), [d.flag]: !sc.qualifyingFlags?.[d.flag] };
+                              const newRet = calcRetentionScore(sc.profileScores || {}, null, newFlags, sc.months || 0);
+                              setClients(prev => prev.map(c => c.id === sc.id ? { ...c, qualifyingFlags: newFlags, ret: newRet || c.ret } : c));
+                              setSelectedClient({ ...sc, qualifyingFlags: newFlags, ret: newRet || sc.ret });
+                              clientsDb.update(sc.id, { qualifying_flags: newFlags, retention_score: newRet || sc.ret });
+                            } : undefined}
+                            style={d.flag ? { cursor: "pointer" } : {}}>
+                            <span style={{ fontSize: 14, color: C.textMuted }}>{d.l}</span>
+                            {d.flag ? (
+                              <div style={{ width: 40, height: 22, borderRadius: 11, background: sc.qualifyingFlags?.[d.flag] ? C.primary : C.border, padding: 2, transition: "background 0.2s", display: "flex", alignItems: "center" }}>
+                                <div style={{ width: 18, height: 18, borderRadius: 9, background: "#fff", transform: sc.qualifyingFlags?.[d.flag] ? "translateX(18px)" : "translateX(0)", transition: "transform 0.2s" }} />
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: 14, fontWeight: 600, color: d.c || C.text }}>{d.v}</span>
+                            )}
                           </div>
                         ))}
                         <button onClick={() => { setEditingOverview(true); setOverviewEditData({ contact: sc.contact, role: sc.role, tag: sc.tag, months: sc.months, revenue: sc.revenue }); }} style={{ width: "100%", padding: "10px", background: "transparent", color: C.primary, border: "1px solid " + C.primary + "44", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 12 }}>Edit Details</button>
@@ -2726,7 +2793,7 @@ RULES:
                         <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
                           <button onClick={() => setEditingProfile(false)} style={{ padding: "10px 16px", background: C.surface, color: C.textSec, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                           <button onClick={async () => {
-                            const newRet = calcRetentionScore(editScores, null);
+                            const newRet = calcRetentionScore(editScores, null, sc.qualifyingFlags || {}, sc.months || 0);
                             const updated = clients.map(c => c.id === sc.id ? { ...c, profileScores: { ...editScores }, ret: newRet || c.ret } : c);
                             setClients(updated);
                             setSelectedClient({ ...sc, profileScores: { ...editScores }, ret: newRet || sc.ret });
