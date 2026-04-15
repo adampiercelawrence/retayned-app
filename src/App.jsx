@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "./lib/supabase";
+import { raiSystemPrompt } from "./lib/rai-prompt";
 import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex as rolodexDb, referrals as referralsDb, raiSuggestions as suggestionsDb, raiConversations as convoDb, profile as profileDb, buildRaiContext } from "./lib/db";
 
 const C = {
@@ -901,24 +902,25 @@ export default function App({ user }) {
         content: m.text
       }));
       
-      const raiSystemPrompt = `You are Rai, a senior client retention advisor for freelancers and consultants. You are warm, steady, direct, and deeply knowledgeable about client relationships. Think Scarlett Johansson's voice — confident but never cold.
+      const dynamicContext = `
 
-CONTEXT — This user's business:
-- ${context.clients.length} active clients
-- Clients: ${context.clients.map(c => c.name + " (score: " + (c.retention_score || "unscored") + ", $" + c.revenue + "/mo, " + c.months + "mo, drift: " + (c.drift || "Stable") + ")").join("; ")}
-- Today's tasks: ${context.tasks_today.map(t => (t.done ? "[DONE] " : "") + t.text + (t.client ? " (" + t.client + ")" : "")).join("; ") || "None"}
-- Referrals: ${context.referrals.total} total, ${context.referrals.active} active
+## LIVE CLIENT DATA
+
+This user has ${context.clients.length} active clients:
+${context.clients.map(c => `- ${c.name} (score: ${c.retention_score || "unscored"}, $${c.revenue}/mo, ${c.months}mo, drift: ${c.drift || "Stable"})`).join("\n")}
+
+Today's tasks: ${context.tasks_today.map(t => (t.done ? "[DONE] " : "") + t.text + (t.client ? " (" + t.client + ")" : "")).join("; ") || "None"}
+
+Referrals: ${context.referrals.total} total, ${context.referrals.active} active
 
 ${context.focused_client ? "FOCUSED CLIENT: " + JSON.stringify(context.focused_client) : ""}
 
-RULES:
+RESPONSE FORMAT:
 - Be concise. 2-4 sentences unless they ask for more.
-- Never cite your scoring system or retention scores directly to the user.
-- When a client is thriving, don't suggest upselling or asking for referrals.
-- A "pause" from a client is almost always an exit — treat it urgently.
-- If a client is difficult, suggest raising their rate as a "tax" on the difficulty.
-- Give specific, actionable advice — not generic coaching platitudes.
+- Never cite retention scores or the scoring system directly.
 - You know this user's clients personally. Reference them by name.`;
+
+      const fullPrompt = raiSystemPrompt + dynamicContext;
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -931,7 +933,7 @@ RULES:
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1024,
-          system: raiSystemPrompt,
+          system: fullPrompt,
           messages: [...history, { role: "user", content: q }],
         }),
       });
