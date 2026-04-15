@@ -5,7 +5,7 @@ import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex a
 const C = {
   primary: "#33543E", primaryLight: "#558B68", primarySoft: "#E6EFE9",
   bg: "#F7F7F4", card: "#FFFFFF", surface: "#EEEFEB",
-  sidebar: "#1E261F",
+  sidebar: "#33543E",
   text: "#1E261F", textSec: "#5A6E5E", textMuted: "#92A596",
   border: "#D8DFD8", borderLight: "#E8ECE6",
   heroGrad: "linear-gradient(145deg, #1E261F 0%, #2A382C 40%, #33543E 100%)",
@@ -470,8 +470,23 @@ export default function App({ user }) {
 
   const submitNewClient = async () => {
     const baseline = calcRetentionScore(profileScores, null);
+    
+    // Insert into Supabase first
+    const { data: created, error } = await clientsDb.create(user.id, {
+      name: newClient.name,
+      contact: newClient.contact,
+      role: newClient.role || "",
+      tag: newClient.tag || "",
+      revenue: parseInt(newClient.revenue) || 0,
+      months: parseInt(newClient.months) || 0,
+      retention_score: baseline || 50,
+      profile_scores: { ...profileScores },
+    });
+    
+    if (error) { console.error("Failed to create client:", error); return; }
+
     const client = {
-      id: Date.now(),
+      id: created?.id || Date.now(),
       name: newClient.name,
       contact: newClient.contact,
       role: newClient.role,
@@ -667,9 +682,16 @@ export default function App({ user }) {
     newTasks.splice(insertAfterIdx + 1, 0, promoted);
     setTasks(newTasks);
   };
-  const addTask = () => {
+  const addTask = async () => {
     if (!newTask.trim()) return;
-    const task = { id: "u" + Date.now(), text: newTask.trim(), client: newTaskClient || null, done: false, ai: false, recurring: newTaskRecurring };
+    const clientObj = clients.find(c => c.name === newTaskClient);
+    const { data: created } = await tasksDb.create(user.id, {
+      text: newTask.trim(),
+      client_name: newTaskClient || "",
+      client_id: clientObj?.id || null,
+      is_recurring: newTaskRecurring,
+    });
+    const task = { id: created?.id || "u" + Date.now(), text: newTask.trim(), client: newTaskClient || null, done: false, ai: false, recurring: newTaskRecurring };
     const taskPS = getProfileSortScore(task.client);
     const newTasks = [...tasks];
     const allTasksFilter = (t => !t.ai);
@@ -798,7 +820,17 @@ export default function App({ user }) {
 
   const addRef = async () => {
     if (!refName.trim() || !refFrom) return;
-    setRefs([{ id: "ref" + Date.now(), from: refFrom, to: refName.trim(), date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }), converted: refStatus === "converted" || refStatus === "closed", revenue: parseInt(refRevenue) || 0, totalRevenue: parseInt(refTotalRevenue) || 0, status: refStatus }, ...refs]);
+    const clientObj = clients.find(c => c.name === refFrom);
+    const { data: created } = await referralsDb.create(user.id, {
+      referred_to: refName.trim(),
+      referred_by: refFrom,
+      referred_by_client_id: clientObj?.id || null,
+      status: refStatus,
+      revenue: parseInt(refRevenue) || 0,
+      total_revenue: parseInt(refTotalRevenue) || 0,
+      date_added: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    });
+    setRefs([{ id: created?.id || "ref" + Date.now(), from: refFrom, to: refName.trim(), date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }), converted: refStatus === "converted" || refStatus === "closed", revenue: parseInt(refRevenue) || 0, totalRevenue: parseInt(refTotalRevenue) || 0, status: refStatus }, ...refs]);
     setRefName(""); setRefFrom(""); setRefStatus("converted"); setRefRevenue(""); setRefTotalRevenue(""); setRefForm(false);
   };
 
@@ -812,14 +844,63 @@ export default function App({ user }) {
   const [aiTyping, setAiTyping] = useState(false);
   const aiEndRef = useRef(null);
   useEffect(() => { aiEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages, aiTyping]);
-  const sendAi = (text) => {
+  const sendAi = async (text) => {
     const q = text || aiInput; if (!q.trim()) return;
     setAiMessages(prev => [...prev, { role: "user", text: q }]); setAiInput(""); setAiTyping(true);
-    setTimeout(() => {
-      const match = Object.keys(coachDemos).find(k => q.toLowerCase().includes(k.toLowerCase().slice(0, 20)));
-      const reply = match ? coachDemos[match] : `${clients.length} clients. ${clients.filter(c => c.ret >= 70).length} thriving, ${clients.filter(c => c.ret >= 45 && c.ret < 70).length} stable, ${clients.filter(c => c.ret < 45).length} need attention. Tell me more.`;
-      setAiMessages(prev => [...prev, { role: "ai", text: reply }]); setAiTyping(false);
-    }, 1200);
+    
+    try {
+      // Build context for Rai
+      const context = await buildRaiContext(user.id);
+      
+      // Build conversation history for the API
+      const history = aiMessages.slice(-10).map(m => ({
+        role: m.role === "ai" ? "assistant" : "user",
+        content: m.text
+      }));
+      
+      const raiSystemPrompt = `You are Rai, a senior client retention advisor for freelancers and consultants. You are warm, steady, direct, and deeply knowledgeable about client relationships. Think Scarlett Johansson's voice — confident but never cold.
+
+CONTEXT — This user's business:
+- ${context.clients.length} active clients
+- Clients: ${context.clients.map(c => c.name + " (score: " + (c.retention_score || "unscored") + ", $" + c.revenue + "/mo, " + c.months + "mo, drift: " + (c.drift || "Stable") + ")").join("; ")}
+- Today's tasks: ${context.tasks_today.map(t => (t.done ? "[DONE] " : "") + t.text + (t.client ? " (" + t.client + ")" : "")).join("; ") || "None"}
+- Referrals: ${context.referrals.total} total, ${context.referrals.active} active
+
+${context.focused_client ? "FOCUSED CLIENT: " + JSON.stringify(context.focused_client) : ""}
+
+RULES:
+- Be concise. 2-4 sentences unless they ask for more.
+- Never cite your scoring system or retention scores directly to the user.
+- When a client is thriving, don't suggest upselling or asking for referrals.
+- A "pause" from a client is almost always an exit — treat it urgently.
+- If a client is difficult, suggest raising their rate as a "tax" on the difficulty.
+- Give specific, actionable advice — not generic coaching platitudes.
+- You know this user's clients personally. Reference them by name.`;
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1024,
+          system: raiSystemPrompt,
+          messages: [...history, { role: "user", content: q }],
+        }),
+      });
+
+      const data = await response.json();
+      const reply = data.content?.[0]?.text || "I'm having trouble thinking right now. Try again in a moment.";
+      setAiMessages(prev => [...prev, { role: "ai", text: reply }]);
+    } catch (err) {
+      console.error("Rai API error:", err);
+      setAiMessages(prev => [...prev, { role: "ai", text: "Something went wrong connecting to Rai. Check your connection and try again." }]);
+    }
+    setAiTyping(false);
   };
 
   const goTo = (id) => { if (page === "health" && id !== "health") { setHcDone({}); setHcOpen(null); } setPage(id); setShowMore(false); };
@@ -981,8 +1062,8 @@ export default function App({ user }) {
         <div style={{ padding: "20px 18px 24px" }}><span style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.04em" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
         <div style={{ flex: 1, padding: "0 10px" }}>
           {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => (
-            <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, marginBottom: 2, background: page === n.id ? "rgba(255,255,255,0.1)" : "transparent", color: page === n.id ? "#fff" : "rgba(255,255,255,0.45)", fontWeight: page === n.id ? 600 : 400 }}>
-              <span style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={n.icon} size={16} color={page === n.id ? "#fff" : "rgba(255,255,255,0.4)"} /></span><span style={{ fontSize: 14, flex: 1 }}>{n.label}</span>
+            <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, marginBottom: 2, background: page === n.id ? "rgba(255,255,255,0.1)" : "transparent", color: page === n.id ? "#fff" : "rgba(255,255,255,0.55)", fontWeight: page === n.id ? 600 : 400 }}>
+              <span style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={n.icon} size={16} color={page === n.id ? "#fff" : "rgba(255,255,255,0.55)"} /></span><span style={{ fontSize: 14, flex: 1 }}>{n.label}</span>
               {hasDot(n.id) && <Dot />}
             </div>
           ))}
@@ -994,14 +1075,14 @@ export default function App({ user }) {
               <div style={{ width: 16, height: 16, borderRadius: 8, background: "#fff", position: "absolute", top: 2, left: tier === "enterprise" ? 18 : 2, transition: "left 0.2s" }} />
             </div>
           </div>
-          <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 8, color: page === "settings" ? "#fff" : "rgba(255,255,255,0.3)", background: page === "settings" ? "rgba(255,255,255,0.1)" : "transparent" }}>
-            <span style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="settings" size={16} color={page === "settings" ? "#fff" : "rgba(255,255,255,0.3)"} /></span><span style={{ fontSize: 14 }}>Settings</span>
+          <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 8, color: page === "settings" ? "#fff" : "rgba(255,255,255,0.5)", background: page === "settings" ? "rgba(255,255,255,0.1)" : "transparent" }}>
+            <span style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="settings" size={16} color={page === "settings" ? "#fff" : "rgba(255,255,255,0.5)"} /></span><span style={{ fontSize: 14 }}>Settings</span>
           </div>
         </div>
         <div style={{ padding: "12px 20px 18px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 30, height: 30, borderRadius: 8, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
-            <div><div style={{ fontSize: 14, fontWeight: 600 }}>{user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>{user?.user_metadata?.company || ""}</div></div>
+            <div><div style={{ fontSize: 14, fontWeight: 600 }}>{user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{user?.user_metadata?.company || ""}</div></div>
           </div>
         </div>
       </div>
@@ -1563,13 +1644,32 @@ export default function App({ user }) {
           const driftColor = (d) => d === "Improving" ? C.success : d === "Stable" ? C.primary : d === "Something shifted" ? C.warning : C.danger;
           const driftBg = (d) => d === "Improving" ? "#D1FAE5" : d === "Stable" ? C.primarySoft : d === "Something shifted" ? "#FEF3C7" : "#FEE2E2";
 
-          const submitHc = (client) => {
+          const submitHc = async (client) => {
             const answers = hcAnswers[client] || [];
             const drift = calcDrift(answers);
+            
+            // Update local state
             setClientDrift(prev => ({ ...prev, [client]: drift }));
             setClients(prev => prev.map(x => x.name === client ? { ...x, lastHC: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }) } : x));
             setHcDone(prev => ({ ...prev, [client]: true }));
             setHcOpen(null);
+            
+            // Persist to Supabase
+            const clientObj = clients.find(c => c.name === client);
+            if (clientObj) {
+              // Find the HC record for this client
+              const hcRecord = hcQueue.find(h => h.client === client);
+              if (hcRecord?.id) {
+                // Complete the health check
+                const answersObj = {};
+                answers.forEach((a, i) => { answersObj["q" + (i + 1)] = a; });
+                await hcDb.complete(hcRecord.id, answersObj, null, drift);
+                // Schedule next HC (30 days)
+                await hcDb.scheduleNext(user.id, hcRecord.client_id || clientObj.id);
+              }
+              // Update client drift
+              await clientsDb.updateDrift(clientObj.id, drift, new Date().toISOString().split("T")[0]);
+            }
           };
 
           const activeQueue = hcQueue.filter(h => (h.overdue > 0 || h.due === "Today") && !hcDone[h.client]).sort((a, b) => b.overdue - a.overdue);
@@ -2512,11 +2612,12 @@ export default function App({ user }) {
                         </div>
                         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                           <button onClick={() => setEditingOverview(false)} style={{ padding: "10px 16px", background: C.surface, color: C.textSec, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-                          <button onClick={() => {
+                          <button onClick={async () => {
                             const updated = { ...sc, contact: overviewEditData.contact, role: overviewEditData.role, tag: overviewEditData.tag, months: overviewEditData.months, revenue: overviewEditData.revenue };
                             setClients(prev => prev.map(c => c.id === sc.id ? updated : c));
                             setSelectedClient(updated);
                             setEditingOverview(false);
+                            clientsDb.update(sc.id, { contact: overviewEditData.contact, role: overviewEditData.role, tag: overviewEditData.tag, months: overviewEditData.months, revenue: overviewEditData.revenue });
                           }} style={{ flex: 1, padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Save</button>
                         </div>
                       </>
@@ -2624,11 +2725,13 @@ export default function App({ user }) {
                         </div>
                         <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
                           <button onClick={() => setEditingProfile(false)} style={{ padding: "10px 16px", background: C.surface, color: C.textSec, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-                          <button onClick={() => {
-                            const updated = clients.map(c => c.id === sc.id ? { ...c, profileScores: { ...editScores } } : c);
+                          <button onClick={async () => {
+                            const newRet = calcRetentionScore(editScores, null);
+                            const updated = clients.map(c => c.id === sc.id ? { ...c, profileScores: { ...editScores }, ret: newRet || c.ret } : c);
                             setClients(updated);
-                            setSelectedClient({ ...sc, profileScores: { ...editScores } });
+                            setSelectedClient({ ...sc, profileScores: { ...editScores }, ret: newRet || sc.ret });
                             setEditingProfile(false);
+                            clientsDb.updateScores(sc.id, newRet || sc.ret, { ...editScores });
                           }} style={{ flex: 1, padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Save Profile</button>
                         </div>
                       </div>
@@ -2914,7 +3017,7 @@ export default function App({ user }) {
                         <div style={{ background: C.bg, borderRadius: 12, padding: "16px", border: "1px solid " + C.border }}>
                           <p style={{ fontSize: 14, color: C.text, lineHeight: 1.55, marginBottom: 14 }}>This will remove {sr.client} from your Rolodex. No more check-in reminders, no more tracking. You can always add them back later.</p>
                           <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={() => { setRolodex(prev => prev.filter(x => x.id !== sr.id)); setSelectedRolodex(null); setRolodexRemoveConfirm(false); }} style={{ flex: 1, padding: "10px", background: C.surface, color: C.textSec, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
+                            <button onClick={() => { setRolodex(prev => prev.filter(x => x.id !== sr.id)); rolodexDb.delete(sr.id); setSelectedRolodex(null); setRolodexRemoveConfirm(false); }} style={{ flex: 1, padding: "10px", background: C.surface, color: C.textSec, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>
                             <button className="r-btn" onClick={() => setRolodexRemoveConfirm(false)} style={{ padding: "10px 14px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                           </div>
                         </div>
