@@ -6,7 +6,7 @@ import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex a
 const C = {
   primary: "#33543E", primaryLight: "#558B68", primarySoft: "#E6EFE9",
   bg: "#F7F7F4", card: "#FFFFFF", surface: "#EEEFEB",
-  sidebar: "#33543E",
+  sidebar: "#E6EFE9",
   text: "#1E261F", textSec: "#5A6E5E", textMuted: "#92A596",
   border: "#D8DFD8", borderLight: "#E8ECE6",
   heroGrad: "linear-gradient(145deg, #1E261F 0%, #2A382C 40%, #33543E 100%)",
@@ -1124,31 +1124,31 @@ RESPONSE FORMAT:
       )}
 
       {/* SIDEBAR */}
-      <div className="r-desk" style={{ width: 270, background: C.sidebar, color: "#fff", flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50 }}>
-        <div style={{ padding: "20px 18px 24px" }}><span style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.04em" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
+      <div className="r-desk" style={{ width: 270, background: C.sidebar, flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50, borderRight: "1px solid #D0DDD4" }}>
+        <div style={{ padding: "20px 18px 24px" }}><span style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
         <div style={{ flex: 1, padding: "0 10px" }}>
           {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => (
-            <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, marginBottom: 2, background: page === n.id ? "rgba(255,255,255,0.1)" : "transparent", color: page === n.id ? "#fff" : "rgba(255,255,255,0.55)", fontWeight: page === n.id ? 600 : 400 }}>
-              <span style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={n.icon} size={16} color={page === n.id ? "#fff" : "rgba(255,255,255,0.55)"} /></span><span style={{ fontSize: 14, flex: 1 }}>{n.label}</span>
+            <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, marginBottom: 2, background: page === n.id ? "#D0DDD4" : "transparent", color: page === n.id ? C.primary : "#6B8572", fontWeight: page === n.id ? 600 : 400 }}>
+              <span style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={n.icon} size={16} color={page === n.id ? C.primary : "#6B8572"} /></span><span style={{ fontSize: 14, flex: 1 }}>{n.label}</span>
               {hasDot(n.id) && <Dot />}
             </div>
           ))}
         </div>
-        <div style={{ padding: "8px 10px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <div onClick={() => setTier(tier === "core" ? "enterprise" : "core")} className="nav-item" style={{ display: "none", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, color: "rgba(255,255,255,0.4)" }}>
+        <div style={{ padding: "8px 10px", borderTop: "1px solid #D0DDD4" }}>
+          <div onClick={() => setTier(tier === "core" ? "enterprise" : "core")} className="nav-item" style={{ display: "none", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, color: "#6B8572" }}>
             <span style={{ fontSize: 12, fontWeight: 600 }}>{tier === "enterprise" ? "Enterprise" : "Core"}</span>
-            <div style={{ width: 36, height: 20, borderRadius: 10, background: tier === "enterprise" ? C.btn : "rgba(255,255,255,0.15)", position: "relative", transition: "background 0.2s", cursor: "pointer" }}>
+            <div style={{ width: 36, height: 20, borderRadius: 10, background: tier === "enterprise" ? C.btn : "#D0DDD4", position: "relative", transition: "background 0.2s", cursor: "pointer" }}>
               <div style={{ width: 16, height: 16, borderRadius: 8, background: "#fff", position: "absolute", top: 2, left: tier === "enterprise" ? 18 : 2, transition: "left 0.2s" }} />
             </div>
           </div>
-          <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 8, color: page === "settings" ? "#fff" : "rgba(255,255,255,0.5)", background: page === "settings" ? "rgba(255,255,255,0.1)" : "transparent" }}>
-            <span style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="settings" size={16} color={page === "settings" ? "#fff" : "rgba(255,255,255,0.5)"} /></span><span style={{ fontSize: 14 }}>Settings</span>
+          <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 8, color: page === "settings" ? C.primary : "#6B8572", background: page === "settings" ? "#D0DDD4" : "transparent" }}>
+            <span style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="settings" size={16} color={page === "settings" ? C.primary : "#6B8572"} /></span><span style={{ fontSize: 14 }}>Settings</span>
           </div>
         </div>
-        <div style={{ padding: "12px 20px 18px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ padding: "12px 20px 18px", borderTop: "1px solid #D0DDD4" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
-            <div><div style={{ fontSize: 14, fontWeight: 600, textTransform: "capitalize" }}>{user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{user?.user_metadata?.company || ""}</div></div>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: "#D0DDD4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: C.primary }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
+            <div><div style={{ fontSize: 14, fontWeight: 600, color: "#6B8572", textTransform: "capitalize" }}>{user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}</div><div style={{ fontSize: 12, color: "#92A596" }}>{user?.user_metadata?.company || ""}</div></div>
           </div>
         </div>
       </div>
@@ -1168,7 +1168,7 @@ RESPONSE FORMAT:
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 12 }}>Today</h1>
             <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 16 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
-            <div className="r-today-cols" style={{ display: "flex", gap: 24, maxWidth: 1080 }}>
+            <div className="r-today-cols" style={{ display: "flex", gap: 48, maxWidth: 1120 }}>
             <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
 
             {/* Enterprise Sweep Results Card */}
@@ -1305,7 +1305,7 @@ RESPONSE FORMAT:
             <div className="r-today-panel" style={{ flex: 2, minWidth: 260, maxWidth: 340, position: "sticky", top: 28, alignSelf: "flex-start" }}>
 
               {/* Portfolio Snapshot */}
-              <div style={{ background: C.card, borderRadius: 14, border: "1px solid " + C.border, padding: "16px", boxShadow: C.cardShadow, marginBottom: 24 }}>
+              <div style={{ background: "#FAFAF8", borderRadius: 14, border: "1px solid #E8ECE6", padding: "16px", marginBottom: 24 }}>
                 <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
                   <div>
                     <ScoreRing score={Math.round(clients.reduce((a, c) => a + (c.ret || 0), 0) / (clients.length || 1))} size={64} strokeWidth={4.5} />
@@ -1358,7 +1358,7 @@ RESPONSE FORMAT:
                 const atRiskRev = atRiskClients.reduce((a, c) => a + (c.revenue || 0), 0);
                 if (atRiskClients.length === 0) return null;
                 return (
-                  <div style={{ background: C.card, borderRadius: 14, border: "1px solid " + C.border, padding: "14px", boxShadow: C.cardShadow, borderLeft: "3px solid " + C.danger, marginBottom: 24 }}>
+                  <div style={{ background: "#FAFAF8", borderRadius: 14, border: "1px solid #E8ECE6", padding: "14px", marginBottom: 24 }}>
                     <div style={{ fontSize: 10, fontWeight: 600, color: C.danger, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>Revenue at risk</div>
                     <div style={{ fontSize: 24, fontWeight: 900, color: C.danger }}>${(atRiskRev / 1000).toFixed(1)}k/mo</div>
                     <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>{atRiskClients.length} client{atRiskClients.length > 1 ? "s" : ""} scoring under 50</div>
@@ -1371,50 +1371,27 @@ RESPONSE FORMAT:
                 );
               })()}
 
-              {/* Client Drift */}
+              {/* Client Drift — 16a full list */}
               {clients.length > 1 && (
-                <div style={{ background: C.card, borderRadius: 14, border: "1px solid " + C.border, padding: "14px", boxShadow: C.cardShadow, marginBottom: 24 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 10 }}>Client Drift</div>
-                  <div style={{ display: "flex", gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: C.success, marginBottom: 6 }}>STRONGEST</div>
-                      {[...clients].sort((a, b) => (b.ret || 0) - (a.ret || 0)).slice(0, 2).map((c, ci) => (
-                        <div key={ci} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                          <ScoreRing score={c.ret || 0} size={24} strokeWidth={2} />
-                          <span style={{ fontSize: 12, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
-                        </div>
-                      ))}
+                <div style={{ background: "#FAFAF8", borderRadius: 14, border: "1px solid #E8ECE6", padding: "14px" }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>Client Drift</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: C.success, textTransform: "uppercase", marginBottom: 5 }}>Improving</div>
+                  {[...clients].sort((a, b) => (b.ret || 0) - (a.ret || 0)).slice(0, 2).map((c, ci) => (
+                    <div key={"up" + ci} style={{ padding: "7px 0", borderBottom: "1px solid #E8ECE6", display: "flex", alignItems: "center", gap: 8 }}>
+                      <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
+                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{c.name}</span>
                     </div>
-                    <div style={{ width: 1, background: C.borderLight }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: C.warning, marginBottom: 6 }}>WATCH</div>
-                      {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
-                        <div key={ci} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                          <ScoreRing score={c.ret || 0} size={24} strokeWidth={2} />
-                          <span style={{ fontSize: 12, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
-                        </div>
-                      ))}
+                  ))}
+                  <div style={{ fontSize: 9, fontWeight: 700, color: C.danger, textTransform: "uppercase", marginBottom: 5, marginTop: 12 }}>Watch</div>
+                  {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
+                    <div key={"dn" + ci} style={{ padding: "7px 0", borderBottom: ci < 1 ? "1px solid #E8ECE6" : "none", display: "flex", alignItems: "center", gap: 8 }}>
+                      <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
+                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{c.name}</span>
                     </div>
-                  </div>
+                  ))}
                 </div>
               )}
 
-              {/* Rai Daily Brief */}
-              <div style={{ background: C.raiGrad, borderRadius: 14, padding: "16px", color: "#fff" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}><Icon name="spark" size={12} color="rgba(255,255,255,0.6)" /><span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color: "rgba(255,255,255,0.5)" }}>Rai</span></div>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.5, marginBottom: 10 }}>
-                  {clients.length === 0 ? "Add your first client to get started. I'll have insights for you once I know your business."
-                  : overdueChecks > 0 ? `You have ${overdueChecks} overdue health check${overdueChecks > 1 ? "s" : ""}. I'd prioritize ${clients.filter(c => (c.ret || 0) < 60)[0]?.name || "your lowest-scoring client"} today.`
-                  : tasksTotal > 0 ? `${tasksTotal - tasksDone} tasks remaining today. Your portfolio is looking ${Math.round(clients.reduce((a, c) => a + (c.ret || 0), 0) / (clients.length || 1)) >= 70 ? "healthy" : "like it needs some attention"}.`
-                  : "No tasks yet today. Add some or I can suggest a few based on your client data."}
-                </p>
-                <div onClick={() => goTo("coach")} style={{ display: "flex", gap: 8, cursor: "pointer" }}>
-                  <div style={{ flex: 1, height: 34, border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, display: "flex", alignItems: "center", padding: "0 10px", fontSize: 12, color: "rgba(255,255,255,0.4)" }}>Ask Rai...</div>
-                  <div style={{ width: 34, height: 34, borderRadius: 8, background: C.btn, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
-                  </div>
-                </div>
-              </div>
 
             </div>
           </div>
@@ -2507,7 +2484,7 @@ RESPONSE FORMAT:
           </div>
         )}
         {page === "coach" && aiMessages.length > 0 && (
-          <div className="r-rai-bar" style={{ position: "fixed", bottom: 0, right: 0, left: 270, borderTop: "1px solid " + C.borderLight, padding: "12px 32px 8px", background: C.bg, zIndex: 30 }}>
+          <div className="r-rai-bar" style={{ position: "fixed", bottom: 0, right: 0, left: 270, borderTop: "1px solid " + C.borderLight, padding: "12px 48px 8px", background: C.bg, zIndex: 30 }}>
             <div style={{ maxWidth: 1080, position: "relative" }}>
               <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 12, padding: "12px 14px 8px" }}>
                 <textarea value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask about a client..." rows={2} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 16, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.65, color: C.text }} />
