@@ -35,218 +35,6 @@ const Icon = ({ name, size = 18, color = "currentColor" }) => {
     plus: (<><line x1="12" y1="5" x2="12" y2="19" stroke={color} strokeWidth="2" strokeLinecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke={color} strokeWidth="2" strokeLinecap="round"/></>),
   };
 
-  // ═══ PANEL COMPONENTS ═══
-  const PanelCard = ({ children, style }) => <div style={{ background: "#FAFAF8", borderRadius: 14, border: "1px solid #E8ECE6", padding: "14px", marginBottom: 24, ...style }}>{children}</div>;
-  
-  const PortfolioPanel = () => {
-    const avgScore = clients.length > 0 ? Math.round(clients.reduce((a, c) => a + (c.ret || 0), 0) / clients.length) : 0;
-    const thriving = clients.filter(c => (c.ret || 0) >= 80).length;
-    const healthy = clients.filter(c => (c.ret || 0) >= 65 && (c.ret || 0) < 80).length;
-    const watch = clients.filter(c => (c.ret || 0) >= 45 && (c.ret || 0) < 65).length;
-    const atRisk = clients.filter(c => (c.ret || 0) < 45).length;
-    const total = clients.length || 1;
-    const atRiskClients = clients.filter(c => (c.ret || 0) < 50);
-    const atRiskRev = atRiskClients.reduce((a, c) => a + (c.revenue || 0), 0);
-    return (
-      <div className="r-today-panel" style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
-        <PanelCard style={{ padding: "16px" }}>
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <div>
-              <ScoreRing score={avgScore} size={56} strokeWidth={4} />
-              <div style={{ textAlign: "center", marginTop: 3 }}>
-                <div style={{ fontSize: 9, fontWeight: 600, color: C.textMuted }}>Portfolio health</div>
-              </div>
-            </div>
-            <div style={{ flex: 1 }}>
-              {[{ l: "Clients", v: clients.length }, { l: "Lifetime Value", v: "$" + Math.round(clients.reduce((a, c) => a + getAdjustedLTV(c), 0) / 1000) + "k" }, { l: "Avg Tenure", v: (clients.length > 0 ? Math.round(clients.reduce((a, c) => a + (c.months || 0), 0) / clients.length) : 0) + "mo" }].map((r, i) => (
-                <div key={i} style={{ padding: "7px 0", borderBottom: i < 2 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 12, color: C.textMuted }}>{r.l}</span>
-                  <span style={{ fontSize: 14, fontWeight: 800 }}>{r.v}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          {clients.length > 0 && (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #E8ECE6" }}>
-              <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 6, textAlign: "center" }}>
-                {[{ l: "Thriving", v: thriving, c: C.primary }, { l: "Healthy", v: healthy, c: "#558B68" }, { l: "Watch", v: watch, c: C.warning }, { l: "At Risk", v: atRisk, c: C.danger }].map((s, si) => (
-                  <div key={si}><div style={{ fontSize: 15, fontWeight: 900, color: s.c }}>{s.v}</div><div style={{ fontSize: 8, fontWeight: 600, color: C.textMuted }}>{s.l}</div></div>
-                ))}
-              </div>
-              <div style={{ height: 6, borderRadius: 3, display: "flex", overflow: "hidden" }}>
-                {thriving > 0 && <div style={{ width: (thriving / total * 100) + "%", background: C.primary }} />}
-                {healthy > 0 && <div style={{ width: (healthy / total * 100) + "%", background: "#558B68" }} />}
-                {watch > 0 && <div style={{ width: (watch / total * 100) + "%", background: C.warning }} />}
-                {atRisk > 0 && <div style={{ width: (atRisk / total * 100) + "%", background: C.danger }} />}
-              </div>
-            </div>
-          )}
-        </PanelCard>
-        {atRiskClients.length > 0 ? (
-          <PanelCard>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.danger, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 3 }}>Revenue at risk</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: C.danger }}>${(atRiskRev / 1000).toFixed(1)}k/mo</div>
-            <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>{atRiskClients.length} client{atRiskClients.length > 1 ? "s" : ""} scoring under 50</div>
-            <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
-              {atRiskClients.slice(0, 3).map((c, ci) => (
-                <span key={ci} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "#FAE8E4", color: C.danger, fontWeight: 600 }}>{c.name}</span>
-              ))}
-            </div>
-          </PanelCard>
-        ) : clients.length >= 2 && (
-          <PanelCard>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.warning, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 3 }}>Lowest scoring</div>
-            {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
-              <div key={ci} style={{ padding: "7px 0", borderBottom: ci < 1 ? "1px solid #E8ECE6" : "none", display: "flex", alignItems: "center", gap: 8 }}>
-                <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
-                <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{c.name}</span>
-                <span style={{ fontSize: 11, color: C.textMuted }}>${((c.revenue || 0) / 1000).toFixed(1)}k/mo</span>
-              </div>
-            ))}
-          </PanelCard>
-        )}
-        {clients.length > 1 && (
-          <PanelCard style={{ marginBottom: 0 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>Client Drift</div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: C.success, textTransform: "uppercase", marginBottom: 5 }}>Improving</div>
-            {[...clients].sort((a, b) => (b.ret || 0) - (a.ret || 0)).slice(0, 2).map((c, ci) => (
-              <div key={"up" + ci} style={{ padding: "7px 0", borderBottom: "1px solid #E8ECE6", display: "flex", alignItems: "center", gap: 8 }}>
-                <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
-                <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{c.name}</span>
-              </div>
-            ))}
-            <div style={{ fontSize: 9, fontWeight: 700, color: C.danger, textTransform: "uppercase", marginBottom: 5, marginTop: 12 }}>Watch</div>
-            {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
-              <div key={"dn" + ci} style={{ padding: "7px 0", borderBottom: ci < 1 ? "1px solid #E8ECE6" : "none", display: "flex", alignItems: "center", gap: 8 }}>
-                <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
-                <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{c.name}</span>
-              </div>
-            ))}
-          </PanelCard>
-        )}
-      </div>
-    );
-  };
-
-  const RolodexPanel = () => {
-    const convertedClients = clients.filter(c => rolodex.some(r => r.name === c.name || r.client === c.name)).sort((a, b) => (b.ret || 0) - (a.ret || 0));
-    const totalLeads = rolodex.length;
-    const converted = convertedClients.length;
-    const convRate = totalLeads > 0 ? Math.round((converted / totalLeads) * 100) : 0;
-    const avgScore = converted > 0 ? Math.round(convertedClients.reduce((a, c) => a + (c.ret || 0), 0) / converted) : 0;
-    const staleLeads = rolodex.filter(r => !clients.some(c => c.name === r.name || c.name === r.client));
-    return (
-      <div className="r-today-panel" style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
-        <PanelCard style={{ padding: "16px" }}>
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <div>
-              <ScoreRing score={avgScore || 0} size={56} strokeWidth={4} />
-              <div style={{ textAlign: "center", marginTop: 3 }}>
-                <div style={{ fontSize: 9, fontWeight: 600, color: C.textMuted }}>Converted health</div>
-              </div>
-            </div>
-            <div style={{ flex: 1 }}>
-              {[{ l: "Converted", v: converted }, { l: "Revenue added", v: "$" + Math.round(convertedClients.reduce((a, c) => a + (c.revenue || 0), 0) / 1000) + "k/mo" }, { l: "In pipeline", v: staleLeads.length }].map((r, i) => (
-                <div key={i} style={{ padding: "7px 0", borderBottom: i < 2 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 12, color: C.textMuted }}>{r.l}</span>
-                  <span style={{ fontSize: 14, fontWeight: 800 }}>{r.v}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </PanelCard>
-        <PanelCard>
-          <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Conversion Rate</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <span style={{ fontSize: 28, fontWeight: 900, color: C.primary }}>{convRate}%</span>
-            <span style={{ fontSize: 12, color: C.textMuted }}>became clients</span>
-          </div>
-          <div style={{ marginTop: 8 }}>
-            {[{ l: "Total leads", v: totalLeads }, { l: "Converted", v: converted }, { l: "Still in pipeline", v: staleLeads.length }].map((s, i) => (
-              <div key={i} style={{ padding: "5px 0", borderBottom: i < 2 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 11, color: C.textMuted }}>{s.l}</span>
-                <span style={{ fontSize: 11, fontWeight: 700 }}>{s.v}</span>
-              </div>
-            ))}
-          </div>
-        </PanelCard>
-        {staleLeads.length > 0 && (
-          <PanelCard style={{ marginBottom: 0 }}>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.warning, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Needs outreach</div>
-            {staleLeads.slice(0, 4).map((r, i) => (
-              <div key={i} style={{ padding: "7px 0", borderBottom: i < Math.min(staleLeads.length, 4) - 1 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 12, fontWeight: 600 }}>{r.name || r.client}</span>
-                <span style={{ fontSize: 11, color: C.textMuted }}>{r.contact}</span>
-              </div>
-            ))}
-          </PanelCard>
-        )}
-      </div>
-    );
-  };
-
-  const ReferralsPanel = () => {
-    const referredClients = clients.filter(c => referrals.some(r => r.referred === c.name || r.to === c.name));
-    const avgScore = referredClients.length > 0 ? Math.round(referredClients.reduce((a, c) => a + (c.ret || 0), 0) / referredClients.length) : 0;
-    const refRev = referredClients.reduce((a, c) => a + (c.revenue || 0), 0);
-    const totalReferred = referrals.length;
-    const converted = referredClients.length;
-    const convRate = totalReferred > 0 ? Math.round((converted / totalReferred) * 100) : 0;
-    const likelyToRefer = [...clients].filter(c => (c.ret || 0) >= 80).sort((a, b) => (b.ret || 0) - (a.ret || 0)).slice(0, 3);
-    return (
-      <div className="r-today-panel" style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
-        <PanelCard style={{ padding: "16px" }}>
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <div>
-              <ScoreRing score={avgScore || 0} size={56} strokeWidth={4} />
-              <div style={{ textAlign: "center", marginTop: 3 }}>
-                <div style={{ fontSize: 9, fontWeight: 600, color: C.textMuted }}>Referred health</div>
-              </div>
-            </div>
-            <div style={{ flex: 1 }}>
-              {[{ l: "Referred clients", v: converted }, { l: "Referral revenue", v: "$" + Math.round(refRev / 1000) + "k/mo" }, { l: "Referral LCV", v: "$" + Math.round(referredClients.reduce((a, c) => a + getAdjustedLTV(c), 0) / 1000) + "k" }].map((r, i) => (
-                <div key={i} style={{ padding: "7px 0", borderBottom: i < 2 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 12, color: C.textMuted }}>{r.l}</span>
-                  <span style={{ fontSize: 14, fontWeight: 800 }}>{r.v}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </PanelCard>
-        <PanelCard>
-          <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Referral Conversion</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <span style={{ fontSize: 28, fontWeight: 900, color: C.primary }}>{convRate}%</span>
-            <span style={{ fontSize: 12, color: C.textMuted }}>became clients</span>
-          </div>
-          <div style={{ marginTop: 8 }}>
-            {[{ l: "Total referred", v: totalReferred }, { l: "Converted", v: converted }, { l: "Lost", v: totalReferred - converted }].map((s, i) => (
-              <div key={i} style={{ padding: "5px 0", borderBottom: i < 2 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 11, color: C.textMuted }}>{s.l}</span>
-                <span style={{ fontSize: 11, fontWeight: 700 }}>{s.v}</span>
-              </div>
-            ))}
-          </div>
-        </PanelCard>
-        {likelyToRefer.length > 0 && (
-          <PanelCard style={{ marginBottom: 0 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Likely to refer</div>
-            <div style={{ fontSize: 10, color: C.textMuted, marginBottom: 8 }}>Thriving clients (80+)</div>
-            {likelyToRefer.map((c, i) => (
-              <div key={i} style={{ padding: "7px 0", borderBottom: i < likelyToRefer.length - 1 ? "1px solid #E8ECE6" : "none", display: "flex", alignItems: "center", gap: 8 }}>
-                <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600 }}>{c.name}</span>
-                  <div style={{ fontSize: 10, color: C.textMuted }}>{c.months || 0}mo</div>
-                </div>
-                {referrals.some(r => r.from === c.name || r.source === c.name) && <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: C.primarySoft, color: C.primary, fontWeight: 600 }}>Has referred</span>}
-              </div>
-            ))}
-          </PanelCard>
-        )}
-      </div>
-    );
-  };
 
   return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">{paths[name]}</svg>);
 };
@@ -1166,6 +954,218 @@ RESPONSE FORMAT:
     setAiTyping(false);
   };
 
+  // ═══ PANEL COMPONENTS ═══
+  const PanelCard = ({ children, style }) => <div style={{ background: "#FAFAF8", borderRadius: 14, border: "1px solid #E8ECE6", padding: "14px", marginBottom: 24, ...style }}>{children}</div>;
+  
+  const PortfolioPanel = () => {
+    const avgScore = clients.length > 0 ? Math.round(clients.reduce((a, c) => a + (c.ret || 0), 0) / clients.length) : 0;
+    const thriving = clients.filter(c => (c.ret || 0) >= 80).length;
+    const healthy = clients.filter(c => (c.ret || 0) >= 65 && (c.ret || 0) < 80).length;
+    const watch = clients.filter(c => (c.ret || 0) >= 45 && (c.ret || 0) < 65).length;
+    const atRisk = clients.filter(c => (c.ret || 0) < 45).length;
+    const total = clients.length || 1;
+    const atRiskClients = clients.filter(c => (c.ret || 0) < 50);
+    const atRiskRev = atRiskClients.reduce((a, c) => a + (c.revenue || 0), 0);
+    return (
+      <div className="r-today-panel" style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
+        <PanelCard style={{ padding: "16px" }}>
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <div>
+              <ScoreRing score={avgScore} size={56} strokeWidth={4} />
+              <div style={{ textAlign: "center", marginTop: 3 }}>
+                <div style={{ fontSize: 9, fontWeight: 600, color: C.textMuted }}>Portfolio health</div>
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              {[{ l: "Clients", v: clients.length }, { l: "Lifetime Value", v: "$" + Math.round(clients.reduce((a, c) => a + getAdjustedLTV(c), 0) / 1000) + "k" }, { l: "Avg Tenure", v: (clients.length > 0 ? Math.round(clients.reduce((a, c) => a + (c.months || 0), 0) / clients.length) : 0) + "mo" }].map((r, i) => (
+                <div key={i} style={{ padding: "7px 0", borderBottom: i < 2 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, color: C.textMuted }}>{r.l}</span>
+                  <span style={{ fontSize: 14, fontWeight: 800 }}>{r.v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {clients.length > 0 && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #E8ECE6" }}>
+              <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 6, textAlign: "center" }}>
+                {[{ l: "Thriving", v: thriving, c: C.primary }, { l: "Healthy", v: healthy, c: "#558B68" }, { l: "Watch", v: watch, c: C.warning }, { l: "At Risk", v: atRisk, c: C.danger }].map((s, si) => (
+                  <div key={si}><div style={{ fontSize: 15, fontWeight: 900, color: s.c }}>{s.v}</div><div style={{ fontSize: 8, fontWeight: 600, color: C.textMuted }}>{s.l}</div></div>
+                ))}
+              </div>
+              <div style={{ height: 6, borderRadius: 3, display: "flex", overflow: "hidden" }}>
+                {thriving > 0 && <div style={{ width: (thriving / total * 100) + "%", background: C.primary }} />}
+                {healthy > 0 && <div style={{ width: (healthy / total * 100) + "%", background: "#558B68" }} />}
+                {watch > 0 && <div style={{ width: (watch / total * 100) + "%", background: C.warning }} />}
+                {atRisk > 0 && <div style={{ width: (atRisk / total * 100) + "%", background: C.danger }} />}
+              </div>
+            </div>
+          )}
+        </PanelCard>
+        {atRiskClients.length > 0 ? (
+          <PanelCard>
+            <div style={{ fontSize: 9, fontWeight: 600, color: C.danger, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 3 }}>Revenue at risk</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: C.danger }}>${(atRiskRev / 1000).toFixed(1)}k/mo</div>
+            <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>{atRiskClients.length} client{atRiskClients.length > 1 ? "s" : ""} scoring under 50</div>
+            <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
+              {atRiskClients.slice(0, 3).map((c, ci) => (
+                <span key={ci} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "#FAE8E4", color: C.danger, fontWeight: 600 }}>{c.name}</span>
+              ))}
+            </div>
+          </PanelCard>
+        ) : clients.length >= 2 && (
+          <PanelCard>
+            <div style={{ fontSize: 9, fontWeight: 600, color: C.warning, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 3 }}>Lowest scoring</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: C.warning }}>${([...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).reduce((a, c) => a + (c.revenue || 0), 0) / 1000).toFixed(1)}k/mo</div>
+            <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>2 lowest-scoring clients</div>
+            <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
+              {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
+                <span key={ci} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "#FDF5E9", color: C.warning, fontWeight: 600 }}>{c.name} (${((c.revenue || 0) / 1000).toFixed(1)}k)</span>
+              ))}
+            </div>
+          </PanelCard>
+        )}
+        {clients.length > 1 && (
+          <PanelCard style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>Client Drift</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: C.success, textTransform: "uppercase", marginBottom: 5 }}>Improving</div>
+            {[...clients].sort((a, b) => (b.ret || 0) - (a.ret || 0)).slice(0, 2).map((c, ci) => (
+              <div key={"up" + ci} style={{ padding: "7px 0", borderBottom: "1px solid #E8ECE6", display: "flex", alignItems: "center", gap: 8 }}>
+                <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{c.name}</span>
+              </div>
+            ))}
+            <div style={{ fontSize: 9, fontWeight: 700, color: C.danger, textTransform: "uppercase", marginBottom: 5, marginTop: 12 }}>Watch</div>
+            {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
+              <div key={"dn" + ci} style={{ padding: "7px 0", borderBottom: ci < 1 ? "1px solid #E8ECE6" : "none", display: "flex", alignItems: "center", gap: 8 }}>
+                <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{c.name}</span>
+              </div>
+            ))}
+          </PanelCard>
+        )}
+      </div>
+    );
+  };
+
+  const RolodexPanel = () => {
+    const convertedClients = clients.filter(c => rolodex.some(r => r.name === c.name || r.client === c.name)).sort((a, b) => (b.ret || 0) - (a.ret || 0));
+    const totalLeads = rolodex.length;
+    const converted = convertedClients.length;
+    const convRate = totalLeads > 0 ? Math.round((converted / totalLeads) * 100) : 0;
+    const avgScore = converted > 0 ? Math.round(convertedClients.reduce((a, c) => a + (c.ret || 0), 0) / converted) : 0;
+    const staleLeads = rolodex.filter(r => !clients.some(c => c.name === r.name || c.name === r.client));
+    return (
+      <div className="r-today-panel" style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
+        <PanelCard style={{ padding: "16px" }}>
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <div>
+              <ScoreRing score={avgScore || 0} size={56} strokeWidth={4} />
+              <div style={{ textAlign: "center", marginTop: 3 }}>
+                <div style={{ fontSize: 9, fontWeight: 600, color: C.textMuted }}>Converted health</div>
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              {[{ l: "Converted", v: converted }, { l: "Revenue added", v: "$" + Math.round(convertedClients.reduce((a, c) => a + (c.revenue || 0), 0) / 1000) + "k/mo" }, { l: "In pipeline", v: staleLeads.length }].map((r, i) => (
+                <div key={i} style={{ padding: "7px 0", borderBottom: i < 2 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, color: C.textMuted }}>{r.l}</span>
+                  <span style={{ fontSize: 14, fontWeight: 800 }}>{r.v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </PanelCard>
+        <PanelCard>
+          <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Conversion Rate</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span style={{ fontSize: 28, fontWeight: 900, color: C.primary }}>{convRate}%</span>
+            <span style={{ fontSize: 12, color: C.textMuted }}>became clients</span>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            {[{ l: "Total leads", v: totalLeads }, { l: "Converted", v: converted }, { l: "Still in pipeline", v: staleLeads.length }].map((s, i) => (
+              <div key={i} style={{ padding: "5px 0", borderBottom: i < 2 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 11, color: C.textMuted }}>{s.l}</span>
+                <span style={{ fontSize: 11, fontWeight: 700 }}>{s.v}</span>
+              </div>
+            ))}
+          </div>
+        </PanelCard>
+        {staleLeads.length > 0 && (
+          <PanelCard style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: C.warning, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Needs outreach</div>
+            {staleLeads.slice(0, 4).map((r, i) => (
+              <div key={i} style={{ padding: "7px 0", borderBottom: i < Math.min(staleLeads.length, 4) - 1 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>{r.name || r.client}</span>
+                <span style={{ fontSize: 11, color: C.textMuted }}>{r.contact}</span>
+              </div>
+            ))}
+          </PanelCard>
+        )}
+      </div>
+    );
+  };
+
+  const ReferralsPanel = () => {
+    const referredClients = clients.filter(c => referrals.some(r => r.referred === c.name || r.to === c.name));
+    const avgScore = referredClients.length > 0 ? Math.round(referredClients.reduce((a, c) => a + (c.ret || 0), 0) / referredClients.length) : 0;
+    const refRev = referredClients.reduce((a, c) => a + (c.revenue || 0), 0);
+    const totalReferred = referrals.length;
+    const converted = referredClients.length;
+    const convRate = totalReferred > 0 ? Math.round((converted / totalReferred) * 100) : 0;
+    const likelyToRefer = [...clients].filter(c => (c.ret || 0) >= 80).sort((a, b) => (b.ret || 0) - (a.ret || 0)).slice(0, 3);
+    return (
+      <div className="r-today-panel" style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
+        <PanelCard style={{ padding: "16px" }}>
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <div>
+              <ScoreRing score={avgScore || 0} size={56} strokeWidth={4} />
+              <div style={{ textAlign: "center", marginTop: 3 }}>
+                <div style={{ fontSize: 9, fontWeight: 600, color: C.textMuted }}>Referred health</div>
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              {[{ l: "Referred clients", v: converted }, { l: "Referral revenue", v: "$" + Math.round(refRev / 1000) + "k/mo" }, { l: "Referral LCV", v: "$" + Math.round(referredClients.reduce((a, c) => a + getAdjustedLTV(c), 0) / 1000) + "k" }].map((r, i) => (
+                <div key={i} style={{ padding: "7px 0", borderBottom: i < 2 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, color: C.textMuted }}>{r.l}</span>
+                  <span style={{ fontSize: 14, fontWeight: 800 }}>{r.v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </PanelCard>
+        <PanelCard>
+          <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Referral Conversion</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span style={{ fontSize: 28, fontWeight: 900, color: C.primary }}>{convRate}%</span>
+            <span style={{ fontSize: 12, color: C.textMuted }}>became clients</span>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            {[{ l: "Total referred", v: totalReferred }, { l: "Converted", v: converted }, { l: "Lost", v: totalReferred - converted }].map((s, i) => (
+              <div key={i} style={{ padding: "5px 0", borderBottom: i < 2 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 11, color: C.textMuted }}>{s.l}</span>
+                <span style={{ fontSize: 11, fontWeight: 700 }}>{s.v}</span>
+              </div>
+            ))}
+          </div>
+        </PanelCard>
+        {likelyToRefer.length > 0 && (
+          <PanelCard style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Likely to refer</div>
+            <div style={{ fontSize: 10, color: C.textMuted, marginBottom: 8 }}>Thriving clients (80+)</div>
+            {likelyToRefer.map((c, i) => (
+              <div key={i} style={{ padding: "7px 0", borderBottom: i < likelyToRefer.length - 1 ? "1px solid #E8ECE6" : "none", display: "flex", alignItems: "center", gap: 8 }}>
+                <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>{c.name}</span>
+                  <div style={{ fontSize: 10, color: C.textMuted }}>{c.months || 0}mo</div>
+                </div>
+                {referrals.some(r => r.from === c.name || r.source === c.name) && <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: C.primarySoft, color: C.primary, fontWeight: 600 }}>Has referred</span>}
+              </div>
+            ))}
+          </PanelCard>
+        )}
+      </div>
+    );
+  };
   const goTo = (id) => { if (page === "health" && id !== "health") { setHcDone({}); setHcOpen(null); } setPage(id); setShowMore(false); };
   const allPages = [...(tier === "enterprise" ? navItemsEnterprise : navItemsCore), ...(tier === "enterprise" ? moreItemsEnterprise : moreItemsCore)];
   const pageTitle = allPages.find(n => n.id === page)?.label || "";
@@ -1592,13 +1592,13 @@ RESPONSE FORMAT:
                 if (clients.length >= 2) return (
                   <div style={{ background: "#FAFAF8", borderRadius: 14, border: "1px solid #E8ECE6", padding: "14px", marginBottom: 24 }}>
                     <div style={{ fontSize: 10, fontWeight: 600, color: C.warning, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>Lowest scoring</div>
-                    {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
-                      <div key={ci} style={{ padding: "7px 0", borderBottom: ci < 1 ? "1px solid #E8ECE6" : "none", display: "flex", alignItems: "center", gap: 8 }}>
-                        <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
-                        <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{c.name}</span>
-                        <span style={{ fontSize: 11, color: C.textMuted }}>${((c.revenue || 0) / 1000).toFixed(1)}k/mo</span>
-                      </div>
-                    ))}
+                    <div style={{ fontSize: 24, fontWeight: 900, color: C.warning }}>${([...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).reduce((a, c) => a + (c.revenue || 0), 0) / 1000).toFixed(1)}k/mo</div>
+                    <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>2 lowest-scoring clients</div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                      {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
+                        <span key={ci} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 5, background: "#FDF5E9", color: C.warning, fontWeight: 600 }}>{c.name} (${((c.revenue || 0) / 1000).toFixed(1)}k)</span>
+                      ))}
+                    </div>
                   </div>
                 );
                 return null;
