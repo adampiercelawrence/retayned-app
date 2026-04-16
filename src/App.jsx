@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "./lib/supabase";
 import { raiSystemPrompt } from "./lib/rai-prompt";
-import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex as rolodexDb, referrals as referralsDb, raiSuggestions as suggestionsDb, raiConversations as convoDb, profile as profileDb, buildRaiContext } from "./lib/db";
+import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex as rolodexDb, referrals as referralsDb, raiSuggestions as suggestionsDb, raiConversations as convoDb, profile as profileDb, touchpoints as touchpointsDb, buildRaiContext } from "./lib/db";
 
 const C = {
   primary: "#33543E", primaryLight: "#558B68", primarySoft: "#E6EFE9",
@@ -576,14 +576,21 @@ export default function App({ user }) {
     if (!user) return;
     const uid = user.id;
     
-    const [clientRes, taskRes, refRes, rolodexRes, suggestionRes, hcRes] = await Promise.all([
+    const [clientRes, taskRes, refRes, rolodexRes, suggestionRes, hcRes, tpRes] = await Promise.all([
       clientsDb.list(uid),
       tasksDb.listToday(uid),
       referralsDb.list(uid),
       rolodexDb.list(uid),
       suggestionsDb.listPending(uid),
       hcDb.listPending(uid),
+      touchpointsDb.listToday(uid),
     ]);
+
+    if (tpRes.data) setTpLogged(tpRes.data.map(t => ({
+      id: t.id,
+      client: t.client_name,
+      channel: t.channel,
+    })));
 
     if (clientRes.data) setClients(clientRes.data.map(c => ({
       ...c,
@@ -1503,7 +1510,25 @@ RESPONSE FORMAT:
                             <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 14 }}>{tpChannel.charAt(0).toUpperCase() + tpChannel.slice(1)} · Today</div>
                             <div style={{ display: "flex", gap: 6 }}>
                               <button onClick={() => setTpChannel(null)} style={{ flex: 1, padding: "10px", background: C.surface, color: C.textSec, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Back</button>
-                              <button onClick={() => { setTpLogged([...tpLogged, { client: tpClient, channel: tpChannel }]); setTpClient(null); setTpChannel(null); setShowTouchpoint(false); setTpSearch(""); }} style={{ flex: 1, padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Log it</button>
+                              <button onClick={async () => {
+                                // Find the client record to get their id for the FK
+                                const clientObj = clients.find(c => c.name === tpClient);
+                                if (!clientObj) { setTpClient(null); setTpChannel(null); setShowTouchpoint(false); setTpSearch(""); return; }
+                                // Optimistic: show the pill immediately with a temp id, then swap to real id on return
+                                const tempId = "tmp_" + Date.now();
+                                const tempEntry = { id: tempId, client: tpClient, channel: tpChannel };
+                                setTpLogged(prev => [tempEntry, ...prev]);
+                                setTpClient(null); setTpChannel(null); setShowTouchpoint(false); setTpSearch("");
+                                const { data, error } = await touchpointsDb.create(user.id, { client_id: clientObj.id, client_name: clientObj.name, channel: tpChannel });
+                                if (error || !data) {
+                                  console.error("Failed to log touchpoint:", error);
+                                  // Roll back the optimistic entry
+                                  setTpLogged(prev => prev.filter(l => l.id !== tempId));
+                                  return;
+                                }
+                                // Swap temp id for real id
+                                setTpLogged(prev => prev.map(l => l.id === tempId ? { id: data.id, client: data.client_name, channel: data.channel } : l));
+                              }} style={{ flex: 1, padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Log it</button>
                             </div>
                           </div>
                         )}
@@ -1543,9 +1568,20 @@ RESPONSE FORMAT:
               <div style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Logged Today</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {tpLogged.map((l, li) => (
-                    <span key={li} style={{ fontSize: 12, padding: "5px 10px", borderRadius: 6, background: C.primarySoft, color: C.primary, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                  {tpLogged.map((l) => (
+                    <span key={l.id} style={{ fontSize: 12, padding: "5px 10px", borderRadius: 6, background: C.primarySoft, color: C.primary, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
                       {l.channel === "call" ? "📞" : l.channel === "text" ? "💬" : l.channel === "meeting" ? "🤝" : "📌"} {l.client}
+                      <span onClick={async () => {
+                        const snapshot = l;
+                        setTpLogged(prev => prev.filter(x => x.id !== l.id));
+                        // Skip deletion if this is still a pending optimistic insert
+                        if (typeof l.id === "string" && l.id.startsWith("tmp_")) return;
+                        const { error } = await touchpointsDb.delete(l.id);
+                        if (error) {
+                          console.error("Failed to delete touchpoint:", error);
+                          setTpLogged(prev => [snapshot, ...prev]);
+                        }
+                      }} style={{ cursor: "pointer", marginLeft: 4, color: C.primary, opacity: 0.5, fontSize: 13, lineHeight: 1 }}>×</span>
                     </span>
                   ))}
                 </div>
