@@ -1404,6 +1404,9 @@ RESPONSE FORMAT:
             <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 12 }}>Today</h1>
             <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 16 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
 
+            <div className="r-today-cols" style={{ display: "flex", gap: 48 }}>
+            <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
+
             {/* Enterprise Sweep Results Card */}
             {tier === "enterprise" && (
               <div style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.border, padding: "16px 18px", marginBottom: 14 }}>
@@ -1540,9 +1543,6 @@ RESPONSE FORMAT:
                 </div>
               </div>
             )}
-
-            <div className="r-today-cols" style={{ display: "flex", gap: 48 }}>
-            <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
 
             {/* Suggested by Rai — alerts (red) + suggestions (green) */}
             {aiTasks.length > 0 && (
