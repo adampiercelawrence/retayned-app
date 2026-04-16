@@ -1053,6 +1053,83 @@ export default function App({ user }) {
     );
   };
 
+  const RaiMiniPanel = () => (
+    <div className="r-today-panel" style={{ width: 360, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
+      <div style={{ background: "transparent", borderRadius: 16, border: "1px solid " + C.borderLight, padding: "14px", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 80px)" }}>
+        {/* Rai header */}
+        <div style={{ display: "flex", gap: 10, alignItems: "center", paddingBottom: 12, borderBottom: "1px solid " + C.borderLight, marginBottom: 12 }}>
+          <div style={{ width: 38, height: 38, borderRadius: "50%", background: C.btn, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, position: "relative" }}>
+            Rai
+            <div style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: C.success, border: "2px solid " + C.bg }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800 }}>Rai</div>
+            <div style={{ fontSize: 11, color: C.success, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, display: "inline-block" }} />
+              Watching your portfolio
+            </div>
+          </div>
+        </div>
+        {/* Messages */}
+        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+          {aiMessages.length === 0 ? (
+            <>
+              <div style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid " + C.borderLight }}>
+                <strong>Good morning{user?.user_metadata?.full_name ? ", " + user.user_metadata.full_name.split(" ")[0] : ""}.</strong> {(() => {
+                  const worst = [...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0))[0];
+                  const thriving = clients.filter(c => (c.ret || 0) >= 80);
+                  if (worst && (worst.ret || 0) < 60) return worst.name + " is my biggest concern — scoring " + (worst.ret || 0) + ". Worth checking in.";
+                  if (thriving.length > 0) return "Your portfolio looks solid. " + thriving.length + " clients thriving.";
+                  return "What's on your mind today?";
+                })()}
+              </div>
+              {clients.filter(c => (c.ret || 0) >= 80).length >= 2 && (
+                <div style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid " + C.borderLight }}>
+                  {(() => {
+                    const thriving = clients.filter(c => (c.ret || 0) >= 80).slice(0, 3);
+                    return "Clients I'd leave alone: " + thriving.map(c => c.name).join(", ") + ". Don't upsell. Don't over-touch.";
+                  })()}
+                </div>
+              )}
+              {/* Suggested prompts */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 4 }}>
+                {[
+                  (() => { const w = [...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0))[0]; return w ? "What should I say to " + w.name + "?" : null; })(),
+                  "Who needs attention this week?",
+                  "Draft a check-in message",
+                ].filter(Boolean).map((p, i) => (
+                  <div key={i} onClick={() => { setAiInput(p); }} style={{ background: C.card, border: "1px solid " + C.borderLight, borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, color: C.btn, cursor: "pointer" }}>
+                    {p}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              {aiMessages.map((m, i) => (
+                m.role === "user" ? (
+                  <div key={i} style={{ alignSelf: "flex-end", background: C.surface, color: C.text, borderRadius: 18, padding: "8px 14px", fontSize: 13, lineHeight: 1.5, maxWidth: "85%" }}>
+                    {m.text}
+                  </div>
+                ) : (
+                  <div key={i} style={{ padding: "2px 2px", fontSize: 13, lineHeight: 1.55, color: C.text }}>
+                    {m.text}
+                  </div>
+                )
+              ))}
+              {aiTyping && <div style={{ display: "flex", gap: 4, padding: "2px 2px", alignSelf: "flex-start" }}>{[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: C.textMuted, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }} />)}</div>}
+            </>
+          )}
+        </div>
+        {/* Input */}
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid " + C.borderLight, display: "flex", gap: 6 }}>
+          <input value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask Rai anything..." style={{ flex: 1, padding: "10px 14px", border: "1px solid " + C.borderLight, borderRadius: 20, fontSize: 13, fontFamily: "inherit", background: C.card, outline: "none" }} />
+          <button onClick={sendAi} style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.btn, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="send" size={14} color="#fff" /></button>
+        </div>
+      </div>
+    </div>
+  );
+
   const RolodexPanel = () => {
     const convertedClients = clients.filter(c => rolodex.some(r => r.name === c.name || r.client === c.name)).sort((a, b) => (b.ret || 0) - (a.ret || 0));
     const totalLeads = rolodex.length;
@@ -1635,83 +1712,7 @@ export default function App({ user }) {
             {tasksDone === tasksTotal && tasksTotal > 0 && <div style={{ background: C.heroGrad, borderRadius: 14, padding: "24px 20px", color: "#fff", marginTop: 16, textAlign: "center" }}><div style={{ fontSize: 32, marginBottom: 8 }}>🔥</div><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>All clear.</div><p style={{ fontSize: 13, color: "rgba(255,255,255,.5)" }}>Well done. See you tomorrow.</p></div>}
             </div>
             {/* RIGHT — Rai mini chat */}
-            <div className="r-today-panel" style={{ width: 360, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
-              <div style={{ background: "transparent", borderRadius: 16, border: "1px solid " + C.borderLight, padding: "14px", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 80px)" }}>
-
-                {/* Rai header */}
-                <div style={{ display: "flex", gap: 10, alignItems: "center", paddingBottom: 12, borderBottom: "1px solid " + C.borderLight, marginBottom: 12 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: "50%", background: C.btn, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, position: "relative" }}>
-                    Rai
-                    <div style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: C.success, border: "2px solid " + C.bg }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 800 }}>Rai</div>
-                    <div style={{ fontSize: 11, color: C.success, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, display: "inline-block" }} />
-                      Watching your portfolio
-                    </div>
-                  </div>
-                </div>
-
-                {/* Messages */}
-                <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-                  {aiMessages.length === 0 ? (
-                    <>
-                      <div style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid " + C.borderLight }}>
-                        <strong>Good morning{user?.user_metadata?.full_name ? ", " + user.user_metadata.full_name.split(" ")[0] : ""}.</strong> {(() => {
-                          const worst = [...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0))[0];
-                          const thriving = clients.filter(c => (c.ret || 0) >= 80);
-                          if (worst && (worst.ret || 0) < 60) return worst.name + " is my biggest concern — scoring " + (worst.ret || 0) + ". Worth checking in.";
-                          if (thriving.length > 0) return "Your portfolio looks solid. " + thriving.length + " clients thriving.";
-                          return "What's on your mind today?";
-                        })()}
-                      </div>
-                      {clients.filter(c => (c.ret || 0) >= 80).length >= 2 && (
-                        <div style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid " + C.borderLight }}>
-                          {(() => {
-                            const thriving = clients.filter(c => (c.ret || 0) >= 80).slice(0, 3);
-                            return "Clients I'd leave alone: " + thriving.map(c => c.name).join(", ") + ". Don't upsell. Don't over-touch.";
-                          })()}
-                        </div>
-                      )}
-                      {/* Suggested prompts */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 4 }}>
-                        {[
-                          (() => { const w = [...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0))[0]; return w ? "What should I say to " + w.name + "?" : null; })(),
-                          "Who needs attention this week?",
-                          "Draft a check-in message",
-                        ].filter(Boolean).map((p, i) => (
-                          <div key={i} onClick={() => { setAiInput(p); }} style={{ background: C.card, border: "1px solid " + C.borderLight, borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, color: C.btn, cursor: "pointer" }}>
-                            {p}
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {aiMessages.map((m, i) => (
-                        m.role === "user" ? (
-                          <div key={i} style={{ alignSelf: "flex-end", background: C.btn, color: "#fff", borderRadius: 10, padding: "8px 12px", fontSize: 13, fontWeight: 600, maxWidth: "85%" }}>
-                            {m.text}
-                          </div>
-                        ) : (
-                          <div key={i} style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid " + C.borderLight }}>
-                            {m.text}
-                          </div>
-                        )
-                      ))}
-                      {aiTyping && <div style={{ display: "flex", gap: 4, padding: "10px 14px", background: C.card, borderRadius: 10, border: "1px solid " + C.borderLight, alignSelf: "flex-start" }}>{[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: C.textMuted, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }} />)}</div>}
-                    </>
-                  )}
-                </div>
-
-                {/* Input */}
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid " + C.borderLight, display: "flex", gap: 6 }}>
-                  <input value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask Rai anything..." style={{ flex: 1, padding: "10px 14px", border: "1px solid " + C.borderLight, borderRadius: 20, fontSize: 13, fontFamily: "inherit", background: C.card, outline: "none" }} />
-                  <button onClick={sendAi} style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.btn, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="send" size={14} color="#fff" /></button>
-                </div>
-              </div>
-            </div>
+            <RaiMiniPanel />
           </div>
           </div>
         )}
@@ -1809,8 +1810,11 @@ export default function App({ user }) {
                 <button className="r-btn" onClick={() => { setShowAddClient(true); setShowImport(false); }} style={{ padding: "10px 20px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Add Client</button>
               </div>
             </div>
-          <div style={{ display: "flex", gap: 48 }}>
-          <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
+          <div className="r-today-cols" style={{ display: "flex", gap: 24 }}>
+          <div className="r-today-panel" style={{ width: 270, flexShrink: 0 }}>
+            <PortfolioPanel />
+          </div>
+          <div style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
 
             {/* Import Clients (Enterprise) */}
             {showImport && tier === "enterprise" && (
@@ -2084,7 +2088,7 @@ export default function App({ user }) {
               ))}
             </div>
           </div>
-          <div style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}><PortfolioPanel /></div>
+          <RaiMiniPanel />
           </div>
           </div>
         )}
@@ -2166,8 +2170,11 @@ export default function App({ user }) {
             <div>
               <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>Health Checks</h1>
               <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 20 }}>Monthly cadence · {activeQueue.filter(h => h.overdue > 0).length} overdue · {activeQueue.filter(h => h.due === "Today").length} due today</p>
-            <div style={{ display: "flex", gap: 48 }}>
-            <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
+            <div className="r-today-cols" style={{ display: "flex", gap: 24 }}>
+            <div className="r-today-panel" style={{ width: 270, flexShrink: 0 }}>
+              <PortfolioPanel />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
 
               {activeQueue.length === 0 && justCompleted.length === 0 && (
                 <div style={{ textAlign: "center", padding: "40px 20px" }}>
@@ -2302,7 +2309,7 @@ export default function App({ user }) {
                 </div>
               )}
             </div>
-            <div style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}><PortfolioPanel /></div>
+            <RaiMiniPanel />
             </div>
             </div>
           );
@@ -2426,8 +2433,11 @@ export default function App({ user }) {
               </div>
               <button className="r-btn" onClick={() => setRefForm(true)} style={{ padding: "10px 20px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Log Referral</button>
             </div>
-          <div style={{ display: "flex", gap: 48 }}>
-          <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
+          <div className="r-today-cols" style={{ display: "flex", gap: 24 }}>
+          <div className="r-today-panel" style={{ width: 270, flexShrink: 0 }}>
+            <ReferralsPanel />
+          </div>
+          <div style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
 
             {/* Stats */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
@@ -2523,7 +2533,7 @@ export default function App({ user }) {
               <button className="r-btn" onClick={() => { setPage("coach"); setAiMessages([{ role: "ai", text: "Let's talk referrals. Your strongest relationships are your best source of new business. Who are you thinking about asking?" }]); }} style={{ width: "100%", padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Talk to Rai</button>
             </div>
           </div>
-          <ReferralsPanel />
+          <RaiMiniPanel />
           </div>
           </div>
         )}
@@ -2562,8 +2572,11 @@ export default function App({ user }) {
                 </div>
                 <button className="r-btn" onClick={() => setShowAddRolodex(true)} style={{ padding: "10px 20px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Add Lead</button>
               </div>
-            <div style={{ display: "flex", gap: 48 }}>
-            <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
+            <div className="r-today-cols" style={{ display: "flex", gap: 24 }}>
+            <div className="r-today-panel" style={{ width: 270, flexShrink: 0 }}>
+              <RolodexPanel />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
 
               {/* Add to Rolodex — one-off entry */}
               {showAddRolodex && (
@@ -2755,7 +2768,7 @@ export default function App({ user }) {
                 </div>
               )}
             </div>
-            <RolodexPanel />
+            <RaiMiniPanel />
             </div>
             </div>
           );
@@ -2790,23 +2803,18 @@ export default function App({ user }) {
                   <div style={{ paddingTop: 4 }}>
                     {aiMessages.map((m, i) => (
                       m.role === "user" ? (
-                        <div key={i} style={{ marginBottom: 28, display: "flex", justifyContent: "flex-end" }}>
-                          <div style={{ maxWidth: "80%" }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6, textAlign: "right" }}>You</div>
-                            {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 16, color: C.text, lineHeight: 1.65, marginBottom: 4 }}>{l}</p>)}
+                        <div key={i} style={{ marginBottom: 24, display: "flex", justifyContent: "flex-end" }}>
+                          <div style={{ maxWidth: "75%", background: C.surface, borderRadius: 20, padding: "12px 18px" }}>
+                            {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 15, color: C.text, lineHeight: 1.6, margin: 0 }}>{l}</p>)}
                           </div>
                         </div>
                       ) : (
-                        <div key={i} style={{ marginBottom: 28, display: "flex", gap: 12, alignItems: "flex-start" }}>
-                          <img src="/rai-avatar.png" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, marginTop: 2 }} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: C.primary, marginBottom: 6 }}>Rai</div>
-                            {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 16, color: C.text, lineHeight: 1.65, marginBottom: 4 }}>{l}</p>)}
-                          </div>
+                        <div key={i} style={{ marginBottom: 24 }}>
+                          {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 16, color: C.text, lineHeight: 1.65, marginBottom: 4 }}>{l}</p>)}
                         </div>
                       )
                     ))}
-                    {aiTyping && <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 14 }}><img src="/rai-avatar.png" style={{ width: 28, height: 28, borderRadius: 7 }} /><div style={{ display: "flex", gap: 4, padding: "10px 14px", background: C.card, borderRadius: 10, border: "1px solid " + C.border }}>{[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: C.textMuted, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }} />)}</div></div>}
+                    {aiTyping && <div style={{ marginBottom: 24, display: "flex", gap: 4, padding: "4px 0" }}>{[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: C.textMuted, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }} />)}</div>}
                     <div ref={aiEndRef} />
                   </div>
                 )}
