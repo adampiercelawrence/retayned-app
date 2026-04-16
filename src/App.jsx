@@ -1403,12 +1403,10 @@ RESPONSE FORMAT:
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 12 }}>Today</h1>
             <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 16 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
-            <div className="r-today-cols" style={{ display: "flex", gap: 48 }}>
-            <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
 
             {/* Enterprise Sweep Results Card */}
             {tier === "enterprise" && (
-              <div style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.border, padding: "16px 18px", marginTop: 16, marginBottom: 14 }}>
+              <div style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.border, padding: "16px 18px", marginBottom: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700 }}>🔄 Daily Sweep · Today 6:02 AM</div>
@@ -1440,7 +1438,7 @@ RESPONSE FORMAT:
             )}
 
             {/* Daily Review */}
-            <div style={{ background: C.raiGrad, borderRadius: 14, padding: "16px 18px", color: "#fff", marginTop: 16, marginBottom: 14 }}>
+            <div style={{ background: C.raiGrad, borderRadius: 14, padding: "16px 18px", color: "#fff", marginBottom: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                 <span style={{ fontSize: 14, fontWeight: 700 }}>Daily Progress</span>
                 <span style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.03em" }}>{tasksDone}<span style={{ fontSize: 15, fontWeight: 500, opacity: 0.5 }}>/{tasksTotal}</span></span>
@@ -1449,13 +1447,16 @@ RESPONSE FORMAT:
                 <div style={{ height: "100%", width: `${tasksTotal > 0 ? Math.round((tasksDone / tasksTotal) * 100) : 0}%`, background: C.primarySoft, borderRadius: 3, transition: "width 0.3s" }} />
               </div>
             </div>
+
+            <div className="r-today-cols" style={{ display: "flex", gap: 48 }}>
+            <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
             {/* Add task */}
             <div style={{ marginBottom: 24 }}>
               <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
                 <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()} placeholder="What's on your plate?" style={{ flex: 1, padding: "0 16px", height: 44, border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", background: C.card, outline: "none" }} />
                 <button className="r-btn" onClick={addTask} style={{ padding: "0 20px", height: 44, borderRadius: 8, border: "none", background: C.btn, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Create Task</button>
                 <div style={{ position: "relative" }}>
-                  <div onClick={() => { setShowTouchpoint(!showTouchpoint); setTpClient(null); setTpChannel(null); setTpSearch(""); }} style={{ height: 44, padding: "0 14px", borderRadius: 8, border: "1.5px solid " + C.border, background: showTouchpoint ? C.primarySoft : C.card, color: showTouchpoint ? C.primary : C.textSec, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, cursor: "pointer", whiteSpace: "nowrap" }}>
+                  <div className="r-btn" onClick={() => { setShowTouchpoint(!showTouchpoint); setTpClient(null); setTpChannel(null); setTpSearch(""); }} style={{ height: 44, padding: "0 14px", borderRadius: 8, border: "none", background: C.btn, color: "#fff", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, cursor: "pointer", whiteSpace: "nowrap" }}>
                     <span style={{ fontSize: 14 }}>📞</span> Log
                   </div>
                   {showTouchpoint && (
@@ -1789,8 +1790,7 @@ RESPONSE FORMAT:
 
         {/* ═══ CLIENTS ═══ */}
         {page === "clients" && (
-          <div style={{ display: "flex", gap: 48 }}>
-          <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
+          <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <div><h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>Clients</h1><p style={{ fontSize: 14, color: C.textMuted }}>{clients.length} active · ${(totalRev / 1000).toFixed(1)}k/mo</p></div>
               <div style={{ display: "flex", gap: 8 }}>
@@ -1800,6 +1800,8 @@ RESPONSE FORMAT:
                 <button className="r-btn" onClick={() => { setShowAddClient(true); setShowImport(false); }} style={{ padding: "10px 20px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Add Client</button>
               </div>
             </div>
+          <div style={{ display: "flex", gap: 48 }}>
+          <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
 
             {/* Import Clients (Enterprise) */}
             {showImport && tier === "enterprise" && (
@@ -2075,6 +2077,7 @@ RESPONSE FORMAT:
           </div>
           <PortfolioPanel />
           </div>
+          </div>
         )}
 
         {/* ═══ HEALTH CHECKS ═══ */}
@@ -2151,10 +2154,11 @@ RESPONSE FORMAT:
           const upcomingQueue = hcQueue.filter(h => h.overdue === 0 && h.due !== "Today");
 
           return (
-            <div style={{ display: "flex", gap: 48 }}>
-            <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
+            <div>
               <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>Health Checks</h1>
               <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 20 }}>Monthly cadence · {activeQueue.filter(h => h.overdue > 0).length} overdue · {activeQueue.filter(h => h.due === "Today").length} due today</p>
+            <div style={{ display: "flex", gap: 48 }}>
+            <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
 
               {activeQueue.length === 0 && justCompleted.length === 0 && (
                 <div style={{ textAlign: "center", padding: "40px 20px" }}>
@@ -2291,6 +2295,7 @@ RESPONSE FORMAT:
             </div>
             <PortfolioPanel />
             </div>
+            </div>
           );
         })()}
 
@@ -2404,8 +2409,7 @@ RESPONSE FORMAT:
 
         {/* ═══ REFERRALS ═══ */}
         {page === "referrals" && (
-          <div style={{ display: "flex", gap: 48 }}>
-          <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
+          <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <div>
                 <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 4 }}>Referrals</h1>
@@ -2413,6 +2417,8 @@ RESPONSE FORMAT:
               </div>
               <button className="r-btn" onClick={() => setRefForm(true)} style={{ padding: "10px 20px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Log Referral</button>
             </div>
+          <div style={{ display: "flex", gap: 48 }}>
+          <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
 
             {/* Stats */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
@@ -2510,6 +2516,7 @@ RESPONSE FORMAT:
           </div>
           <ReferralsPanel />
           </div>
+          </div>
         )}
 
         {/* ═══ ROLODEX ═══ */}
@@ -2538,8 +2545,7 @@ RESPONSE FORMAT:
           const priorityColor = (p) => p === "high" ? C.success : p === "medium" ? C.warning : C.textMuted;
 
           return (
-            <div style={{ display: "flex", gap: 48 }}>
-            <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
+            <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                 <div>
                   <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 4 }}>Rolodex</h1>
@@ -2547,6 +2553,8 @@ RESPONSE FORMAT:
                 </div>
                 <button className="r-btn" onClick={() => setShowAddRolodex(true)} style={{ padding: "10px 20px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Add Lead</button>
               </div>
+            <div style={{ display: "flex", gap: 48 }}>
+            <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
 
               {/* Add to Rolodex — one-off entry */}
               {showAddRolodex && (
@@ -2739,6 +2747,7 @@ RESPONSE FORMAT:
               )}
             </div>
             <RolodexPanel />
+            </div>
             </div>
           );
         })()}
