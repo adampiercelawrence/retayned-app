@@ -584,6 +584,7 @@ export default function App({ user }) {
       lastContact: c.last_task_date ? "recent" : "—",
       referrals: 0,
       profileScores: c.profile_scores || {},
+      qualifyingFlags: c.qualifying_flags || {},
     })));
 
     if (taskRes.data) setTasks(taskRes.data.map(t => ({
@@ -1619,7 +1620,7 @@ RESPONSE FORMAT:
                     </div>
                     <div style={{ padding: "8px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontSize: 13, color: C.textMuted }}>Avg Tenure</span>
-                      <span style={{ fontSize: 15, fontWeight: 800 }}>{clients.length > 0 ? Math.round(clients.reduce((a, c) => a + (c.months || 0), 0) / clients.length) : 0}mo</span>
+                      <span style={{ fontSize: 15, fontWeight: 800 }}>{(() => { const mo = clients.length > 0 ? Math.round(clients.reduce((a, c) => a + (c.months || 0), 0) / clients.length) : 0; return mo >= 12 ? (mo / 12).toFixed(1) + " yr" : mo + " mo"; })()}</span>
                     </div>
                   </div>
                 </div>
@@ -3026,7 +3027,7 @@ RESPONSE FORMAT:
                 {sc.ret && <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                   {[
                     { label: "Revenue", value: "$" + (sc.revenue / 1000).toFixed(1) + "k/mo" },
-                    { label: "Tenure", value: sc.months + "mo" },
+                    { label: "Tenure", value: sc.months >= 12 ? (sc.months / 12).toFixed(1) + " yr" : sc.months + " mo" },
                     { label: "LCV", value: "$" + Math.round(getAdjustedLTV(sc) / 1000) + "k" },
                     { label: "Drift", value: (() => { const d = clientDrift[sc.name] || "Stable"; return d === "Something shifted" ? "Shifted" : d; })(), color: C.text },
                   ].map((s, si) => (
