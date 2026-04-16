@@ -218,7 +218,20 @@ const integrations = [
   ]},
 ];
 
-function retColor(v) { return v >= 70 ? C.success : v >= 45 ? C.warning : C.danger; }
+function retColor(v) {
+  if (v >= 80) return C.primary;      // Thriving
+  if (v >= 65) return "#558B68";      // Healthy
+  if (v >= 45) return C.warning;      // Watch
+  if (v >= 30) return C.danger;       // At Risk
+  return "#8B1E1E";                   // Critical
+}
+function retBucket(v) {
+  if (v >= 80) return "Thriving";
+  if (v >= 65) return "Healthy";
+  if (v >= 45) return "Watch";
+  if (v >= 30) return "At Risk";
+  return "Critical";
+}
 function velColor(v) { return v === "fast" ? C.success : v === "normal" ? C.primaryLight : v === "slowing" ? C.warning : C.danger; }
 
 const navItemsCore = [
@@ -1471,7 +1484,7 @@ RESPONSE FORMAT:
                         ) : !tpChannel ? (
                           <div>
                             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                              <span onClick={() => setTpClient(null)} style={{ cursor: "pointer", fontSize: 12, color: C.textMuted }}>←</span>
+                              <span onClick={() => setTpClient(null)} style={{ cursor: "pointer", fontSize: 12, color: C.textMuted, fontWeight: 600 }}>Back</span>
                               <span style={{ fontSize: 13, fontWeight: 600 }}>{tpClient}</span>
                             </div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
@@ -1596,13 +1609,13 @@ RESPONSE FORMAT:
             </div>
             {/* RIGHT — Rai mini chat */}
             <div className="r-today-panel" style={{ width: 360, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
-              <div style={{ background: "#F3EEFC", borderRadius: 16, border: "1px solid #E2D9F5", padding: "14px", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 80px)" }}>
+              <div style={{ background: "transparent", borderRadius: 16, border: "1px solid " + C.borderLight, padding: "14px", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 80px)" }}>
 
                 {/* Rai header */}
-                <div style={{ display: "flex", gap: 10, alignItems: "center", paddingBottom: 12, borderBottom: "1px solid #E2D9F5", marginBottom: 12 }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", paddingBottom: 12, borderBottom: "1px solid " + C.borderLight, marginBottom: 12 }}>
                   <div style={{ width: 38, height: 38, borderRadius: "50%", background: C.btn, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, position: "relative" }}>
                     Rai
-                    <div style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: C.success, border: "2px solid #F3EEFC" }} />
+                    <div style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: C.success, border: "2px solid " + C.bg }} />
                   </div>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 800 }}>Rai</div>
@@ -1617,7 +1630,7 @@ RESPONSE FORMAT:
                 <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
                   {aiMessages.length === 0 ? (
                     <>
-                      <div style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid #E8E4F5" }}>
+                      <div style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid " + C.borderLight }}>
                         <strong>Good morning{user?.user_metadata?.full_name ? ", " + user.user_metadata.full_name.split(" ")[0] : ""}.</strong> {(() => {
                           const worst = [...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0))[0];
                           const thriving = clients.filter(c => (c.ret || 0) >= 80);
@@ -1627,7 +1640,7 @@ RESPONSE FORMAT:
                         })()}
                       </div>
                       {clients.filter(c => (c.ret || 0) >= 80).length >= 2 && (
-                        <div style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid #E8E4F5" }}>
+                        <div style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid " + C.borderLight }}>
                           {(() => {
                             const thriving = clients.filter(c => (c.ret || 0) >= 80).slice(0, 3);
                             return "Clients I'd leave alone: " + thriving.map(c => c.name).join(", ") + ". Don't upsell. Don't over-touch.";
@@ -1641,8 +1654,8 @@ RESPONSE FORMAT:
                           "Who needs attention this week?",
                           "Draft a check-in message",
                         ].filter(Boolean).map((p, i) => (
-                          <div key={i} onClick={() => { setAiInput(p); }} style={{ background: C.card, border: "1px solid #E2D9F5", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, color: C.btn, cursor: "pointer" }}>
-                            → {p}
+                          <div key={i} onClick={() => { setAiInput(p); }} style={{ background: C.card, border: "1px solid " + C.borderLight, borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, color: C.btn, cursor: "pointer" }}>
+                            {p}
                           </div>
                         ))}
                       </div>
@@ -1655,20 +1668,20 @@ RESPONSE FORMAT:
                             {m.text}
                           </div>
                         ) : (
-                          <div key={i} style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid #E8E4F5" }}>
+                          <div key={i} style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid " + C.borderLight }}>
                             {m.text}
                           </div>
                         )
                       ))}
-                      {aiTyping && <div style={{ display: "flex", gap: 4, padding: "10px 14px", background: C.card, borderRadius: 10, border: "1px solid #E8E4F5", alignSelf: "flex-start" }}>{[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: C.textMuted, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }} />)}</div>}
+                      {aiTyping && <div style={{ display: "flex", gap: 4, padding: "10px 14px", background: C.card, borderRadius: 10, border: "1px solid " + C.borderLight, alignSelf: "flex-start" }}>{[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: C.textMuted, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }} />)}</div>}
                     </>
                   )}
                 </div>
 
                 {/* Input */}
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #E2D9F5", display: "flex", gap: 6 }}>
-                  <input value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask Rai anything..." style={{ flex: 1, padding: "10px 14px", border: "1px solid #E2D9F5", borderRadius: 20, fontSize: 13, fontFamily: "inherit", background: C.card, outline: "none" }} />
-                  <button onClick={sendAi} style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.btn, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>›</button>
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid " + C.borderLight, display: "flex", gap: 6 }}>
+                  <input value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask Rai anything..." style={{ flex: 1, padding: "10px 14px", border: "1px solid " + C.borderLight, borderRadius: 20, fontSize: 13, fontFamily: "inherit", background: C.card, outline: "none" }} />
+                  <button onClick={sendAi} style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.btn, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="send" size={14} color="#fff" /></button>
                 </div>
               </div>
             </div>
