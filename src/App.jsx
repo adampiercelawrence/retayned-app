@@ -47,7 +47,7 @@ const ScoreRing = ({ score, size = 44, strokeWidth = 3.5 }) => {
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
       <circle cx={size/2} cy={size/2} r={r} stroke={C.borderLight} strokeWidth={strokeWidth} fill="none" />
       <circle cx={size/2} cy={size/2} r={r} stroke={color} strokeWidth={strokeWidth} fill="none" strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} style={{ transition: "stroke-dashoffset 0.6s ease" }} />
-      <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central" style={{ fontSize: size * 0.32, fontWeight: 800, fill: color, fontFamily: "'Outfit', sans-serif" }}>{score}</text>
+      <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central" style={{ fontSize: size * 0.32, fontWeight: 800, fill: color, fontFamily: "'Manrope', sans-serif" }}>{score}</text>
     </svg>
   );
 };
@@ -1191,9 +1191,9 @@ export default function App({ user }) {
   const hasDot = (id) => (id === "today" && todayDot) || (id === "health" && healthDot);
 
   return (
-    <div style={{ minHeight: "100vh", fontFamily: "'Outfit', system-ui, sans-serif", color: C.text, background: C.bg }}>
+    <div style={{ minHeight: "100vh", fontFamily: "'Manrope', system-ui, sans-serif", color: C.text, background: C.bg }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         input, textarea, select { font-size: 16px !important; }
         @media (min-width: 768px) { input, textarea, select { font-size: 14px !important; } }
