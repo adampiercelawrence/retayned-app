@@ -175,8 +175,17 @@ export const tasks = {
       .from('tasks')
       .select('*')
       .eq('user_id', userId)
-      .or(`is_done.eq.false,completed_at.gte.${today}`)
+      .or(`is_done.eq.false,completed_at.gte.${today},is_recurring.eq.true`)
       .order('sort_order', { ascending: true });
+    // Reset recurring tasks that were completed before today
+    if (data) {
+      const staleRecurring = data.filter(t => t.is_recurring && t.is_done && t.completed_at && t.completed_at.split('T')[0] < today);
+      for (const t of staleRecurring) {
+        await supabase.from('tasks').update({ is_done: false, completed_at: null }).eq('id', t.id);
+        t.is_done = false;
+        t.completed_at = null;
+      }
+    }
     return { data: data || [], error };
   },
 
