@@ -1007,29 +1007,18 @@ RESPONSE FORMAT:
             </div>
           )}
         </PanelCard>
-        {atRiskClients.length > 0 ? (
-          <PanelCard>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.danger, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 3 }}>Revenue at risk</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: C.danger }}>${(atRiskRev / 1000).toFixed(1)}k/mo</div>
-            <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>{atRiskClients.length} client{atRiskClients.length > 1 ? "s" : ""} scoring under 50</div>
+        <PanelCard>
+          <div style={{ fontSize: 9, fontWeight: 600, color: C.danger, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 3 }}>Revenue at risk</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: C.danger }}>${(atRiskRev / 1000).toFixed(1)}k/mo</div>
+          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>{atRiskClients.length} client{atRiskClients.length !== 1 ? "s" : ""} scoring under 50</div>
+          {atRiskClients.length > 0 && (
             <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
               {atRiskClients.slice(0, 3).map((c, ci) => (
                 <span key={ci} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "#FAE8E4", color: C.danger, fontWeight: 600 }}>{c.name}</span>
               ))}
             </div>
-          </PanelCard>
-        ) : clients.length >= 2 && (
-          <PanelCard>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.danger, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 3 }}>Revenue at risk</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: C.danger }}>${([...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).reduce((a, c) => a + (c.revenue || 0), 0) / 1000).toFixed(1)}k/mo</div>
-            <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>2 lowest-scoring clients</div>
-            <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
-              {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
-                <span key={ci} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "#FAE8E4", color: C.danger, fontWeight: 600 }}>{c.name} (${((c.revenue || 0) / 1000).toFixed(1)}k)</span>
-              ))}
-            </div>
-          </PanelCard>
-        )}
+          )}
+        </PanelCard>
         {clients.length > 1 && (
           <PanelCard style={{ marginBottom: 0 }}>
             <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>Client Drift</div>
@@ -1404,8 +1393,14 @@ RESPONSE FORMAT:
             <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 12 }}>Today</h1>
             <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 16 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
 
-            <div className="r-today-cols" style={{ display: "flex", gap: 48 }}>
-            <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
+            <div className="r-today-cols" style={{ display: "flex", gap: 24 }}>
+
+            {/* LEFT PANEL — Portfolio tiles */}
+            <div className="r-today-panel" style={{ width: 270, flexShrink: 0 }}>
+              <PortfolioPanel />
+            </div>
+
+            <div style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
 
             {/* Enterprise Sweep Results Card */}
             {tier === "enterprise" && (
@@ -1599,110 +1594,83 @@ RESPONSE FORMAT:
 
             {tasksDone === tasksTotal && tasksTotal > 0 && <div style={{ background: C.heroGrad, borderRadius: 14, padding: "24px 20px", color: "#fff", marginTop: 16, textAlign: "center" }}><div style={{ fontSize: 32, marginBottom: 8 }}>🔥</div><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>All clear.</div><p style={{ fontSize: 13, color: "rgba(255,255,255,.5)" }}>Well done. See you tomorrow.</p></div>}
             </div>
-            {/* RIGHT PANEL — desktop only */}
-            <div className="r-today-panel" style={{ flex: 2, minWidth: 260, maxWidth: 340, position: "sticky", top: 28, alignSelf: "flex-start" }}>
+            {/* RIGHT — Rai mini chat */}
+            <div className="r-today-panel" style={{ width: 360, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
+              <div style={{ background: "#F3EEFC", borderRadius: 16, border: "1px solid #E2D9F5", padding: "14px", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 80px)" }}>
 
-              {/* Portfolio Snapshot */}
-              <div style={{ background: "#FAFAF8", borderRadius: 14, border: "1px solid #E8ECE6", padding: "16px", marginBottom: 24 }}>
-                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                  <div>
-                    <ScoreRing score={Math.round(clients.reduce((a, c) => a + (c.ret || 0), 0) / (clients.length || 1))} size={64} strokeWidth={4.5} />
-                    <div style={{ textAlign: "center", marginTop: 4 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: C.textMuted }}>Portfolio health</div>
-                    </div>
+                {/* Rai header */}
+                <div style={{ display: "flex", gap: 10, alignItems: "center", paddingBottom: 12, borderBottom: "1px solid #E2D9F5", marginBottom: 12 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: "50%", background: C.btn, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, position: "relative" }}>
+                    Rai
+                    <div style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: C.success, border: "2px solid #F3EEFC" }} />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ padding: "8px 0", borderBottom: "1px solid " + C.borderLight, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 13, color: C.textMuted }}>Clients</span>
-                      <span style={{ fontSize: 15, fontWeight: 800 }}>{clients.length}</span>
-                    </div>
-                    <div style={{ padding: "8px 0", borderBottom: "1px solid " + C.borderLight, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 13, color: C.textMuted }}>Lifetime Value</span>
-                      <span style={{ fontSize: 15, fontWeight: 800 }}>{(() => { const ltv = clients.reduce((a, c) => a + getAdjustedLTV(c), 0); return ltv >= 1000000 ? "$" + (ltv / 1000000).toFixed(1) + " M" : "$" + Math.round(ltv / 1000) + "k"; })()}</span>
-                    </div>
-                    <div style={{ padding: "8px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 13, color: C.textMuted }}>Avg Tenure</span>
-                      <span style={{ fontSize: 15, fontWeight: 800 }}>{(() => { const mo = clients.length > 0 ? Math.round(clients.reduce((a, c) => a + (c.months || 0), 0) / clients.length) : 0; return mo >= 12 ? (mo / 12).toFixed(1) + " yr" : mo + " mo"; })()}</span>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 800 }}>Rai</div>
+                    <div style={{ fontSize: 11, color: C.success, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, display: "inline-block" }} />
+                      Watching your portfolio
                     </div>
                   </div>
                 </div>
-                {clients.length > 0 && (() => {
-                  const thriving = clients.filter(c => (c.ret || 0) >= 80).length;
-                  const healthy = clients.filter(c => (c.ret || 0) >= 65 && (c.ret || 0) < 80).length;
-                  const watch = clients.filter(c => (c.ret || 0) >= 45 && (c.ret || 0) < 65).length;
-                  const atRisk = clients.filter(c => (c.ret || 0) < 45).length;
-                  const total = clients.length;
-                  return (
-                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid " + C.borderLight }}>
-                      <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 8, textAlign: "center" }}>
-                        {[{ l: "Thriving", v: thriving, c: C.primary }, { l: "Healthy", v: healthy, c: "#558B68" }, { l: "Watch", v: watch, c: C.warning }, { l: "At Risk", v: atRisk, c: C.danger }].map((s, si) => (
-                          <div key={si}><div style={{ fontSize: 16, fontWeight: 900, color: s.c }}>{s.v}</div><div style={{ fontSize: 9, fontWeight: 600, color: C.textMuted }}>{s.l}</div></div>
+
+                {/* Messages */}
+                <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+                  {aiMessages.length === 0 ? (
+                    <>
+                      <div style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid #E8E4F5" }}>
+                        <strong>Good morning{user?.user_metadata?.full_name ? ", " + user.user_metadata.full_name.split(" ")[0] : ""}.</strong> {(() => {
+                          const worst = [...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0))[0];
+                          const thriving = clients.filter(c => (c.ret || 0) >= 80);
+                          if (worst && (worst.ret || 0) < 60) return worst.name + " is my biggest concern — scoring " + (worst.ret || 0) + ". Worth checking in.";
+                          if (thriving.length > 0) return "Your portfolio looks solid. " + thriving.length + " clients thriving.";
+                          return "What's on your mind today?";
+                        })()}
+                      </div>
+                      {clients.filter(c => (c.ret || 0) >= 80).length >= 2 && (
+                        <div style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid #E8E4F5" }}>
+                          {(() => {
+                            const thriving = clients.filter(c => (c.ret || 0) >= 80).slice(0, 3);
+                            return "Clients I'd leave alone: " + thriving.map(c => c.name).join(", ") + ". Don't upsell. Don't over-touch.";
+                          })()}
+                        </div>
+                      )}
+                      {/* Suggested prompts */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 4 }}>
+                        {[
+                          (() => { const w = [...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0))[0]; return w ? "What should I say to " + w.name + "?" : null; })(),
+                          "Who needs attention this week?",
+                          "Draft a check-in message",
+                        ].filter(Boolean).map((p, i) => (
+                          <div key={i} onClick={() => { setAiInput(p); }} style={{ background: C.card, border: "1px solid #E2D9F5", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, color: C.btn, cursor: "pointer" }}>
+                            → {p}
+                          </div>
                         ))}
                       </div>
-                      <div style={{ height: 7, borderRadius: 4, display: "flex", overflow: "hidden" }}>
-                        {thriving > 0 && <div style={{ width: (thriving / total * 100) + "%", background: C.primary }} />}
-                        {healthy > 0 && <div style={{ width: (healthy / total * 100) + "%", background: "#558B68" }} />}
-                        {watch > 0 && <div style={{ width: (watch / total * 100) + "%", background: C.warning }} />}
-                        {atRisk > 0 && <div style={{ width: (atRisk / total * 100) + "%", background: C.danger }} />}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Revenue at Risk / Lowest Scoring */}
-              {(() => {
-                const atRiskClients = clients.filter(c => (c.ret || 0) < 50);
-                const atRiskRev = atRiskClients.reduce((a, c) => a + (c.revenue || 0), 0);
-                if (atRiskClients.length > 0) return (
-                  <div style={{ background: "#FAFAF8", borderRadius: 14, border: "1px solid #E8ECE6", padding: "14px", marginBottom: 24 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: C.danger, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>Revenue at risk</div>
-                    <div style={{ fontSize: 24, fontWeight: 900, color: C.danger }}>${(atRiskRev / 1000).toFixed(1)}k/mo</div>
-                    <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>{atRiskClients.length} client{atRiskClients.length > 1 ? "s" : ""} scoring under 50</div>
-                    <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                      {atRiskClients.slice(0, 3).map((c, ci) => (
-                        <span key={ci} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 5, background: "#FAE8E4", color: C.danger, fontWeight: 600 }}>{c.name}</span>
+                    </>
+                  ) : (
+                    <>
+                      {aiMessages.map((m, i) => (
+                        m.role === "user" ? (
+                          <div key={i} style={{ alignSelf: "flex-end", background: C.btn, color: "#fff", borderRadius: 10, padding: "8px 12px", fontSize: 13, fontWeight: 600, maxWidth: "85%" }}>
+                            {m.text}
+                          </div>
+                        ) : (
+                          <div key={i} style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid #E8E4F5" }}>
+                            {m.text}
+                          </div>
+                        )
                       ))}
-                    </div>
-                  </div>
-                );
-                if (clients.length >= 2) return (
-                  <div style={{ background: "#FAFAF8", borderRadius: 14, border: "1px solid #E8ECE6", padding: "14px", marginBottom: 24 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: C.danger, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>Revenue at risk</div>
-                    <div style={{ fontSize: 24, fontWeight: 900, color: C.danger }}>${([...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).reduce((a, c) => a + (c.revenue || 0), 0) / 1000).toFixed(1)}k/mo</div>
-                    <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>2 lowest-scoring clients</div>
-                    <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                      {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
-                        <span key={ci} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 5, background: "#FAE8E4", color: C.danger, fontWeight: 600 }}>{c.name} (${((c.revenue || 0) / 1000).toFixed(1)}k)</span>
-                      ))}
-                    </div>
-                  </div>
-                );
-                return null;
-              })()}
-
-              {/* Client Drift — 16a full list */}
-              {clients.length > 1 && (
-                <div style={{ background: "#FAFAF8", borderRadius: 14, border: "1px solid #E8ECE6", padding: "14px" }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>Client Drift</div>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: C.success, textTransform: "uppercase", marginBottom: 5 }}>Improving</div>
-                  {[...clients].sort((a, b) => (b.ret || 0) - (a.ret || 0)).slice(0, 2).map((c, ci) => (
-                    <div key={"up" + ci} style={{ padding: "7px 0", borderBottom: "1px solid #E8ECE6", display: "flex", alignItems: "center", gap: 8 }}>
-                      <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
-                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{c.name}</span>
-                    </div>
-                  ))}
-                  <div style={{ fontSize: 9, fontWeight: 700, color: C.danger, textTransform: "uppercase", marginBottom: 5, marginTop: 12 }}>Declining</div>
-                  {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
-                    <div key={"dn" + ci} style={{ padding: "7px 0", borderBottom: ci < 1 ? "1px solid #E8ECE6" : "none", display: "flex", alignItems: "center", gap: 8 }}>
-                      <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
-                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{c.name}</span>
-                    </div>
-                  ))}
+                      {aiTyping && <div style={{ display: "flex", gap: 4, padding: "10px 14px", background: C.card, borderRadius: 10, border: "1px solid #E8E4F5", alignSelf: "flex-start" }}>{[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: C.textMuted, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }} />)}</div>}
+                    </>
+                  )}
                 </div>
-              )}
 
-
+                {/* Input */}
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #E2D9F5", display: "flex", gap: 6 }}>
+                  <input value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask Rai anything..." style={{ flex: 1, padding: "10px 14px", border: "1px solid #E2D9F5", borderRadius: 20, fontSize: 13, fontFamily: "inherit", background: C.card, outline: "none" }} />
+                  <button onClick={sendAi} style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.btn, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>›</button>
+                </div>
+              </div>
             </div>
           </div>
           </div>
