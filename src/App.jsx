@@ -973,7 +973,7 @@ RESPONSE FORMAT:
     const atRiskClients = clients.filter(c => (c.ret || 0) < 50);
     const atRiskRev = atRiskClients.reduce((a, c) => a + (c.revenue || 0), 0);
     return (
-      <div className="r-today-panel" style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
+      <div className="r-today-panel" style={{ flexShrink: 0 }}>
         <PanelCard style={{ padding: "16px" }}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             <div>
@@ -2044,7 +2044,7 @@ RESPONSE FORMAT:
               ))}
             </div>
           </div>
-          <PortfolioPanel />
+          <div style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}><PortfolioPanel /></div>
           </div>
           </div>
         )}
@@ -2262,7 +2262,7 @@ RESPONSE FORMAT:
                 </div>
               )}
             </div>
-            <PortfolioPanel />
+            <div style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}><PortfolioPanel /></div>
             </div>
             </div>
           );
