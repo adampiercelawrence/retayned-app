@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "./lib/supabase";
-import { raiSystemPrompt } from "./lib/rai-prompt";
 import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex as rolodexDb, referrals as referralsDb, raiSuggestions as suggestionsDb, raiConversations as convoDb, profile as profileDb, touchpoints as touchpointsDb, buildRaiContext } from "./lib/db";
 
 const C = {
@@ -923,55 +922,47 @@ export default function App({ user }) {
   const sendAi = async (text) => {
     const q = text || aiInput; if (!q.trim()) return;
     setAiMessages(prev => [...prev, { role: "user", text: q }]); setAiInput(""); setAiTyping(true);
-    
+
     try {
-      // Build context for Rai
-      const context = await buildRaiContext(user.id);
-      
-      // Build conversation history for the API
+      // Conversation history — last 10 messages in Anthropic format
       const history = aiMessages.slice(-10).map(m => ({
         role: m.role === "ai" ? "assistant" : "user",
         content: m.text
       }));
-      
-      const dynamicContext = `
 
-## LIVE CLIENT DATA
+      // Get the caller's JWT for the Edge Function to verify identity
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
 
-This user has ${context.clients.length} active clients:
-${context.clients.map(c => `- ${c.name} (score: ${c.retention_score || "unscored"}, $${c.revenue}/mo, ${c.months}mo, drift: ${c.drift || "Stable"})`).join("\n")}
-
-Today's tasks: ${context.tasks_today.map(t => (t.done ? "[DONE] " : "") + t.text + (t.client ? " (" + t.client + ")" : "")).join("; ") || "None"}
-
-Referrals: ${context.referrals.total} total, ${context.referrals.active} active
-
-${context.focused_client ? "FOCUSED CLIENT: " + JSON.stringify(context.focused_client) : ""}
-
-RESPONSE FORMAT:
-- Be concise. 2-4 sentences unless they ask for more.
-- Never cite retention scores or the scoring system directly.
-- You know this user's clients personally. Reference them by name.`;
-
-      const fullPrompt = raiSystemPrompt + dynamicContext;
-
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/rai-chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
+          "Authorization": `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1024,
-          system: fullPrompt,
-          messages: [...history, { role: "user", content: q }],
+          message: q,
+          history,
+          focused_client_id: null,
         }),
       });
 
       const data = await response.json();
-      const reply = data.content?.[0]?.text || "I'm having trouble thinking right now. Try again in a moment.";
+
+      // Rate limit hit — show the specific message from the server
+      if (response.status === 429) {
+        setAiMessages(prev => [...prev, { role: "ai", text: data.message || "You've hit your daily message limit. Try again tomorrow." }]);
+        return;
+      }
+
+      if (!response.ok) {
+        console.error("Rai API error:", response.status, data);
+        setAiMessages(prev => [...prev, { role: "ai", text: "I'm having trouble thinking right now. Try again in a moment." }]);
+        return;
+      }
+
+      const reply = data.reply || "I'm having trouble thinking right now. Try again in a moment.";
       setAiMessages(prev => [...prev, { role: "ai", text: reply }]);
     } catch (err) {
       console.error("Rai API error:", err);
