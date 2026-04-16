@@ -549,6 +549,11 @@ export default function App({ user }) {
   const [newTaskRecurring, setNewTaskRecurring] = useState(false);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [taskClientSearch, setTaskClientSearch] = useState("");
+  const [showTouchpoint, setShowTouchpoint] = useState(false);
+  const [tpClient, setTpClient] = useState(null);
+  const [tpChannel, setTpChannel] = useState(null);
+  const [tpSearch, setTpSearch] = useState("");
+  const [tpLogged, setTpLogged] = useState([]);
   const [confetti, setConfetti] = useState(false);
   const [streak, setStreak] = useState(0);
   const [showStreakModal, setShowStreakModal] = useState(false);
@@ -1389,7 +1394,7 @@ RESPONSE FORMAT:
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 12 }}>Today</h1>
             <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 16 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
-            <div className="r-today-cols" style={{ display: "flex", gap: 48, maxWidth: 1120 }}>
+            <div className="r-today-cols" style={{ display: "flex", gap: 48 }}>
             <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
 
             {/* Enterprise Sweep Results Card */}
@@ -1440,6 +1445,53 @@ RESPONSE FORMAT:
               <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
                 <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()} placeholder="What's on your plate?" style={{ flex: 1, padding: "0 16px", height: 44, border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", background: C.card, outline: "none" }} />
                 <button className="r-btn" onClick={addTask} style={{ padding: "0 20px", height: 44, borderRadius: 8, border: "none", background: C.btn, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Create Task</button>
+                <div style={{ position: "relative" }}>
+                  <div onClick={() => { setShowTouchpoint(!showTouchpoint); setTpClient(null); setTpChannel(null); setTpSearch(""); }} style={{ height: 44, padding: "0 14px", borderRadius: 8, border: "1.5px solid " + C.border, background: showTouchpoint ? C.primarySoft : C.card, color: showTouchpoint ? C.primary : C.textSec, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: 14 }}>📞</span> Log
+                  </div>
+                  {showTouchpoint && (
+                    <div style={{ position: "absolute", top: 50, right: 0, width: 300, background: C.card, borderRadius: 14, border: "1px solid " + C.border, boxShadow: "0 8px 32px rgba(0,0,0,0.12)", zIndex: 100, overflow: "hidden" }}>
+                      <div style={{ padding: "14px 16px 10px" }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Log a touchpoint</div>
+                        {!tpClient ? (
+                          <div>
+                            <input value={tpSearch} onChange={e => setTpSearch(e.target.value)} placeholder="Search clients..." autoFocus style={{ width: "100%", padding: "8px 12px", border: "1.5px solid " + C.borderLight, borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none", background: C.bg, marginBottom: 8 }} />
+                            <div style={{ maxHeight: 200, overflow: "auto" }}>
+                              {clients.filter(c => !tpSearch || c.name.toLowerCase().includes(tpSearch.toLowerCase())).map((c, i) => (
+                                <div key={i} onClick={() => setTpClient(c.name)} className="row-hover" style={{ padding: "8px 10px", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>{c.name}</div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : !tpChannel ? (
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                              <span onClick={() => setTpClient(null)} style={{ cursor: "pointer", fontSize: 12, color: C.textMuted }}>←</span>
+                              <span style={{ fontSize: 13, fontWeight: 600 }}>{tpClient}</span>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                              {[{ id: "call", label: "Call", icon: "📞" }, { id: "text", label: "Text", icon: "💬" }, { id: "meeting", label: "Meeting", icon: "🤝" }, { id: "other", label: "Other", icon: "📌" }].map(ch => (
+                                <div key={ch.id} onClick={() => setTpChannel(ch.id)} className="row-hover" style={{ padding: "12px", borderRadius: 8, border: "1.5px solid " + C.borderLight, cursor: "pointer", textAlign: "center", fontSize: 13, fontWeight: 600 }}>
+                                  <div style={{ fontSize: 20, marginBottom: 4 }}>{ch.icon}</div>
+                                  {ch.label}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: "center", padding: "8px 0" }}>
+                            <div style={{ fontSize: 28, marginBottom: 8 }}>{[{ id: "call", icon: "📞" }, { id: "text", icon: "💬" }, { id: "meeting", icon: "🤝" }, { id: "other", icon: "📌" }].find(c => c.id === tpChannel)?.icon}</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{tpClient}</div>
+                            <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 14 }}>{tpChannel.charAt(0).toUpperCase() + tpChannel.slice(1)} · Today</div>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button onClick={() => setTpChannel(null)} style={{ flex: 1, padding: "10px", background: C.surface, color: C.textSec, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Back</button>
+                              <button onClick={() => { setTpLogged([...tpLogged, { client: tpClient, channel: tpChannel }]); setTpClient(null); setTpChannel(null); setShowTouchpoint(false); setTpSearch(""); }} style={{ flex: 1, padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Log it</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               {(newTask.trim() || newTaskClient || newTaskRecurring) && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
@@ -1466,6 +1518,20 @@ RESPONSE FORMAT:
                 </div>
               )}
             </div>
+
+            {/* Logged touchpoints */}
+            {tpLogged.length > 0 && (
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Logged Today</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {tpLogged.map((l, li) => (
+                    <span key={li} style={{ fontSize: 12, padding: "5px 10px", borderRadius: 6, background: C.primarySoft, color: C.primary, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                      {l.channel === "call" ? "📞" : l.channel === "text" ? "💬" : l.channel === "meeting" ? "🤝" : "📌"} {l.client}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Suggested by Rai — alerts (red) + suggestions (green) */}
             {aiTasks.length > 0 && (
@@ -1714,7 +1780,8 @@ RESPONSE FORMAT:
 
         {/* ═══ CLIENTS ═══ */}
         {page === "clients" && (
-          <div style={{ overflow: "hidden" }}>
+          <div style={{ display: "flex", gap: 48 }}>
+          <div style={{ flex: 3, minWidth: 0, maxWidth: 720, overflow: "hidden" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <div><h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>Clients</h1><p style={{ fontSize: 14, color: C.textMuted }}>{clients.length} active · ${(totalRev / 1000).toFixed(1)}k/mo</p></div>
               <div style={{ display: "flex", gap: 8 }}>
@@ -1997,6 +2064,8 @@ RESPONSE FORMAT:
               ))}
             </div>
           </div>
+          <PortfolioPanel />
+          </div>
         )}
 
         {/* ═══ HEALTH CHECKS ═══ */}
@@ -2073,7 +2142,7 @@ RESPONSE FORMAT:
           const upcomingQueue = hcQueue.filter(h => h.overdue === 0 && h.due !== "Today");
 
           return (
-            <div style={{ display: "flex", gap: 48, maxWidth: 1120 }}>
+            <div style={{ display: "flex", gap: 48 }}>
             <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
               <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>Health Checks</h1>
               <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 20 }}>Monthly cadence · {activeQueue.filter(h => h.overdue > 0).length} overdue · {activeQueue.filter(h => h.due === "Today").length} due today</p>
@@ -2326,7 +2395,7 @@ RESPONSE FORMAT:
 
         {/* ═══ REFERRALS ═══ */}
         {page === "referrals" && (
-          <div style={{ display: "flex", gap: 48, maxWidth: 1120 }}>
+          <div style={{ display: "flex", gap: 48 }}>
           <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <div>
@@ -2460,7 +2529,7 @@ RESPONSE FORMAT:
           const priorityColor = (p) => p === "high" ? C.success : p === "medium" ? C.warning : C.textMuted;
 
           return (
-            <div style={{ display: "flex", gap: 48, maxWidth: 1120 }}>
+            <div style={{ display: "flex", gap: 48 }}>
             <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                 <div>
