@@ -982,7 +982,7 @@ RESPONSE FORMAT:
               </div>
             </div>
             <div style={{ flex: 1 }}>
-              {[{ l: "Clients", v: clients.length }, { l: "Lifetime Value", v: "$" + Math.round(clients.reduce((a, c) => a + getAdjustedLTV(c), 0) / 1000) + "k" }, { l: "Avg Tenure", v: (clients.length > 0 ? Math.round(clients.reduce((a, c) => a + (c.months || 0), 0) / clients.length) : 0) + "mo" }].map((r, i) => (
+              {[{ l: "Clients", v: clients.length }, { l: "Lifetime Value", v: (() => { const ltv = clients.reduce((a, c) => a + getAdjustedLTV(c), 0); return ltv >= 1000000 ? "$" + (ltv / 1000000).toFixed(1) + " M" : "$" + Math.round(ltv / 1000) + "k"; })() }, { l: "Avg Tenure", v: (() => { const mo = clients.length > 0 ? Math.round(clients.reduce((a, c) => a + (c.months || 0), 0) / clients.length) : 0; return mo >= 12 ? (mo / 12).toFixed(1) + " yr" : mo + " mo"; })() }].map((r, i) => (
                 <div key={i} style={{ padding: "7px 0", borderBottom: i < 2 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 12, color: C.textMuted }}>{r.l}</span>
                   <span style={{ fontSize: 14, fontWeight: 800 }}>{r.v}</span>
@@ -1019,12 +1019,12 @@ RESPONSE FORMAT:
           </PanelCard>
         ) : clients.length >= 2 && (
           <PanelCard>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.warning, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 3 }}>Lowest scoring</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: C.warning }}>${([...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).reduce((a, c) => a + (c.revenue || 0), 0) / 1000).toFixed(1)}k/mo</div>
+            <div style={{ fontSize: 9, fontWeight: 600, color: C.danger, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 3 }}>Revenue at risk</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: C.danger }}>${([...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).reduce((a, c) => a + (c.revenue || 0), 0) / 1000).toFixed(1)}k/mo</div>
             <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>2 lowest-scoring clients</div>
             <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
               {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
-                <span key={ci} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "#FDF5E9", color: C.warning, fontWeight: 600 }}>{c.name} (${((c.revenue || 0) / 1000).toFixed(1)}k)</span>
+                <span key={ci} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "#FAE8E4", color: C.danger, fontWeight: 600 }}>{c.name} (${((c.revenue || 0) / 1000).toFixed(1)}k)</span>
               ))}
             </div>
           </PanelCard>
@@ -1039,7 +1039,7 @@ RESPONSE FORMAT:
                 <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{c.name}</span>
               </div>
             ))}
-            <div style={{ fontSize: 9, fontWeight: 700, color: C.danger, textTransform: "uppercase", marginBottom: 5, marginTop: 12 }}>Watch</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: C.danger, textTransform: "uppercase", marginBottom: 5, marginTop: 12 }}>Declining</div>
             {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
               <div key={"dn" + ci} style={{ padding: "7px 0", borderBottom: ci < 1 ? "1px solid #E8ECE6" : "none", display: "flex", alignItems: "center", gap: 8 }}>
                 <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
@@ -1094,17 +1094,24 @@ RESPONSE FORMAT:
             ))}
           </div>
         </PanelCard>
-        {staleLeads.length > 0 && (
-          <PanelCard style={{ marginBottom: 0 }}>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.warning, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Needs outreach</div>
-            {staleLeads.slice(0, 4).map((r, i) => (
-              <div key={i} style={{ padding: "7px 0", borderBottom: i < Math.min(staleLeads.length, 4) - 1 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 12, fontWeight: 600 }}>{r.name || r.client}</span>
-                <span style={{ fontSize: 11, color: C.textMuted }}>{r.contact}</span>
-              </div>
-            ))}
-          </PanelCard>
-        )}
+        <PanelCard style={{ marginBottom: 0 }}>
+          {staleLeads.length > 0 ? (
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 600, color: C.warning, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Needs outreach</div>
+              {staleLeads.slice(0, 4).map((r, i) => (
+                <div key={i} style={{ padding: "7px 0", borderBottom: i < Math.min(staleLeads.length, 4) - 1 ? "1px solid #E8ECE6" : "none", display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>{r.name || r.client}</span>
+                  <span style={{ fontSize: 11, color: C.textMuted }}>{r.contact}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 600, color: C.success, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Outreach</div>
+              <div style={{ fontSize: 12, color: C.textMuted }}>No stale leads. All contacts are active.</div>
+            </div>
+          )}
+        </PanelCard>
       </div>
     );
   };
@@ -1208,6 +1215,7 @@ RESPONSE FORMAT:
         .r-rai-mob { display: block; }
         .r-main { padding: 16px 16px 80px; }
         .r-today-panel { display: none !important; }
+        .r-client-modal { top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; transform: none !important; max-width: 100% !important; max-height: 100% !important; border-radius: 0 !important; }
         @media (min-width: 768px) {
           :root { --sidebar-w: 270px; }
           .r-desk { display: flex !important; }
@@ -1216,6 +1224,7 @@ RESPONSE FORMAT:
           .r-rai-bar { display: block !important; }
           .r-rai-mob { display: none !important; }
           .r-today-panel { display: block !important; }
+          .r-client-modal { top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important; transform: translate(-50%, -50%) !important; max-width: 520px !important; max-height: 90vh !important; border-radius: 16px !important; }
           .r-main { padding: 28px 48px; margin-left: var(--sidebar-w); }
         }
         @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
@@ -1353,13 +1362,12 @@ RESPONSE FORMAT:
               {hasDot(n.id) && <Dot />}
             </div>
           ))}
+          {page === "coach" && (
+            <div style={{ padding: "10px 2px 0" }}>
+              <div onClick={() => setAiMessages([])} style={{ padding: "10px 12px", borderRadius: 8, background: C.btn, color: "#fff", fontSize: 13, fontWeight: 600, textAlign: "center", cursor: "pointer" }}>New Chat</div>
+            </div>
+          )}
         </div>
-        {/* Rai chat history — only on coach page */}
-        {page === "coach" && (
-          <div style={{ padding: "8px 10px 0" }}>
-            <div onClick={() => setAiMessages([])} style={{ padding: "10px 12px", borderRadius: 8, background: C.btn, color: "#fff", fontSize: 13, fontWeight: 600, textAlign: "center", cursor: "pointer", marginBottom: 8 }}>New Chat</div>
-          </div>
-        )}
         <div style={{ padding: "8px 10px", borderTop: "1px solid #D0DDD4" }}>
           <div onClick={() => setTier(tier === "core" ? "enterprise" : "core")} className="nav-item" style={{ display: "none", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, color: "#6B8572" }}>
             <span style={{ fontSize: 12, fontWeight: 600 }}>{tier === "enterprise" ? "Enterprise" : "Core"}</span>
@@ -1607,7 +1615,7 @@ RESPONSE FORMAT:
                     </div>
                     <div style={{ padding: "8px 0", borderBottom: "1px solid " + C.borderLight, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontSize: 13, color: C.textMuted }}>Lifetime Value</span>
-                      <span style={{ fontSize: 15, fontWeight: 800 }}>${Math.round(clients.reduce((a, c) => a + getAdjustedLTV(c), 0) / 1000)}k</span>
+                      <span style={{ fontSize: 15, fontWeight: 800 }}>{(() => { const ltv = clients.reduce((a, c) => a + getAdjustedLTV(c), 0); return ltv >= 1000000 ? "$" + (ltv / 1000000).toFixed(1) + " M" : "$" + Math.round(ltv / 1000) + "k"; })()}</span>
                     </div>
                     <div style={{ padding: "8px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontSize: 13, color: C.textMuted }}>Avg Tenure</span>
@@ -1657,12 +1665,12 @@ RESPONSE FORMAT:
                 );
                 if (clients.length >= 2) return (
                   <div style={{ background: "#FAFAF8", borderRadius: 14, border: "1px solid #E8ECE6", padding: "14px", marginBottom: 24 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: C.warning, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>Lowest scoring</div>
-                    <div style={{ fontSize: 24, fontWeight: 900, color: C.warning }}>${([...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).reduce((a, c) => a + (c.revenue || 0), 0) / 1000).toFixed(1)}k/mo</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: C.danger, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>Revenue at risk</div>
+                    <div style={{ fontSize: 24, fontWeight: 900, color: C.danger }}>${([...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).reduce((a, c) => a + (c.revenue || 0), 0) / 1000).toFixed(1)}k/mo</div>
                     <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>2 lowest-scoring clients</div>
                     <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
                       {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
-                        <span key={ci} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 5, background: "#FDF5E9", color: C.warning, fontWeight: 600 }}>{c.name} (${((c.revenue || 0) / 1000).toFixed(1)}k)</span>
+                        <span key={ci} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 5, background: "#FAE8E4", color: C.danger, fontWeight: 600 }}>{c.name} (${((c.revenue || 0) / 1000).toFixed(1)}k)</span>
                       ))}
                     </div>
                   </div>
@@ -1681,7 +1689,7 @@ RESPONSE FORMAT:
                       <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{c.name}</span>
                     </div>
                   ))}
-                  <div style={{ fontSize: 9, fontWeight: 700, color: C.danger, textTransform: "uppercase", marginBottom: 5, marginTop: 12 }}>Watch</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: C.danger, textTransform: "uppercase", marginBottom: 5, marginTop: 12 }}>Declining</div>
                   {[...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0)).slice(0, 2).map((c, ci) => (
                     <div key={"dn" + ci} style={{ padding: "7px 0", borderBottom: ci < 1 ? "1px solid #E8ECE6" : "none", display: "flex", alignItems: "center", gap: 8 }}>
                       <ScoreRing score={c.ret || 0} size={26} strokeWidth={2} />
@@ -1781,7 +1789,7 @@ RESPONSE FORMAT:
         {/* ═══ CLIENTS ═══ */}
         {page === "clients" && (
           <div style={{ display: "flex", gap: 48 }}>
-          <div style={{ flex: 3, minWidth: 0, maxWidth: 720, overflow: "hidden" }}>
+          <div style={{ flex: 3, minWidth: 0, maxWidth: 720 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <div><h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>Clients</h1><p style={{ fontSize: 14, color: C.textMuted }}>{clients.length} active · ${(totalRev / 1000).toFixed(1)}k/mo</p></div>
               <div style={{ display: "flex", gap: 8 }}>
@@ -2762,17 +2770,22 @@ RESPONSE FORMAT:
                 ) : (
                   <div style={{ paddingTop: 4 }}>
                     {aiMessages.map((m, i) => (
-                      <div key={i} style={{ marginBottom: 28, display: "flex", gap: 12, alignItems: "flex-start" }}>
-                        {m.role === "user" ? (
-                          <div style={{ width: 28, height: 28, borderRadius: 7, background: "#D0DDD4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2, fontSize: 11, fontWeight: 700, color: C.primary }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n[0].toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
-                        ) : (
-                          <img src="/rai-avatar.png" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, marginTop: 2 }} />
-                        )}
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: m.role === "user" ? C.text : C.primary, marginBottom: 6 }}>{m.role === "user" ? "You" : "Rai"}</div>
-                          {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 16, color: C.text, lineHeight: 1.65, marginBottom: 4 }}>{l}</p>)}
+                      m.role === "user" ? (
+                        <div key={i} style={{ marginBottom: 28, display: "flex", justifyContent: "flex-end" }}>
+                          <div style={{ maxWidth: "80%" }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6, textAlign: "right" }}>You</div>
+                            {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 16, color: C.text, lineHeight: 1.65, marginBottom: 4 }}>{l}</p>)}
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div key={i} style={{ marginBottom: 28, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                          <img src="/rai-avatar.png" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, marginTop: 2 }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: C.primary, marginBottom: 6 }}>Rai</div>
+                            {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 16, color: C.text, lineHeight: 1.65, marginBottom: 4 }}>{l}</p>)}
+                          </div>
+                        </div>
+                      )
                     ))}
                     {aiTyping && <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 14 }}><img src="/rai-avatar.png" style={{ width: 28, height: 28, borderRadius: 7 }} /><div style={{ display: "flex", gap: 4, padding: "10px 14px", background: C.card, borderRadius: 10, border: "1px solid " + C.border }}>{[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: C.textMuted, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }} />)}</div></div>}
                     <div ref={aiEndRef} />
@@ -2999,7 +3012,7 @@ RESPONSE FORMAT:
         return (
           <>
             <div onClick={() => setSelectedClient(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 90 }} />
-            <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "100%", maxWidth: 420, background: C.card, boxShadow: "-4px 0 24px rgba(0,0,0,0.08)", zIndex: 100, overflowY: "scroll" }}>
+            <div className="r-client-modal" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "100%", maxWidth: 520, maxHeight: "90vh", background: C.card, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", zIndex: 100, overflowY: "scroll", borderRadius: 16 }}>
               <div style={{ padding: "14px 20px", borderBottom: "1px solid " + C.borderLight, display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: C.card, zIndex: 1 }}>
                 <h2 style={{ fontSize: 20, fontWeight: 800 }}>{sc.name}</h2>
                 <button onClick={() => setSelectedClient(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.textMuted }}>×</button>
@@ -3044,15 +3057,17 @@ RESPONSE FORMAT:
                           { l: "Other vendors", v: sc.qualifyingFlags?.otherVendors ? "Yes" : "No", flag: "otherVendors" },
                           { l: "From referral", v: sc.qualifyingFlags?.fromReferral ? "Yes" : "No", flag: "fromReferral" },
                         ].map((d, i) => (
-                          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid " + C.borderLight }}
-                            onClick={d.flag ? async () => {
+                          <div key={i} onClick={d.flag ? async () => {
                               const newFlags = { ...(sc.qualifyingFlags || {}), [d.flag]: !sc.qualifyingFlags?.[d.flag] };
-                              const newRet = calcRetentionScore(sc.profileScores || {}, null, newFlags, sc.months || 0);
-                              setClients(prev => prev.map(c => c.id === sc.id ? { ...c, qualifyingFlags: newFlags, ret: newRet || c.ret } : c));
-                              setSelectedClient({ ...sc, qualifyingFlags: newFlags, ret: newRet || sc.ret });
-                              clientsDb.update(sc.id, { qualifying_flags: newFlags, retention_score: newRet || sc.ret });
+                              const wasOn = !!sc.qualifyingFlags?.[d.flag];
+                              const deltas = { latePayments: -4, prevTerminated: -8, otherVendors: -3, fromReferral: 2 };
+                              const delta = deltas[d.flag] || 0;
+                              const newRet = Math.max(1, Math.min(99, (sc.ret || 50) + (wasOn ? -delta : delta)));
+                              setClients(prev => prev.map(c => c.id === sc.id ? { ...c, qualifyingFlags: newFlags, ret: newRet } : c));
+                              setSelectedClient({ ...sc, qualifyingFlags: newFlags, ret: newRet });
+                              clientsDb.update(sc.id, { qualifying_flags: newFlags, retention_score: newRet });
                             } : undefined}
-                            style={d.flag ? { cursor: "pointer" } : {}}>
+                            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid " + C.borderLight, cursor: d.flag ? "pointer" : "default" }}>
                             <span style={{ fontSize: 14, color: C.textMuted }}>{d.l}</span>
                             {d.flag ? (
                               <div style={{ width: 40, height: 22, borderRadius: 11, background: sc.qualifyingFlags?.[d.flag] ? C.primary : C.border, padding: 2, transition: "background 0.2s", display: "flex", alignItems: "center" }}>
