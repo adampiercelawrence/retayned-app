@@ -1355,7 +1355,7 @@ export default function App({ user }) {
 
       {/* SIDEBAR */}
       <div className="r-desk" style={{ width: 270, background: C.sidebar, flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50, borderRight: "1px solid #D0DDD4" }}>
-        <div style={{ padding: "20px 18px 24px" }}><span style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
+        <div style={{ padding: "20px 18px 24px" }}><span style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
         <div style={{ flex: 1, padding: "0 10px" }}>
           {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => (
             <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, marginBottom: 2, background: page === n.id ? "#D0DDD4" : "transparent", color: page === n.id ? C.primary : "#6B8572", fontWeight: page === n.id ? 600 : 400 }}>
@@ -1391,7 +1391,7 @@ export default function App({ user }) {
       {/* MOBILE TOP */}
       <div className="r-mob-top" style={{ justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: C.card, borderBottom: "1px solid " + C.borderLight, position: "sticky", top: 0, zIndex: 40 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-          <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span>
+          <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span>
         </div>
         <div style={{ width: 28, height: 28, borderRadius: 8, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
       </div>
