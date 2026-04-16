@@ -1618,7 +1618,7 @@ export default function App({ user }) {
                         {t.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>}
                       </div>
                       <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: 14, color: t.done ? C.textMuted : C.text, lineHeight: 1.5, textDecoration: t.done ? "line-through" : "none" }}>{t.text}</p>
+                        <p style={{ fontSize: 14, fontWeight: 500, color: t.done ? C.textMuted : C.text, lineHeight: 1.5, textDecoration: t.done ? "line-through" : "none" }}>{t.text}</p>
                         {(t.client || t.recurring) && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
                           {t.client && <span style={{ fontSize: 12, color: C.textMuted }}>{t.client}</span>}
                           {t.recurring && <span style={{ fontSize: 8, color: C.textMuted, fontWeight: 600, padding: "0px 4px", borderRadius: 3, border: "1px solid " + C.border, background: C.surface, lineHeight: 1.5 }}>↻</span>}
