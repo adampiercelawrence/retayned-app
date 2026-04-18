@@ -606,17 +606,36 @@ export default function App({ user }) {
       qualifyingFlags: c.qualifying_flags || {},
     })));
 
-    if (taskRes.data) setTasks(taskRes.data.map(t => ({
-      id: t.id,
-      text: t.text,
-      client: t.client_name || "",
-      done: t.is_done,
-      ai: t.is_ai_generated,
-      alert: t.is_alert,
-      recurring: t.is_recurring,
-      sort_order: t.sort_order,
-      raiPriority: t.is_alert || false,
-    })));
+    if (taskRes.data) {
+      // Auto-reset recurring tasks that were completed before the most recent 2 AM local time
+      const now = new Date();
+      const today2am = new Date(now);
+      today2am.setHours(2, 0, 0, 0);
+      const cutoff = now < today2am ? new Date(today2am.getTime() - 86400000) : today2am;
+
+      const toReset = taskRes.data.filter(t =>
+        t.is_recurring && t.is_done &&
+        t.completed_at && new Date(t.completed_at) < cutoff
+      );
+
+      // Fire off DB updates in background (don't block UI)
+      toReset.forEach(t => { tasksDb.toggle(t.id, false); });
+
+      setTasks(taskRes.data.map(t => {
+        const reset = toReset.find(r => r.id === t.id);
+        return {
+          id: t.id,
+          text: t.text,
+          client: t.client_name || "",
+          done: reset ? false : t.is_done,
+          ai: t.is_ai_generated,
+          alert: t.is_alert,
+          recurring: t.is_recurring,
+          sort_order: t.sort_order,
+          raiPriority: t.is_alert || false,
+        };
+      }));
+    }
 
     if (refRes.data) setRefs(refRes.data.map(r => ({
       id: r.id,
@@ -690,6 +709,35 @@ export default function App({ user }) {
 
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Schedule automatic recurring-task reset at 2 AM local, every day
+  // Fires even if the tab stays open across midnight — ensures no one sees stale "done" checkmarks
+  useEffect(() => {
+    if (!user) return;
+    let timeoutId;
+    const scheduleNext2am = () => {
+      const now = new Date();
+      const next2am = new Date(now);
+      next2am.setHours(2, 0, 0, 0);
+      if (next2am <= now) next2am.setDate(next2am.getDate() + 1);
+      const msUntil = next2am.getTime() - now.getTime();
+      timeoutId = setTimeout(() => {
+        loadData();
+        scheduleNext2am();
+      }, msUntil);
+    };
+    scheduleNext2am();
+
+    // Also refresh when tab regains focus — catches laptop-sleep case where setTimeout
+    // may have paused across system sleep and missed the 2 AM fire
+    const onVisible = () => { if (document.visibilityState === "visible") loadData(); };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [user, loadData]);
 
   // ═══ SUPABASE-BACKED MUTATIONS ═══
   const toggleTask = async (id) => {
@@ -918,7 +966,16 @@ export default function App({ user }) {
   const [aiMessages, setAiMessages] = useState([]);
   const [aiTyping, setAiTyping] = useState(false);
   const aiEndRef = useRef(null);
-  useEffect(() => { aiEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages, aiTyping]);
+  const aiUserRef = useRef(null);
+  useEffect(() => {
+    // Claude-style: when a new user message is sent, scroll that message to the top of the viewport
+    // leaving room below for Rai's response. Falls back to bottom scroll when Rai is typing.
+    if (aiMessages.length > 0 && aiMessages[aiMessages.length - 1].role === "user") {
+      aiUserRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      aiEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [aiMessages, aiTyping]);
   const sendAi = async (text) => {
     const q = text || aiInput; if (!q.trim()) return;
     setAiMessages(prev => [...prev, { role: "user", text: q }]); setAiInput(""); setAiTyping(true);
@@ -1289,8 +1346,6 @@ export default function App({ user }) {
         .r-desk { display: none; }
         .r-mob-top { display: flex; }
         .r-mob-bot { display: flex; }
-        .r-rai-bar { display: none; }
-        .r-rai-mob { display: block; }
         .r-main { padding: 16px 16px 80px; }
         .r-today-panel { display: none !important; }
         .r-client-modal { top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; transform: none !important; max-width: 100% !important; max-height: 100% !important; border-radius: 0 !important; }
@@ -1299,8 +1354,6 @@ export default function App({ user }) {
           .r-desk { display: flex !important; }
           .r-mob-top { display: none !important; }
           .r-mob-bot { display: none !important; }
-          .r-rai-bar { display: block !important; }
-          .r-rai-mob { display: none !important; }
           .r-today-panel { display: block !important; }
           .r-client-modal { top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important; transform: translate(-50%, -50%) !important; max-width: 520px !important; max-height: 90vh !important; border-radius: 16px !important; }
           .r-main { padding: 28px 48px; margin-left: var(--sidebar-w); }
@@ -1536,7 +1589,7 @@ export default function App({ user }) {
 
             {/* Add task */}
             <div style={{ marginBottom: 24 }}>
-              <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+              <div style={{ display: "flex", gap: 6, alignItems: "stretch", flexWrap: "wrap" }}>
                 <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()} placeholder="What's on your plate?" style={{ flex: 1, padding: "0 16px", height: 44, border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", background: C.card, outline: "none" }} />
                 <button className="r-btn" onClick={addTask} style={{ padding: "0 20px", height: 44, borderRadius: 8, border: "none", background: C.btn, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Create Task</button>
                 <div style={{ position: "relative" }}>
@@ -2773,79 +2826,64 @@ export default function App({ user }) {
             </div>
           );
         })()}
-        {/* ═══ COACH ═══ */}
-        {/* ═══ RAI CHAT — Claude-style centered ═══ */}
+        {/* ═══ COACH / TALK TO RAI — Claude-style chat ═══ */}
         {page === "coach" && (
-          <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 56px)" }}>
-            <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: "0 48px", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
-              <div style={{ width: "100%", maxWidth: 720, paddingBottom: aiMessages.length > 0 ? 160 : 0 }}>
+          <div className="r-rai-page" style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 56px)" }}>
+            <div className="r-rai-scroll" style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch" }}>
+              <div className="r-rai-inner" style={{ width: "100%", maxWidth: 720, margin: "0 auto", padding: "24px 24px 0" }}>
                 {aiMessages.length === 0 ? (
-                  <div style={{ paddingTop: 4 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-                      <img src="/rai-avatar.png" style={{ width: 28, height: 28, borderRadius: 7 }} />
-                      <span style={{ fontSize: 16, fontWeight: 700 }}>Rai</span>
-                    </div>
-                    <p style={{ fontSize: 16, color: C.text, lineHeight: 1.65, marginBottom: 24 }}>I know your clients, your patterns, and your business. Ask me anything — about a specific client, a conversation you're unsure about, or what needs your attention today.</p>
-                    <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 12, padding: "12px 14px 8px", marginBottom: 24 }}>
-                      <textarea value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask about a client, draft a message, get advice..." rows={2} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 16, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.65, color: C.text }} />
+                  <div>
+                    <p style={{ fontSize: 22, fontWeight: 500, color: C.text, lineHeight: 1.4, marginBottom: 32, letterSpacing: "-0.01em" }}>What's on your mind today?</p>
+                    <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 14, padding: "14px 16px 10px", marginBottom: 32 }}>
+                      <textarea value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask about a client, draft a message, get advice…" rows={2} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 16, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.5, color: C.text }} />
                       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 4 }}>
-                        <button className="r-btn" onClick={() => sendAi()} style={{ width: 36, height: 36, borderRadius: 8, border: "none", background: C.btn, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                        <button onClick={() => sendAi()} disabled={!aiInput.trim()} style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: aiInput.trim() ? C.btn : C.borderLight, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: aiInput.trim() ? "pointer" : "default", transition: "background 0.15s" }}>
                           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
                         </button>
                       </div>
                     </div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Try asking</div>
-                    {Object.keys(coachDemos).map((s, i) => (
-                      <div key={i} className="card-hover" onClick={() => sendAi(s)} style={{ padding: "14px 18px", background: C.card, borderRadius: 12, border: "1px solid " + C.borderLight, fontSize: 14, color: C.textSec, cursor: "pointer", marginBottom: 8 }}>{s}</div>
-                    ))}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {Object.keys(coachDemos).slice(0, 4).map((s, i) => (
+                        <div key={i} className="card-hover" onClick={() => sendAi(s)} style={{ padding: "12px 16px", background: C.card, borderRadius: 10, border: "1px solid " + C.borderLight, fontSize: 14, color: C.textSec, cursor: "pointer" }}>{s}</div>
+                      ))}
+                    </div>
                   </div>
                 ) : (
-                  <div style={{ paddingTop: 4 }}>
-                    {aiMessages.map((m, i) => (
-                      m.role === "user" ? (
-                        <div key={i} style={{ marginBottom: 24, display: "flex", justifyContent: "flex-end" }}>
+                  <div style={{ paddingBottom: 200 }}>
+                    {aiMessages.map((m, i) => {
+                      const isLastUser = m.role === "user" && i === aiMessages.length - 1;
+                      const messageRef = isLastUser ? aiUserRef : null;
+                      return m.role === "user" ? (
+                        <div key={i} ref={messageRef} style={{ marginBottom: 28, display: "flex", justifyContent: "flex-end", scrollMarginTop: 24 }}>
                           <div style={{ maxWidth: "75%", background: C.surface, borderRadius: 20, padding: "12px 18px" }}>
-                            {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 15, color: C.text, lineHeight: 1.6, margin: 0 }}>{l}</p>)}
+                            {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 16, color: C.text, lineHeight: 1.5, margin: 0 }}>{l}</p>)}
                           </div>
                         </div>
                       ) : (
-                        <div key={i} style={{ marginBottom: 24 }}>
+                        <div key={i} style={{ marginBottom: 28 }}>
                           {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 16, color: C.text, lineHeight: 1.65, marginBottom: 4 }}>{l}</p>)}
                         </div>
-                      )
-                    ))}
-                    {aiTyping && <div style={{ marginBottom: 24, display: "flex", gap: 4, padding: "4px 0" }}>{[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: C.textMuted, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }} />)}</div>}
+                      );
+                    })}
+                    {aiTyping && <div style={{ marginBottom: 28, display: "flex", gap: 4, padding: "4px 0" }}>{[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: C.textMuted, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }} />)}</div>}
                     <div ref={aiEndRef} />
                   </div>
                 )}
               </div>
             </div>
-            {/* Input bar — fixed bottom, centered */}
+            {/* Input bar — fixed bottom once conversation started */}
             {aiMessages.length > 0 && (
-              <div className="r-rai-bar" style={{ position: "fixed", bottom: 0, right: 0, left: 270, borderTop: "1px solid " + C.borderLight, padding: "12px 48px 16px", background: C.bg, zIndex: 30 }}>
+              <div className="r-rai-inputbar" style={{ borderTop: "1px solid " + C.borderLight, background: C.bg, padding: "12px 24px 16px" }}>
                 <div style={{ maxWidth: 720, margin: "0 auto" }}>
-                  <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 12, padding: "12px 14px 8px" }}>
-                    <textarea value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask about a client, draft a message..." rows={2} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 16, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.65, color: C.text }} />
+                  <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 14, padding: "14px 16px 10px" }}>
+                    <textarea value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Reply to Rai…" rows={1} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 16, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.5, color: C.text }} />
                     <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 4 }}>
-                      <button className="r-btn" onClick={() => sendAi()} style={{ width: 36, height: 36, borderRadius: 8, border: "none", background: C.btn, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                      <button onClick={() => sendAi()} disabled={!aiInput.trim()} style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: aiInput.trim() ? C.btn : C.borderLight, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: aiInput.trim() ? "pointer" : "default", transition: "background 0.15s" }}>
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
                       </button>
                     </div>
                   </div>
-                  <p style={{ fontSize: 12, color: C.textMuted, textAlign: "center", marginTop: 6 }}>Rai is AI and can make mistakes.</p>
-                </div>
-              </div>
-            )}
-            {/* Mobile input */}
-            {aiMessages.length > 0 && (
-              <div className="r-rai-mob" style={{ position: "fixed", bottom: 72, left: 0, right: 0, borderTop: "1px solid " + C.borderLight, padding: "8px 16px 6px", background: C.bg, zIndex: 30 }}>
-                <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 12, padding: "12px 14px 8px" }}>
-                  <textarea value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask Rai..." rows={2} style={{ width: "100%", padding: "4px 0", border: "none", fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.5, color: C.text }} />
-                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
-                    <button className="r-btn" onClick={() => sendAi()} style={{ width: 36, height: 36, borderRadius: 8, border: "none", background: C.btn, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
-                    </button>
-                  </div>
+                  <p style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginTop: 6 }}>Rai is AI and can make mistakes.</p>
                 </div>
               </div>
             )}
