@@ -623,7 +623,8 @@ export const buildRaiContext = async (userId, clientId = null) => {
       months: c.months,
       retention_score: c.retention_score,
       drift: c.drift_status,
-      tag: c.tag
+      tag: c.tag,
+      profile_scores: c.profile_scores
     })),
     tasks_today: (taskList || []).map(t => ({
       text: t.text,
