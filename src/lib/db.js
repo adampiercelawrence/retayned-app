@@ -595,6 +595,59 @@ export const realtime = {
 
 
 // ============================================================
+// TOUCHPOINTS (client contact log: call, text, meeting, other)
+// ============================================================
+
+export const touchpoints = {
+  // Today's touchpoints for the user (drives the "Logged Today" pills on Today page)
+  listToday: async (userId) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { data, error } = await supabase
+      .from('touchpoints')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('occurred_at', today.toISOString())
+      .order('occurred_at', { ascending: false });
+    return { data: data || [], error };
+  },
+
+  // All touchpoints for a specific client (future: client detail timeline)
+  listForClient: async (clientId) => {
+    const { data, error } = await supabase
+      .from('touchpoints')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('occurred_at', { ascending: false });
+    return { data: data || [], error };
+  },
+
+  create: async (userId, { client_id, client_name, channel }) => {
+    const { data, error } = await supabase
+      .from('touchpoints')
+      .insert({
+        user_id: userId,
+        client_id,
+        channel,
+        occurred_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    // Return with client_name attached for optimistic UI updates
+    return { data: data ? { ...data, client_name } : null, error };
+  },
+
+  delete: async (touchpointId) => {
+    const { error } = await supabase
+      .from('touchpoints')
+      .delete()
+      .eq('id', touchpointId);
+    return { error };
+  }
+};
+
+
+// ============================================================
 // HELPER: Build Rai context for API call
 // ============================================================
 
