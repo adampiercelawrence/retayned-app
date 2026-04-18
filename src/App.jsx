@@ -1589,8 +1589,8 @@ export default function App({ user }) {
 
             {/* Add task */}
             <div style={{ marginBottom: 24 }}>
-              <div style={{ display: "flex", gap: 6, alignItems: "stretch", flexWrap: "wrap" }}>
-                <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()} placeholder="What's on your plate?" style={{ flex: 1, padding: "0 16px", height: 44, border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", background: C.card, outline: "none" }} />
+              <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+                <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()} placeholder="What's on your plate?" style={{ flex: 1, minWidth: 0, padding: "0 16px", height: 44, border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", background: C.card, outline: "none" }} />
                 <button className="r-btn" onClick={addTask} style={{ padding: "0 20px", height: 44, borderRadius: 8, border: "none", background: C.btn, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Create Task</button>
                 <div style={{ position: "relative" }}>
                   <div className="r-btn" onClick={() => { setShowTouchpoint(!showTouchpoint); setTpClient(null); setTpChannel(null); setTpSearch(""); }} style={{ height: 44, padding: "0 14px", borderRadius: 8, border: "1.5px solid " + C.border, background: C.card, color: C.textSec, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, cursor: "pointer", whiteSpace: "nowrap" }}>
