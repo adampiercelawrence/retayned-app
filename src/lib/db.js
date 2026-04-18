@@ -169,13 +169,14 @@ export const tasks = {
   },
 
   // Get today's tasks (including completed ones for progress count)
+  // Recurring tasks always included — they persist across days and auto-reset in app
   listToday: async (userId) => {
     const today = new Date().toISOString().split('T')[0];
     const { data, error } = await supabase
       .from('tasks')
       .select('*')
       .eq('user_id', userId)
-      .or(`is_done.eq.false,completed_at.gte.${today}`)
+      .or(`is_done.eq.false,completed_at.gte.${today},is_recurring.eq.true`)
       .order('sort_order', { ascending: true });
     return { data: data || [], error };
   },
@@ -391,64 +392,6 @@ export const referrals = {
     const active = data.filter(r => r.status === 'converted');
     const revenue = active.reduce((sum, r) => sum + (r.revenue || 0), 0);
     return { total: data.length, active: active.length, revenue };
-  }
-};
-
-
-// ============================================================
-// TOUCHPOINTS (client contact log)
-// ============================================================
-
-export const touchpoints = {
-  // Log a touchpoint. occurred_at defaults to now() server-side.
-  create: async (userId, { client_id, client_name, channel }) => {
-    const { data, error } = await supabase
-      .from('touchpoints')
-      .insert({ user_id: userId, client_id, channel })
-      .select()
-      .single();
-    // Carry client_name back for UI convenience — the table stores client_id only.
-    if (data) data.client_name = client_name;
-    return { data, error };
-  },
-
-  // Today's touchpoints for this user, newest first. Joins client name.
-  listToday: async (userId) => {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const { data, error } = await supabase
-      .from('touchpoints')
-      .select('id, client_id, channel, occurred_at, client:clients(name)')
-      .eq('user_id', userId)
-      .gte('occurred_at', startOfDay.toISOString())
-      .order('occurred_at', { ascending: false });
-    const flat = (data || []).map(t => ({
-      id: t.id,
-      client_id: t.client_id,
-      client_name: t.client?.name || '',
-      channel: t.channel,
-      occurred_at: t.occurred_at
-    }));
-    return { data: flat, error };
-  },
-
-  // All touchpoints for a client, newest first. For future timeline / Rai context.
-  listForClient: async (clientId) => {
-    const { data, error } = await supabase
-      .from('touchpoints')
-      .select('*')
-      .eq('client_id', clientId)
-      .order('occurred_at', { ascending: false });
-    return { data: data || [], error };
-  },
-
-  // Hard delete. RLS only allows deleting your own rows.
-  delete: async (tpId) => {
-    const { error } = await supabase
-      .from('touchpoints')
-      .delete()
-      .eq('id', tpId);
-    return { error };
   }
 };
 
