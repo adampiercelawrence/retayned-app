@@ -1497,6 +1497,9 @@ export default function App({ user }) {
         /* Mobile: chat user-message clearance from sticky top bar when scrolled */
         .r-rai-inner { padding-top: 56px !important; }
         .r-chat-msg-user { scroll-margin-top: 56px !important; }
+        /* Mobile: tighten chat input bar bottom padding — clear mobile nav (60px) without piling on */
+        .r-rai-inputbar { padding: 10px 16px 64px !important; }
+        .r-main:has(.r-rai-page) { padding-bottom: 0 !important; }
         @media (min-width: 768px) {
           :root { --sidebar-w: 270px; }
           .r-desk { display: flex !important; }
@@ -1508,6 +1511,8 @@ export default function App({ user }) {
           .r-log-label { display: inline !important; }
           .r-log-btn { padding: 0 14px !important; }
           .r-rai-inner { padding-top: 0 !important; }
+          .r-rai-inputbar { padding: 12px 24px 16px !important; }
+          .r-main:has(.r-rai-page) { padding-bottom: 28px !important; }
           .r-chat-msg-user { scroll-margin-top: 24px !important; }
         }
         @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
@@ -2986,18 +2991,13 @@ export default function App({ user }) {
                 {aiMessages.length === 0 ? (
                   <div>
                     <p style={{ fontSize: 22, fontWeight: 500, color: C.text, lineHeight: 1.4, marginBottom: 32, letterSpacing: "-0.01em" }}>What's on your mind today?</p>
-                    <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 14, padding: "14px 16px 10px", marginBottom: 32 }}>
+                    <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 14, padding: "14px 16px 10px" }}>
                       <textarea value={aiInput} onChange={e => { setAiInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px"; }} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask about a client, draft a message, get advice…" rows={2} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 17, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.5, color: C.text, overflowY: "auto" }} />
                       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 4 }}>
                         <button onClick={() => sendAi()} disabled={!aiInput.trim()} style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: aiInput.trim() ? C.btn : C.borderLight, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: aiInput.trim() ? "pointer" : "default", transition: "background 0.15s" }}>
                           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
                         </button>
                       </div>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {Object.keys(coachDemos).slice(0, 4).map((s, i) => (
-                        <div key={i} className="card-hover" onClick={() => sendAi(s)} style={{ padding: "12px 16px", background: C.card, borderRadius: 10, border: "1px solid " + C.borderLight, fontSize: 14, color: C.textSec, cursor: "pointer" }}>{s}</div>
-                      ))}
                     </div>
                   </div>
                 ) : (
