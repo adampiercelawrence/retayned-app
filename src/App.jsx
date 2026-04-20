@@ -241,14 +241,26 @@ function RaiMarkdown({ text, size = 16, lineHeight = 1.65 }) {
   // Split into paragraph blocks on blank lines
   const blocks = text.split(/\n\s*\n/);
   const renderInline = (str, keyPrefix) => {
-    // Handle **bold** inside a string - emit array of strings and <strong> nodes
-    const parts = str.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((p, i) => {
-      if (p.startsWith("**") && p.endsWith("**") && p.length > 4) {
-        return <strong key={`${keyPrefix}-${i}`} style={{ fontWeight: 700 }}>{p.slice(2, -2)}</strong>;
+    // Handle **bold** and *italic* inside a string.
+    // Split on bold first to protect its inner asterisks from being matched as italic markers.
+    const boldParts = str.split(/(\*\*[^*]+\*\*)/g);
+    const nodes = [];
+    boldParts.forEach((part, bi) => {
+      if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+        nodes.push(<strong key={`${keyPrefix}-b${bi}`} style={{ fontWeight: 700 }}>{part.slice(2, -2)}</strong>);
+        return;
       }
-      return p;
+      // Now process italics within the non-bold fragment
+      const italicParts = part.split(/(\*[^*\n]+\*)/g);
+      italicParts.forEach((ip, ii) => {
+        if (ip.startsWith("*") && ip.endsWith("*") && ip.length > 2) {
+          nodes.push(<em key={`${keyPrefix}-i${bi}-${ii}`} style={{ fontStyle: "italic" }}>{ip.slice(1, -1)}</em>);
+        } else if (ip) {
+          nodes.push(ip);
+        }
+      });
     });
+    return nodes;
   };
   return (
     <>
