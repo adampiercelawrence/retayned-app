@@ -1049,6 +1049,14 @@ export default function App({ user }) {
       aiEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [aiMessages, aiTyping]);
+  // Reset Rai textarea heights when input clears (e.g. after sending a message)
+  useEffect(() => {
+    if (aiInput === "") {
+      document.querySelectorAll('textarea[placeholder="Reply to Rai…"], textarea[placeholder="Ask about a client, draft a message, get advice…"]').forEach(t => {
+        t.style.height = "auto";
+      });
+    }
+  }, [aiInput]);
   const sendAi = async (text) => {
     const q = text || aiInput; if (!q.trim()) return;
     setAiMessages(prev => [...prev, { role: "user", text: q }]); setAiInput(""); setAiTyping(true);
@@ -2969,7 +2977,7 @@ export default function App({ user }) {
                   <div>
                     <p style={{ fontSize: 22, fontWeight: 500, color: C.text, lineHeight: 1.4, marginBottom: 32, letterSpacing: "-0.01em" }}>What's on your mind today?</p>
                     <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 14, padding: "14px 16px 10px", marginBottom: 32 }}>
-                      <textarea value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask about a client, draft a message, get advice…" rows={2} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 16, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.5, color: C.text }} />
+                      <textarea value={aiInput} onChange={e => { setAiInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px"; }} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask about a client, draft a message, get advice…" rows={2} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 17, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.5, color: C.text, overflowY: "auto" }} />
                       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 4 }}>
                         <button onClick={() => sendAi()} disabled={!aiInput.trim()} style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: aiInput.trim() ? C.btn : C.borderLight, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: aiInput.trim() ? "pointer" : "default", transition: "background 0.15s" }}>
                           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
@@ -2990,12 +2998,12 @@ export default function App({ user }) {
                       return m.role === "user" ? (
                         <div key={i} ref={messageRef} style={{ marginBottom: 28, display: "flex", justifyContent: "flex-end", scrollMarginTop: 24 }}>
                           <div style={{ maxWidth: "75%", background: C.surface, borderRadius: 20, padding: "12px 18px" }}>
-                            {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 16, color: C.text, lineHeight: 1.5, margin: 0 }}>{l}</p>)}
+                            {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 17, color: C.text, lineHeight: 1.5, margin: 0 }}>{l}</p>)}
                           </div>
                         </div>
                       ) : (
                         <div key={i} style={{ marginBottom: 28 }}>
-                          <RaiMarkdown text={m.text} size={16} lineHeight={1.65} />
+                          <RaiMarkdown text={m.text} size={17} lineHeight={1.55} />
                         </div>
                       );
                     })}
@@ -3010,14 +3018,14 @@ export default function App({ user }) {
               <div className="r-rai-inputbar" style={{ borderTop: "1px solid " + C.borderLight, background: C.bg, padding: "12px 24px 16px" }}>
                 <div style={{ maxWidth: 720, margin: "0 auto" }}>
                   <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 14, padding: "14px 16px 10px" }}>
-                    <textarea value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Reply to Rai…" rows={1} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 16, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.5, color: C.text }} />
+                    <textarea value={aiInput} onChange={e => { setAiInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px"; }} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Reply to Rai…" rows={1} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 17, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.5, color: C.text, overflowY: "auto" }} />
                     <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 4 }}>
                       <button onClick={() => sendAi()} disabled={!aiInput.trim()} style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: aiInput.trim() ? C.btn : C.borderLight, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: aiInput.trim() ? "pointer" : "default", transition: "background 0.15s" }}>
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
                       </button>
                     </div>
                   </div>
-                  <p style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginTop: 6 }}>Rai is AI and can make mistakes.</p>
+                  <p style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginTop: 6 }}>Rai can make mistakes. Double-check anything you act on.</p>
                 </div>
               </div>
             )}
