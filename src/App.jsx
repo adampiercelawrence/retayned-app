@@ -1268,8 +1268,8 @@ export default function App({ user }) {
       <div style={{ background: "transparent", borderRadius: 16, border: "1px solid " + C.borderLight, padding: "14px", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 80px)" }}>
         {/* Rai header */}
         <div style={{ display: "flex", gap: 10, alignItems: "center", paddingBottom: 12, borderBottom: "1px solid " + C.borderLight, marginBottom: 12 }}>
-          <div style={{ width: 38, height: 38, borderRadius: "50%", background: C.btn, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, position: "relative" }}>
-            Rai
+          <div style={{ width: 38, height: 38, borderRadius: "50%", overflow: "hidden", flexShrink: 0, position: "relative" }}>
+            <img src="/favicon.png" alt="Rai" style={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }} />
             <div style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: C.success, border: "2px solid " + C.bg }} />
           </div>
           <div>
@@ -1285,7 +1285,12 @@ export default function App({ user }) {
           {aiMessages.length === 0 ? (
             <>
               <div style={{ fontSize: 14, lineHeight: 1.55, color: C.text, padding: "4px 2px 8px" }}>
-                Good morning{user?.user_metadata?.full_name ? ", " + user.user_metadata.full_name.split(" ")[0] : ""}.<br />
+                {(() => {
+                  const h = new Date().getHours();
+                  if (h >= 5 && h < 12) return "Good morning";
+                  if (h >= 12 && h < 17) return "Good afternoon";
+                  return "Good evening";
+                })()}{user?.user_metadata?.full_name ? ", " + user.user_metadata.full_name.split(" ")[0] : ""}.<br />
                 What do you want to think through?
               </div>
               {/* Suggested prompts */}
