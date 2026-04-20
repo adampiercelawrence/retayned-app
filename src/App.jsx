@@ -233,6 +233,67 @@ function retBucket(v) {
 }
 function velColor(v) { return v === "fast" ? C.success : v === "normal" ? C.primaryLight : v === "slowing" ? C.warning : C.danger; }
 
+// Minimal markdown renderer for Rai's chat responses.
+// Handles: **bold**, numbered lists, bulleted lists, paragraphs separated by blank lines.
+// Safe: uses React nodes, not dangerouslySetInnerHTML.
+function RaiMarkdown({ text, size = 16, lineHeight = 1.65 }) {
+  if (!text) return null;
+  // Split into paragraph blocks on blank lines
+  const blocks = text.split(/\n\s*\n/);
+  const renderInline = (str, keyPrefix) => {
+    // Handle **bold** inside a string - emit array of strings and <strong> nodes
+    const parts = str.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((p, i) => {
+      if (p.startsWith("**") && p.endsWith("**") && p.length > 4) {
+        return <strong key={`${keyPrefix}-${i}`} style={{ fontWeight: 700 }}>{p.slice(2, -2)}</strong>;
+      }
+      return p;
+    });
+  };
+  return (
+    <>
+      {blocks.map((block, bi) => {
+        const lines = block.split("\n").filter(l => l.trim() !== "");
+        // Detect numbered list: every line starts with "1. ", "2. ", etc.
+        const numberedMatch = lines.length > 0 && lines.every(l => /^\s*\d+\.\s/.test(l));
+        if (numberedMatch && lines.length > 1) {
+          return (
+            <ol key={bi} style={{ fontSize: size, color: C.text, lineHeight, marginTop: bi === 0 ? 0 : 8, marginBottom: 8, paddingLeft: 24 }}>
+              {lines.map((l, li) => {
+                const content = l.replace(/^\s*\d+\.\s/, "");
+                return <li key={li} style={{ marginBottom: 4 }}>{renderInline(content, `${bi}-${li}`)}</li>;
+              })}
+            </ol>
+          );
+        }
+        // Detect bulleted list: every line starts with "- " or "* "
+        const bulletedMatch = lines.length > 0 && lines.every(l => /^\s*[-*]\s/.test(l));
+        if (bulletedMatch && lines.length > 1) {
+          return (
+            <ul key={bi} style={{ fontSize: size, color: C.text, lineHeight, marginTop: bi === 0 ? 0 : 8, marginBottom: 8, paddingLeft: 24 }}>
+              {lines.map((l, li) => {
+                const content = l.replace(/^\s*[-*]\s/, "");
+                return <li key={li} style={{ marginBottom: 4 }}>{renderInline(content, `${bi}-${li}`)}</li>;
+              })}
+            </ul>
+          );
+        }
+        // Default: paragraph with line breaks
+        return (
+          <p key={bi} style={{ fontSize: size, color: C.text, lineHeight, margin: 0, marginTop: bi === 0 ? 0 : 10 }}>
+            {lines.map((l, li) => (
+              <span key={li}>
+                {renderInline(l, `${bi}-${li}`)}
+                {li < lines.length - 1 && <br />}
+              </span>
+            ))}
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
 const navItemsCore = [
   { id: "today", icon: "today", label: "Today" },
   { id: "clients", icon: "clients", label: "Clients" },
@@ -997,28 +1058,89 @@ export default function App({ user }) {
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.access_token}`,
+          "Accept": "text/event-stream",
         },
         body: JSON.stringify({
           message: q,
           history,
           focused_client_id: null,
+          stream: true,
         }),
       });
 
-      const data = await response.json();
-
-      // Rate limit hit — show the specific message from the server
+      // Rate limit: server returns JSON with status 429 (no stream)
       if (response.status === 429) {
+        const data = await response.json();
         setAiMessages(prev => [...prev, { role: "ai", text: data.message || "You've hit your daily message limit. Try again tomorrow." }]);
         return;
       }
 
       if (!response.ok) {
-        console.error("Rai API error:", response.status, data);
+        const errText = await response.text().catch(() => "");
+        console.error("Rai API error:", response.status, errText);
         setAiMessages(prev => [...prev, { role: "ai", text: "I'm having trouble thinking right now. Try again in a moment." }]);
         return;
       }
 
+      // Streaming path: read SSE events, progressively build up the assistant message
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("text/event-stream") && response.body) {
+        // Insert an empty AI message that we'll fill in chunk by chunk
+        setAiMessages(prev => [...prev, { role: "ai", text: "" }]);
+        setAiTyping(false); // remove the bouncing dots once streaming starts
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let accumulated = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // SSE events are separated by double newlines
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || ""; // incomplete event stays in buffer
+
+          for (const evt of events) {
+            const lines = evt.split("\n");
+            for (const line of lines) {
+              if (!line.startsWith("data:")) continue;
+              const data = line.slice(5).trim();
+              if (!data || data === "[DONE]") continue;
+              try {
+                const parsed = JSON.parse(data);
+                // Anthropic streaming: content_block_delta events carry text
+                if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+                  accumulated += parsed.delta.text;
+                  // Update the last message (the one we just inserted)
+                  setAiMessages(prev => {
+                    const next = [...prev];
+                    next[next.length - 1] = { role: "ai", text: accumulated };
+                    return next;
+                  });
+                }
+              } catch {
+                // ignore malformed JSON chunks
+              }
+            }
+          }
+        }
+
+        // If stream ended with nothing, show fallback
+        if (!accumulated) {
+          setAiMessages(prev => {
+            const next = [...prev];
+            next[next.length - 1] = { role: "ai", text: "I'm having trouble thinking right now. Try again in a moment." };
+            return next;
+          });
+        }
+        return;
+      }
+
+      // Fallback: non-streaming JSON response
+      const data = await response.json();
       const reply = data.reply || "I'm having trouble thinking right now. Try again in a moment.";
       setAiMessages(prev => [...prev, { role: "ai", text: reply }]);
     } catch (err) {
@@ -1169,8 +1291,8 @@ export default function App({ user }) {
                     {m.text}
                   </div>
                 ) : (
-                  <div key={i} style={{ padding: "2px 2px", fontSize: 13, lineHeight: 1.55, color: C.text }}>
-                    {m.text}
+                  <div key={i} style={{ padding: "2px 2px", color: C.text }}>
+                    <RaiMarkdown text={m.text} size={13} lineHeight={1.55} />
                   </div>
                 )
               ))}
@@ -2861,7 +2983,7 @@ export default function App({ user }) {
                         </div>
                       ) : (
                         <div key={i} style={{ marginBottom: 28 }}>
-                          {m.text.split("\n").map((l, j) => l.trim() === "" ? <div key={j} style={{ height: 8 }} /> : <p key={j} style={{ fontSize: 16, color: C.text, lineHeight: 1.65, marginBottom: 4 }}>{l}</p>)}
+                          <RaiMarkdown text={m.text} size={16} lineHeight={1.65} />
                         </div>
                       );
                     })}
