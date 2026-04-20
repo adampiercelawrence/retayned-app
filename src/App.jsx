@@ -1183,6 +1183,7 @@ export default function App({ user }) {
     return (
       <div className="r-today-panel" style={{ flexShrink: 0 }}>
         <PanelCard style={{ padding: "16px" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 10 }}>Portfolio Snapshot</div>
           <div style={{ display: "flex", gap: 14, alignItems: "stretch" }}>
             <div style={{ display: "flex", alignItems: "center" }}>
               <ScoreRing score={avgScore} size={56} strokeWidth={4} />
@@ -1216,7 +1217,7 @@ export default function App({ user }) {
           )}
         </PanelCard>
         <PanelCard>
-          <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 10 }}>Portfolio Value</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 10 }}>Book History</div>
           <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 20, fontWeight: 900, color: C.text, letterSpacing: "-0.01em" }}>{(() => { const ltv = clients.reduce((a, c) => a + getAdjustedLTV(c), 0); return ltv >= 1000000 ? "$" + (ltv / 1000000).toFixed(1) + "M" : "$" + Math.round(ltv / 1000) + "k"; })()}</div>
@@ -1283,30 +1284,17 @@ export default function App({ user }) {
         <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
           {aiMessages.length === 0 ? (
             <>
-              <div style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid " + C.borderLight }}>
-                <strong>Good morning{user?.user_metadata?.full_name ? ", " + user.user_metadata.full_name.split(" ")[0] : ""}.</strong> {(() => {
-                  const worst = [...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0))[0];
-                  const thriving = clients.filter(c => (c.ret || 0) >= 80);
-                  if (worst && (worst.ret || 0) < 60) return worst.name + " is my biggest concern — scoring " + (worst.ret || 0) + ". Worth checking in.";
-                  if (thriving.length > 0) return "Your portfolio looks solid. " + thriving.length + " clients thriving.";
-                  return "What's on your mind today?";
-                })()}
+              <div style={{ fontSize: 14, lineHeight: 1.55, color: C.text, padding: "4px 2px 8px" }}>
+                Good morning{user?.user_metadata?.full_name ? ", " + user.user_metadata.full_name.split(" ")[0] : ""}.<br />
+                What do you want to think through?
               </div>
-              {clients.filter(c => (c.ret || 0) >= 80).length >= 2 && (
-                <div style={{ background: C.card, borderRadius: 10, padding: "10px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid " + C.borderLight }}>
-                  {(() => {
-                    const thriving = clients.filter(c => (c.ret || 0) >= 80).slice(0, 3);
-                    return "Clients I'd leave alone: " + thriving.map(c => c.name).join(", ") + ". Don't upsell. Don't over-touch.";
-                  })()}
-                </div>
-              )}
               {/* Suggested prompts */}
               <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 4 }}>
                 {[
-                  (() => { const w = [...clients].sort((a, b) => (a.ret || 0) - (b.ret || 0))[0]; return w ? "What should I say to " + w.name + "?" : null; })(),
-                  "Who needs attention this week?",
-                  "Draft a check-in message",
-                ].filter(Boolean).map((p, i) => (
+                  "Who should I focus on this week?",
+                  "What patterns am I missing? Any blind spots?",
+                  "Where's the biggest opportunity right now?",
+                ].map((p, i) => (
                   <div key={i} onClick={() => { setAiInput(p); }} style={{ background: C.card, border: "1px solid " + C.borderLight, borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, color: C.btn, cursor: "pointer" }}>
                     {p}
                   </div>
@@ -1333,7 +1321,9 @@ export default function App({ user }) {
         {/* Input */}
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid " + C.borderLight, display: "flex", gap: 6 }}>
           <input value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask Rai anything..." style={{ flex: 1, padding: "10px 14px", border: "1px solid " + C.borderLight, borderRadius: 20, fontSize: 13, fontFamily: "inherit", background: C.card, outline: "none" }} />
-          <button onClick={sendAi} style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.btn, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="send" size={14} color="#fff" /></button>
+          <button onClick={sendAi} style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.btn, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
+          </button>
         </div>
       </div>
     </div>
@@ -1347,7 +1337,7 @@ export default function App({ user }) {
     const avgScore = converted > 0 ? Math.round(convertedClients.reduce((a, c) => a + (c.ret || 0), 0) / converted) : 0;
     const staleLeads = rolodex.filter(r => !clients.some(c => c.name === r.name || c.name === r.client));
     return (
-      <div className="r-today-panel" style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
+      <div className="r-today-panel" style={{ flexShrink: 0 }}>
         <PanelCard style={{ padding: "16px" }}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             <div>
@@ -1412,7 +1402,7 @@ export default function App({ user }) {
     const convRate = totalReferred > 0 ? Math.round((converted / totalReferred) * 100) : 0;
     const likelyToRefer = [...clients].filter(c => (c.ret || 0) >= 80).sort((a, b) => (b.ret || 0) - (a.ret || 0)).slice(0, 3);
     return (
-      <div className="r-today-panel" style={{ width: 320, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
+      <div className="r-today-panel" style={{ flexShrink: 0 }}>
         <PanelCard style={{ padding: "16px" }}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             <div>
