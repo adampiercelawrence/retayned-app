@@ -3,16 +3,20 @@ import { supabase } from "./lib/supabase";
 import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex as rolodexDb, referrals as referralsDb, raiSuggestions as suggestionsDb, raiConversations as convoDb, profile as profileDb, touchpoints as touchpointsDb, buildRaiContext } from "./lib/db";
 
 const C = {
-  primary: "#33543E", primaryLight: "#558B68", primarySoft: "#E6EFE9",
-  bg: "#F7F7F4", card: "#FFFFFF", surface: "#EEEFEB",
-  sidebar: "#E6EFE9",
+  primary: "#33543E", primaryLight: "#558B68", primarySoft: "#E6EFE9", primaryGhost: "#F3F8F5",
+  bg: "#FAFAF7", card: "#FFFFFF", surface: "#EEEFEB", surfaceWarm: "#F2EEE8",
+  sidebar: "#FAFAF7",
   text: "#1E261F", textSec: "#5A6E5E", textMuted: "#92A596",
-  border: "#D8DFD8", borderLight: "#E8ECE6",
+  ink900: "#0A0A0A", ink700: "#2A2A28", ink500: "#6B6B66", ink400: "#9A9A93", ink300: "#C4C4BD",
+  border: "#D8DFD8", borderLight: "#E8ECE6", borderSoft: "#EFEFEA",
   heroGrad: "linear-gradient(145deg, #1E261F 0%, #2A382C 40%, #33543E 100%)",
   raiGrad: "linear-gradient(145deg, #1E261F 0%, #33543E 55%, #558B68 100%)",
   danger: "#C4432B", warning: "#B88B15", success: "#2D8659",
-  btn: "#5B21B6", btnHover: "#4C1D95",
+  retCrit: "#B4341F", retWarn: "#D17A1B", retOk: "#A8A420", retGood: "#1F7A5C", retElite: "#0C3A2E",
+  btn: "#5B21B6", btnHover: "#4C1D95", btnLight: "#EDE4FA",
   cardShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)",
+  shadowSm: "0 1px 2px rgba(10,10,10,0.04), 0 1px 3px rgba(10,10,10,0.03)",
+  shadowMd: "0 2px 4px rgba(10,10,10,0.04), 0 4px 12px rgba(10,10,10,0.05)",
 };
 
 const Icon = ({ name, size = 18, color = "currentColor" }) => {
@@ -32,10 +36,135 @@ const Icon = ({ name, size = 18, color = "currentColor" }) => {
     chevron: (<><polyline points="9 18 15 12 9 6" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>),
     bento: (<><rect x="3" y="3" width="7" height="7" rx="1.5" fill={color}/><rect x="14" y="3" width="7" height="7" rx="1.5" fill={color}/><rect x="3" y="14" width="7" height="7" rx="1.5" fill={color}/><rect x="14" y="14" width="7" height="7" rx="1.5" fill={color}/></>),
     plus: (<><line x1="12" y1="5" x2="12" y2="19" stroke={color} strokeWidth="2" strokeLinecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke={color} strokeWidth="2" strokeLinecap="round"/></>),
+    check: (<><polyline points="20 6 9 17 4 12" stroke={color} strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>),
+    x: (<><line x1="18" y1="6" x2="6" y2="18" stroke={color} strokeWidth="2" strokeLinecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke={color} strokeWidth="2" strokeLinecap="round"/></>),
+    phone: (<><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>),
+    mail: (<><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke={color} strokeWidth="1.8" fill="none"/><polyline points="22,6 12,13 2,6" stroke={color} strokeWidth="1.8" fill="none"/></>),
+    bolt: (<><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke={color} strokeWidth="1.8" fill="none" strokeLinejoin="round"/></>),
+    trendUp: (<><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/><polyline points="17 6 23 6 23 12" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>),
+    clock: (<><circle cx="12" cy="12" r="10" stroke={color} strokeWidth="1.8" fill="none"/><polyline points="12 6 12 12 16 14" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round"/></>),
+    sparkles: (<><path d="M12 3v3m0 12v3m-9-9H0m24 0h-3M5.5 5.5l2 2m9 9l2 2m-13 0l2-2m9-9l2-2" stroke={color} strokeWidth="1.6" strokeLinecap="round"/><circle cx="12" cy="12" r="3" fill={color}/></>),
+    dot: (<><circle cx="12" cy="12" r="3" fill={color}/></>),
+    flame: (<><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z" stroke={color} strokeWidth="1.6" fill="none" strokeLinejoin="round"/></>),
+    chat: (<><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke={color} strokeWidth="1.8" fill="none" strokeLinejoin="round"/></>),
+    mic: (<><rect x="9" y="2" width="6" height="12" rx="3" stroke={color} strokeWidth="1.8" fill="none"/><path d="M19 10v2a7 7 0 01-14 0v-2" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round"/><line x1="12" y1="19" x2="12" y2="23" stroke={color} strokeWidth="1.8" strokeLinecap="round"/></>),
+    video: (<><polygon points="23 7 16 12 23 17 23 7" stroke={color} strokeWidth="1.8" fill="none" strokeLinejoin="round"/><rect x="1" y="5" width="15" height="14" rx="2" stroke={color} strokeWidth="1.8" fill="none"/></>),
+    search: (<><circle cx="11" cy="11" r="8" stroke={color} strokeWidth="1.8" fill="none"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke={color} strokeWidth="1.8" strokeLinecap="round"/></>),
   };
 
 
   return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">{paths[name]}</svg>);
+};
+
+// ─── FocusPane — right-column card shown when a task is selected ──────────
+const FocusPane = ({ task, client, retHistory, whyText, confidence, draftText, C, Icon, Spark, ClientAvatar, ScoreChip, retColor, onComplete }) => {
+  if (!task || !client) return null;
+  const isRai = task.ai === true;
+  const delta = (() => {
+    const h = client.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+    return (h % 11) - 5;
+  })();
+  const clientColor = retColor(client.ret || 60);
+
+  return (
+    <aside style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 16, boxShadow: C.shadowMd, padding: 20 }}>
+      {/* Client header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+        <ClientAvatar client={client} size={44} />
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{client.name}</div>
+          <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 2 }}>
+            {client.industry || "Client"}{client.revenue ? " · $" + (client.revenue / 1000).toFixed(1) + "k MRR" : ""}
+          </div>
+        </div>
+        <ScoreChip score={client.ret} delta={delta} size="lg" />
+      </div>
+
+      {/* Retention sparkline */}
+      <div style={{ padding: "12px 14px", background: C.primaryGhost, border: "1px solid " + C.borderLight, borderRadius: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+          <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>Retention · 90 days</span>
+          <span style={{ fontSize: 11, color: C.textMuted }}>Renews in 4d</span>
+        </div>
+        <Spark data={retHistory} color={clientColor} width={300} height={36} />
+      </div>
+
+      {/* Task headline */}
+      <div style={{ marginTop: 18 }}>
+        {isRai && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, color: C.btn, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>
+            <Icon name="sparkles" size={11} /> Rai suggests
+          </span>
+        )}
+        {!isRai && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, color: C.primary, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>
+            <Icon name="plus" size={11} /> Your task
+          </span>
+        )}
+        <h3 style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.35, margin: "8px 0 0", letterSpacing: -0.2, color: C.text }}>{task.text}</h3>
+      </div>
+
+      {/* Why Rai flagged this */}
+      {isRai && whyText && (
+        <div style={{ marginTop: 14, padding: 14, background: C.btnLight, borderRadius: 10, border: "1px solid #DCCEF2" }}>
+          <div style={{ fontSize: 10.5, color: C.btn, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6 }}>Why</div>
+          <div style={{ fontSize: 13, lineHeight: 1.55, color: C.text }}>{whyText}</div>
+          {confidence && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(91,33,182,0.15)" }}>
+              <span style={{ fontSize: 10.5, color: C.textMuted }}>Rai confidence</span>
+              <div style={{ flex: 1, height: 4, background: "rgba(91,33,182,0.15)", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${confidence * 100}%`, background: C.btn, borderRadius: 2 }} />
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 600, color: C.btn, fontVariantNumeric: "tabular-nums" }}>{Math.round(confidence * 100)}%</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Drafted message */}
+      {isRai && draftText && (
+        <div style={{ marginTop: 12, padding: 14, background: "#fff", border: "1px dashed " + C.border, borderRadius: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>Draft ready</span>
+            <button style={{ fontSize: 11, color: C.btn, fontWeight: 500, padding: "2px 8px", border: "1px solid " + C.border, borderRadius: 999, background: "none", cursor: "pointer", fontFamily: "inherit" }}>1 of 3</button>
+          </div>
+          <div style={{ fontSize: 13, lineHeight: 1.6, color: C.textSec, fontFamily: "Georgia, serif", fontStyle: "italic" }}>{draftText}</div>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div style={{ display: "flex", gap: 6, marginTop: 16 }}>
+        <button onClick={onComplete} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", background: C.btn, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+          <Icon name="check" size={14} color="#fff" />
+          Mark complete
+        </button>
+        {isRai && (
+          <button style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", background: C.card, color: C.text, borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1px solid " + C.border, cursor: "pointer", fontFamily: "inherit" }}>
+            <Icon name="send" size={14} />
+            Send draft
+          </button>
+        )}
+      </div>
+
+      {/* Log touchpoint */}
+      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid " + C.borderLight }}>
+        <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>Log a touchpoint</span>
+        <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
+          {[
+            { icon: "phone", label: "Call" },
+            { icon: "mail", label: "Email" },
+            { icon: "chat", label: "DM" },
+            { icon: "video", label: "Loom" },
+            { icon: "mic", label: "Voice" },
+          ].map(q => (
+            <button key={q.label} title={q.label} style={{ width: 36, height: 36, borderRadius: 10, background: C.primaryGhost, color: C.textSec, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid " + C.borderLight, cursor: "pointer" }}>
+              <Icon name={q.icon} size={14} color={C.textSec} />
+            </button>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
 };
 
 const ScoreRing = ({ score, size = 44, strokeWidth = 3.5 }) => {
@@ -640,6 +769,14 @@ export default function App({ user }) {
   const [tpSearch, setTpSearch] = useState("");
   const [tpLogged, setTpLogged] = useState([]);
   const [confetti, setConfetti] = useState(false);
+  // ─── Today v4 state ──
+  const [todayFocusId, setTodayFocusId] = useState(null);
+  const [todayDismissed, setTodayDismissed] = useState({});
+  const [todayComposerDue, setTodayComposerDue] = useState("today");
+  const [todayComposerClient, setTodayComposerClient] = useState("");
+  const [todayComposerMenu, setTodayComposerMenu] = useState(false);
+  const [todayComposerQuery, setTodayComposerQuery] = useState("");
+  const [todayCompletedOpen, setTodayCompletedOpen] = useState(false);
   const [streak, setStreak] = useState(0);
   const [showStreakModal, setShowStreakModal] = useState(false);
 
@@ -1506,7 +1643,7 @@ export default function App({ user }) {
         .r-rai-inputbar { padding: 10px 16px 64px !important; }
         .r-main:has(.r-rai-page) { padding-bottom: 0 !important; }
         @media (min-width: 768px) {
-          :root { --sidebar-w: 270px; }
+          :root { --sidebar-w: 240px; }
           .r-desk { display: flex !important; }
           .r-mob-top { display: none !important; }
           .r-mob-bot { display: none !important; }
@@ -1521,6 +1658,23 @@ export default function App({ user }) {
           .r-chat-msg-user { scroll-margin-top: 24px !important; }
         }
         @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
+        @keyframes confetti-fall {
+          0%   { transform: translate(0,0) rotate(0); opacity: 1; }
+          100% { transform: translate(var(--tx), 70vh) rotate(var(--rot)); opacity: 0; }
+        }
+        .rt-row:hover { transform: translateY(-1px); }
+        .rt-row:hover .rt-dismiss { opacity: 1 !important; }
+        /* Today v4 — mobile stacking */
+        @media (max-width: 900px) {
+          .rt-grid { grid-template-columns: 1fr !important; }
+          .rt-focus-col { position: static !important; }
+          .rt-band { flex-direction: column !important; align-items: flex-start !important; }
+          .rt-band-right { min-width: 0 !important; text-align: left !important; width: 100%; }
+          .rt-band-right > div:first-child { justify-content: flex-start !important; }
+          .rt-composer-controls { width: 100%; justify-content: space-between; }
+          .rt-composer-controls > button:last-child { margin-left: auto; }
+          .rt-row-meta span:nth-child(n+4) { display: none !important; }
+        }
         @keyframes fwLaunch {
           0% { transform: translateY(0); opacity: 1; }
           100% { transform: translateY(-40vh); opacity: 1; }
@@ -1646,12 +1800,12 @@ export default function App({ user }) {
       )}
 
       {/* SIDEBAR */}
-      <div className="r-desk" style={{ width: 270, background: C.sidebar, flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50, borderRight: "1px solid #D0DDD4" }}>
-        <div style={{ padding: "20px 18px 24px" }}><span style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
+      <div className="r-desk" style={{ width: 240, background: C.sidebar, flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50, borderRight: "1px solid " + C.borderLight }}>
+        <div style={{ padding: "20px 18px 24px" }}><span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: C.text, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ color: C.primary, letterSpacing: "0" }}>.</span></span></div>
         <div style={{ flex: 1, padding: "0 10px" }}>
           {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => (
-            <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, marginBottom: 2, background: page === n.id ? "#D0DDD4" : "transparent", color: page === n.id ? C.primary : "#6B8572", fontWeight: page === n.id ? 600 : 400 }}>
-              <span style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={n.icon} size={16} color={page === n.id ? C.primary : "#6B8572"} /></span><span style={{ fontSize: 14, flex: 1 }}>{n.label}</span>
+            <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, marginBottom: 2, background: page === n.id ? C.card : "transparent", color: page === n.id ? C.text : C.textSec, fontWeight: page === n.id ? 700 : 500, boxShadow: page === n.id ? C.shadowSm : "none", cursor: "pointer" }}>
+              <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={n.icon} size={16} color={page === n.id ? C.text : C.textSec} /></span><span style={{ fontSize: 14, flex: 1 }}>{n.label}</span>
               {hasDot(n.id) && <Dot />}
             </div>
           ))}
@@ -1661,21 +1815,21 @@ export default function App({ user }) {
             </div>
           )}
         </div>
-        <div style={{ padding: "8px 10px", borderTop: "1px solid #D0DDD4" }}>
-          <div onClick={() => setTier(tier === "core" ? "enterprise" : "core")} className="nav-item" style={{ display: "none", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, color: "#6B8572" }}>
+        <div style={{ padding: "8px 10px", borderTop: "1px solid " + C.borderLight }}>
+          <div onClick={() => setTier(tier === "core" ? "enterprise" : "core")} className="nav-item" style={{ display: "none", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, color: C.textSec }}>
             <span style={{ fontSize: 12, fontWeight: 600 }}>{tier === "enterprise" ? "Enterprise" : "Core"}</span>
-            <div style={{ width: 36, height: 20, borderRadius: 10, background: tier === "enterprise" ? C.btn : "#D0DDD4", position: "relative", transition: "background 0.2s", cursor: "pointer" }}>
+            <div style={{ width: 36, height: 20, borderRadius: 10, background: tier === "enterprise" ? C.btn : C.border, position: "relative", transition: "background 0.2s", cursor: "pointer" }}>
               <div style={{ width: 16, height: 16, borderRadius: 8, background: "#fff", position: "absolute", top: 2, left: tier === "enterprise" ? 18 : 2, transition: "left 0.2s" }} />
             </div>
           </div>
-          <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 8, color: page === "settings" ? C.primary : "#6B8572", background: page === "settings" ? "#D0DDD4" : "transparent" }}>
-            <span style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="settings" size={16} color={page === "settings" ? C.primary : "#6B8572"} /></span><span style={{ fontSize: 14 }}>Settings</span>
+          <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, color: page === "settings" ? C.text : C.textSec, background: page === "settings" ? C.card : "transparent", fontWeight: page === "settings" ? 700 : 500, boxShadow: page === "settings" ? C.shadowSm : "none", cursor: "pointer" }}>
+            <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="settings" size={16} color={page === "settings" ? C.text : C.textSec} /></span><span style={{ fontSize: 14 }}>Settings</span>
           </div>
         </div>
-        <div style={{ padding: "12px 20px 18px", borderTop: "1px solid #D0DDD4" }}>
+        <div style={{ padding: "12px 18px 18px", borderTop: "1px solid " + C.borderLight }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: "#D0DDD4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: C.primary }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
-            <div><div style={{ fontSize: 14, fontWeight: 600, color: "#6B8572", textTransform: "capitalize" }}>{user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}</div><div style={{ fontSize: 12, color: "#92A596" }}>{user?.user_metadata?.company || ""}</div></div>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff" }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
+            <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: 13, fontWeight: 600, color: C.text, textTransform: "capitalize", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}</div><div style={{ fontSize: 11, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.user_metadata?.company || ""}</div></div>
           </div>
         </div>
       </div>
@@ -1691,246 +1845,482 @@ export default function App({ user }) {
       <div className="r-main">
 
         {/* ═══ TODAY — TASK MANAGER ═══ */}
-        {page === "today" && (
-          <div>
-            <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 12 }}>Today</h1>
-            <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 16 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
+        {page === "today" && (() => {
+          // ─── LOCAL ALIASES ───────────────────────────────────────────────
+          const focusId = todayFocusId, setFocusId = setTodayFocusId;
+          const dismissedIds = todayDismissed, setDismissedIds = setTodayDismissed;
+          const composerDue = todayComposerDue, setComposerDue = setTodayComposerDue;
+          const composerClient = todayComposerClient, setComposerClient = setTodayComposerClient;
+          const composerMenuOpen = todayComposerMenu, setComposerMenuOpen = setTodayComposerMenu;
+          const composerQuery = todayComposerQuery, setComposerQuery = setTodayComposerQuery;
+          const completedOpen = todayCompletedOpen, setCompletedOpen = setTodayCompletedOpen;
 
-            <div className="r-today-cols" style={{ display: "flex", gap: 24 }}>
+          // ─── DATA PREP ───────────────────────────────────────────────────
+          // Visible tasks = non-dismissed. Open = not done. Completed = done.
+          const visibleTasks = tasks.filter(t => !dismissedIds[t.id]);
+          const openTasks = visibleTasks.filter(t => !t.done);
+          const completedTasks = visibleTasks.filter(t => t.done);
+          const focusTask = openTasks.find(t => t.id === focusId) || openTasks[0] || null;
+          const focusClient = focusTask ? clients.find(c => c.name === focusTask.client) : null;
 
-            {/* LEFT PANEL — Portfolio tiles */}
-            <div className="r-today-panel" style={{ width: 270, flexShrink: 0 }}>
-              <PortfolioPanel />
-            </div>
+          // STUB DATA for things we don't track yet
+          const stubDelta = (clientName) => {
+            if (!clientName) return 0;
+            const h = clientName.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+            return (h % 11) - 5; // -5 to +5
+          };
+          const stubConfidence = () => 0.92;
+          const stubRetentionHistory = (score) => {
+            const base = Math.max(40, score - 15);
+            const pts = [];
+            for (let i = 0; i < 10; i++) {
+              const progress = i / 9;
+              const target = base + (score - base) * progress;
+              pts.push(Math.round(target + (Math.sin(i * 1.3) * 4)));
+            }
+            pts[pts.length - 1] = score;
+            return pts;
+          };
+          const stubDraft = (client) => {
+            if (!client) return "";
+            const first = client.split(/\s|&/)[0];
+            return `Hi ${first} — wanted to check in before the week gets away. I've been thinking about how the next quarter lines up and want to make sure we're pointed the same direction. Coffee Tuesday?`;
+          };
+          const stubWhy = (task, client) => {
+            if (!client) return task.text;
+            const score = client.ret || 60;
+            const delta = stubDelta(client.name);
+            if (delta < -2) return `Score dropped ${Math.abs(delta)} pts over the last period. Worth a check-in before it widens.`;
+            if (score < 55) return `Score is ${score} and they haven't heard from you in a while. Time to reconnect.`;
+            return `This relationship is due for a proactive touch. Not urgent, but don't let it drift.`;
+          };
 
-            <div style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
+          // ─── HANDLERS ────────────────────────────────────────────────────
+          const greeting = (() => {
+            const h = new Date().getHours();
+            if (h < 5) return "Working late";
+            if (h < 12) return "Good morning";
+            if (h < 17) return "Good afternoon";
+            if (h < 21) return "Good evening";
+            return "Late night";
+          })();
 
-            {/* Enterprise Sweep Results Card */}
-            {tier === "enterprise" && (
-              <div style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.border, padding: "16px 18px", marginBottom: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>🔄 Daily Sweep · Today 6:02 AM</div>
-                    <div style={{ fontSize: 12, color: C.textMuted }}>{sweepData.clients_analyzed} clients analyzed · {sweepData.alerts_count} alerts · {sweepData.tasks_generated} tasks</div>
+          const firstName = user?.user_metadata?.full_name?.split(" ")[0] || "";
+          const displayDate = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+
+          // Score chip component
+          const ScoreChip = ({ score, delta = null, size = "sm" }) => {
+            if (score == null) return null;
+            const color = retColor(score);
+            const bg = score >= 80 ? C.primarySoft : score >= 65 ? C.primaryGhost || "#F0F5F2" : score >= 45 ? "#FDF4DC" : "#FBE6DE";
+            const sizes = size === "sm" ? { fs: 11, pad: "2px 7px" } : { fs: 13, pad: "4px 10px" };
+            return (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: bg, color, fontSize: sizes.fs, fontWeight: 700, fontVariantNumeric: "tabular-nums", padding: sizes.pad, borderRadius: 5 }}>
+                <span>{score}</span>
+                {delta !== null && delta !== 0 && (
+                  <span style={{ fontWeight: 600, fontSize: sizes.fs - 1, opacity: 0.85 }}>
+                    {delta > 0 ? "+" : ""}{delta}
+                  </span>
+                )}
+              </span>
+            );
+          };
+
+          // Due pill
+          const DuePill = ({ due }) => {
+            const label = due === "today" ? "Today" : due === "tomorrow" ? "Tmrw" : due || "Today";
+            return <span style={{ fontSize: 11, color: C.textMuted, fontWeight: 500, padding: "2px 8px", background: C.borderLight, borderRadius: 999 }}>{label}</span>;
+          };
+
+          // Sparkline
+          const Spark = ({ data, color, width = 200, height = 36 }) => {
+            if (!data || data.length < 2) return null;
+            const min = Math.min(...data);
+            const max = Math.max(...data);
+            const range = max - min || 1;
+            const pad = 2;
+            const w = width - pad * 2;
+            const h = height - pad * 2;
+            const points = data.map((v, i) => {
+              const x = pad + (i / (data.length - 1)) * w;
+              const y = pad + h - ((v - min) / range) * h;
+              return `${x},${y}`;
+            }).join(" ");
+            return (
+              <svg width={width} height={height} style={{ display: "block" }}>
+                <polyline points={points} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            );
+          };
+
+          // Client avatar (letters, color)
+          const ClientAvatar = ({ client, size = 28 }) => {
+            if (!client) return null;
+            const initials = client.name.split(/\s|&/).filter(Boolean).slice(0, 2).map(s => s[0]).join("").toUpperCase();
+            const color = client.color || retColor(client.ret || 60);
+            return (
+              <div style={{ width: size, height: size, borderRadius: "50%", background: color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.35, fontWeight: 700, flexShrink: 0, letterSpacing: 0.2 }}>
+                {initials}
+              </div>
+            );
+          };
+
+          // Task kind inference (rai / mine / system)
+          const taskKind = (t) => {
+            if (t.ai) return "rai";
+            if (t.alert) return "system";
+            return "mine";
+          };
+          const typeLabel = (t) => {
+            if (t.alert) return "Signal";
+            if (t.recurring) return "Cadence";
+            return "Task";
+          };
+
+          // ─── STATUS BAND ─────────────────────────────────────────────────
+          const totalVisible = visibleTasks.filter(t => !t.ai).length;
+          const doneCount = completedTasks.filter(t => !t.ai).length;
+          const remaining = totalVisible - doneCount;
+          const pct = totalVisible ? doneCount / totalVisible : 0;
+
+          // ─── COMPOSER helpers ────────────────────────────────────────────
+          const clientMatches = composerQuery.trim()
+            ? clients.filter(c => c.name.toLowerCase().includes(composerQuery.trim().toLowerCase())).slice(0, 6)
+            : clients.slice(0, 6);
+
+          const submitComposer = async () => {
+            if (!newTask.trim()) return;
+            const text = newTask.trim();
+            const clientName = composerClient || "";
+            const clientObj = clients.find(c => c.name === clientName);
+            const { data: created } = await tasksDb.create(user.id, {
+              text,
+              client_name: clientName,
+              client_id: clientObj?.id || null,
+              is_recurring: false,
+            });
+            const task = { id: created?.id || "u" + Date.now(), text, client: clientName || null, done: false, ai: false, recurring: false, dueLabel: composerDue };
+            setTasks(prev => [task, ...prev]);
+            setNewTask("");
+            setComposerClient("");
+            setComposerDue("today");
+            setComposerMenuOpen(false);
+          };
+
+          const applyPreset = (prefix) => {
+            setNewTask(prefix + " ");
+            setTimeout(() => {
+              const el = document.getElementById("rt-composer-input");
+              if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+            }, 0);
+          };
+
+          // ─── RENDER ──────────────────────────────────────────────────────
+          return (
+            <div className="rt-today-v4" style={{ width: "100%", maxWidth: 1400, margin: "0 auto" }}>
+              {/* STATUS BAND */}
+              <div className="rt-band" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0, flex: "1 1 auto" }}>
+                  <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>{displayDate}</div>
+                  <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>
+                    {greeting}{firstName ? ", " + firstName : ""}.
+                  </h1>
+                  <div className="rt-band-sub" style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span><b style={{ color: C.text, fontWeight: 700 }}>{remaining}</b> on your plate</span>
+                    <span style={{ color: C.border }}>·</span>
+                    <span>{doneCount} done</span>
+                    <span style={{ color: C.border }}>·</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <Icon name="flame" size={12} color="#D17A1B" />
+                      <b style={{ color: C.text, fontWeight: 700 }}>{streak || 1}</b> day streak
+                    </span>
                   </div>
                 </div>
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.textMuted, marginBottom: 4 }}>
-                    <span>Portfolio Health</span>
-                    <span style={{ fontWeight: 700, color: C.text }}>{sweepData.portfolio_avg_score} <span style={{ color: sweepData.portfolio_avg_score > sweepData.prior_portfolio_avg ? C.success : C.danger }}>{sweepData.portfolio_avg_score > sweepData.prior_portfolio_avg ? "↑" : "↓"}{Math.abs(sweepData.portfolio_avg_score - sweepData.prior_portfolio_avg)} from last week</span></span>
+                <div className="rt-band-right" style={{ minWidth: 220, textAlign: "right" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "flex-end", gap: 8 }}>
+                    <span style={{ fontSize: 26, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
+                      {Math.round(pct * 100)}<span style={{ fontSize: 15, color: C.textMuted, fontWeight: 500 }}>%</span>
+                    </span>
+                    <span style={{ fontSize: 11, color: C.textMuted, letterSpacing: 0.3, textTransform: "uppercase", fontWeight: 600 }}>of today done</span>
                   </div>
-                  <div style={{ height: 6, background: C.borderLight, borderRadius: 3 }}>
-                    <div style={{ height: "100%", width: `${sweepData.portfolio_avg_score}%`, background: C.primarySoft, borderRadius: 3 }} />
+                  <div style={{ height: 4, background: C.borderLight, borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pct * 100}%`, background: `linear-gradient(90deg, ${C.primaryLight}, ${C.primary})`, borderRadius: 2, transition: "width 400ms cubic-bezier(.2,.7,.3,1)" }} />
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                  {[
-                    { label: "Critical", count: sweepData.score_distribution.critical, color: C.danger },
-                    { label: "At Risk", count: sweepData.score_distribution.at_risk, color: "#D97706" },
-                    { label: "Watch", count: sweepData.score_distribution.watch, color: C.warning },
-                    { label: "Stable", count: sweepData.score_distribution.stable, color: C.text },
-                    { label: "Strong", count: sweepData.score_distribution.strong, color: C.success },
-                  ].map((d, i) => (
-                    <span key={i} style={{ fontSize: 12, color: d.color, fontWeight: 600 }}>{d.count > 0 ? `${d.label} (${d.count})` : ""}</span>
+              </div>
+
+              {/* COMPOSER */}
+              <div className="rt-composer" style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 14, boxShadow: C.shadowMd, marginBottom: 20, position: "relative" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", flexWrap: "wrap" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 14, background: C.btnLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Icon name="plus" size={14} color={C.btn} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 140, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {composerClient && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "2px 8px 2px 2px", background: C.btnLight, color: C.btn, borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
+                        {(() => {
+                          const cObj = clients.find(c => c.name === composerClient);
+                          return cObj ? <ClientAvatar client={cObj} size={16} /> : null;
+                        })()}
+                        <span>{composerClient}</span>
+                        <button onClick={() => setComposerClient("")} style={{ color: "inherit", padding: 2, opacity: 0.6, background: "none", border: "none", cursor: "pointer" }}><Icon name="x" size={10} /></button>
+                      </span>
+                    )}
+                    <input
+                      id="rt-composer-input"
+                      value={newTask}
+                      onChange={e => setNewTask(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "/" && !composerClient) { e.preventDefault(); setComposerMenuOpen(true); setComposerQuery(""); }
+                        else if (e.key === "Enter" && newTask.trim()) { e.preventDefault(); submitComposer(); }
+                        else if (e.key === "Escape") { setComposerMenuOpen(false); }
+                      }}
+                      placeholder={composerClient ? "What needs to happen?" : 'What\'s next? Try "Call Ana about renewal" — press / to tag a client'}
+                      style={{ flex: 1, minWidth: 100, border: "none", outline: "none", background: "transparent", fontSize: 14.5, padding: "4px 0", fontFamily: "inherit", color: C.text }}
+                    />
+                  </div>
+                  <div className="rt-composer-controls" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <button onClick={() => setComposerMenuOpen(!composerMenuOpen)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px dashed " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                      <Icon name="clients" size={12} /><span>Client</span>
+                    </button>
+                    <div style={{ display: "inline-flex", background: C.borderLight, borderRadius: 8, padding: 2 }}>
+                      {[["today", "Today"], ["tomorrow", "Tmrw"], ["this week", "Week"]].map(([v, label]) => (
+                        <button key={v} onClick={() => setComposerDue(v)} style={{ padding: "5px 10px", fontSize: 11.5, color: composerDue === v ? C.text : C.textMuted, borderRadius: 6, fontWeight: 500, background: composerDue === v ? C.card : "transparent", boxShadow: composerDue === v ? C.shadowSm : "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={submitComposer} disabled={!newTask.trim()} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px 7px 14px", background: C.btn, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: newTask.trim() ? "pointer" : "default", opacity: newTask.trim() ? 1 : 0.4, fontFamily: "inherit" }}>
+                      Add
+                      <span style={{ background: "rgba(255,255,255,0.2)", padding: "1px 5px", borderRadius: 3, fontSize: 10.5, fontFamily: "monospace", fontWeight: 600 }}>↵</span>
+                    </button>
+                  </div>
+                </div>
+
+                {composerMenuOpen && (
+                  <div style={{ position: "absolute", top: 64, right: 16, width: 300, background: "#fff", border: "1px solid " + C.border, borderRadius: 12, boxShadow: "0 12px 32px rgba(10,10,10,0.12)", zIndex: 30, padding: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderBottom: "1px solid " + C.borderLight }}>
+                      <Icon name="search" size={12} color={C.textMuted} />
+                      <input autoFocus value={composerQuery} onChange={e => setComposerQuery(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Escape") setComposerMenuOpen(false); if (e.key === "Enter" && clientMatches[0]) { setComposerClient(clientMatches[0].name); setComposerMenuOpen(false); setComposerQuery(""); } }}
+                        placeholder="Search clients…" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 12.5, fontFamily: "inherit", color: C.text }} />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", paddingTop: 4, maxHeight: 300, overflow: "auto" }}>
+                      {clientMatches.map(c => (
+                        <button key={c.id || c.name} onClick={() => { setComposerClient(c.name); setComposerMenuOpen(false); setComposerQuery(""); }}
+                          style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 6, textAlign: "left", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                          <ClientAvatar client={c} size={22} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                            <div style={{ fontSize: 10.5, color: C.textMuted }}>{c.industry || "Client"}</div>
+                          </div>
+                          <ScoreChip score={c.ret} delta={stubDelta(c.name)} size="sm" />
+                        </button>
+                      ))}
+                      {clientMatches.length === 0 && <div style={{ padding: "12px 10px", fontSize: 12, color: C.textMuted }}>No matches</div>}
+                    </div>
+                  </div>
+                )}
+
+                <div className="rt-presets" style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 16px 12px", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", marginRight: 4 }}>Try</span>
+                  {["Check in with", "Send proposal to", "Log call with", "Follow up on"].map(p => (
+                    <button key={p} onClick={() => applyPreset(p)} style={{ padding: "4px 10px", background: C.primarySoft, border: "1px solid " + C.borderLight, borderRadius: 999, fontSize: 11.5, color: C.textSec, whiteSpace: "nowrap", cursor: "pointer", fontFamily: "inherit" }}>
+                      {p}<span style={{ color: C.textMuted }}>…</span>
+                    </button>
                   ))}
                 </div>
-                <button className="r-btn" onClick={() => goTo("sweeps")} style={{ width: "100%", padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>View Full Report</button>
               </div>
-            )}
 
-            {/* Daily Review */}
-            <div style={{ background: C.raiGrad, borderRadius: 14, padding: "16px 18px", color: "#fff", marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontSize: 14, fontWeight: 700 }}>Daily Progress</span>
-                <span style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.03em" }}>{tasksDone}<span style={{ fontSize: 15, fontWeight: 500, opacity: 0.5 }}>/{tasksTotal}</span></span>
-              </div>
-              <div style={{ height: 6, background: "rgba(255,255,255,.15)", borderRadius: 3, marginTop: 8 }}>
-                <div style={{ height: "100%", width: `${tasksTotal > 0 ? Math.round((tasksDone / tasksTotal) * 100) : 0}%`, background: C.primarySoft, borderRadius: 3, transition: "width 0.3s" }} />
-              </div>
-            </div>
-
-            {/* Add task */}
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
-                <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()} placeholder="What's on your plate?" style={{ flex: 1, minWidth: 0, padding: "0 16px", height: 44, border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", background: C.card, outline: "none" }} />
-                <button className="r-btn" onClick={addTask} style={{ padding: "0 20px", height: 44, borderRadius: 8, border: "none", background: C.btn, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Create Task</button>
-                <div style={{ position: "relative" }}>
-                  <div className="r-btn r-log-btn" onClick={() => { setShowTouchpoint(!showTouchpoint); setTpClient(null); setTpChannel(null); setTpSearch(""); }} style={{ height: 44, padding: "0 14px", borderRadius: 8, border: "1.5px solid " + C.border, background: C.card, color: C.textSec, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, cursor: "pointer", whiteSpace: "nowrap" }}>
-                    <span style={{ fontSize: 14 }}>📞</span> <span className="r-log-label">Log</span>
+              {/* MAIN GRID: task list + focus pane */}
+              <div className="rt-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 360px", gap: 20, alignItems: "start" }}>
+                {/* LEFT COLUMN — TASK LIST */}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 4px 12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Your plate</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, padding: "1px 8px", background: C.borderLight, borderRadius: 999 }}>{openTasks.length}</span>
+                    </div>
                   </div>
-                  {showTouchpoint && (
-                    <div style={{ position: "absolute", top: 50, right: 0, width: 300, background: C.card, borderRadius: 14, border: "1px solid " + C.border, boxShadow: "0 8px 32px rgba(0,0,0,0.12)", zIndex: 100, overflow: "hidden" }}>
-                      <div style={{ padding: "14px 16px 10px" }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Log a touchpoint</div>
-                        {!tpClient ? (
-                          <div>
-                            <input value={tpSearch} onChange={e => setTpSearch(e.target.value)} placeholder="Search clients..." autoFocus style={{ width: "100%", padding: "8px 12px", border: "1.5px solid " + C.borderLight, borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none", background: C.bg, marginBottom: 8 }} />
-                            <div style={{ maxHeight: 200, overflow: "auto" }}>
-                              {clients.filter(c => !tpSearch || c.name.toLowerCase().includes(tpSearch.toLowerCase())).map((c, i) => (
-                                <div key={i} onClick={() => setTpClient(c.name)} className="row-hover" style={{ padding: "8px 10px", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>{c.name}</div>
-                              ))}
-                            </div>
-                          </div>
-                        ) : !tpChannel ? (
-                          <div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                              <span onClick={() => setTpClient(null)} style={{ cursor: "pointer", fontSize: 12, color: C.textMuted, fontWeight: 600 }}>Back</span>
-                              <span style={{ fontSize: 13, fontWeight: 600 }}>{tpClient}</span>
-                            </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                              {[{ id: "call", label: "Call", icon: "📞" }, { id: "text", label: "Text", icon: "💬" }, { id: "meeting", label: "Meeting", icon: "🤝" }, { id: "other", label: "Other", icon: "📌" }].map(ch => (
-                                <div key={ch.id} onClick={() => setTpChannel(ch.id)} className="row-hover" style={{ padding: "12px", borderRadius: 8, border: "1.5px solid " + C.borderLight, cursor: "pointer", textAlign: "center", fontSize: 13, fontWeight: 600 }}>
-                                  <div style={{ fontSize: 20, marginBottom: 4 }}>{ch.icon}</div>
-                                  {ch.label}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ textAlign: "center", padding: "8px 0" }}>
-                            <div style={{ fontSize: 28, marginBottom: 8 }}>{[{ id: "call", icon: "📞" }, { id: "text", icon: "💬" }, { id: "meeting", icon: "🤝" }, { id: "other", icon: "📌" }].find(c => c.id === tpChannel)?.icon}</div>
-                            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{tpClient}</div>
-                            <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 14 }}>{tpChannel.charAt(0).toUpperCase() + tpChannel.slice(1)} · Today</div>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <button onClick={() => setTpChannel(null)} style={{ flex: 1, padding: "10px", background: C.surface, color: C.textSec, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Back</button>
-                              <button onClick={async () => {
-                                // Find the client record to get their id for the FK
-                                const clientObj = clients.find(c => c.name === tpClient);
-                                if (!clientObj) { setTpClient(null); setTpChannel(null); setShowTouchpoint(false); setTpSearch(""); return; }
-                                // Optimistic: show the pill immediately with a temp id, then swap to real id on return
-                                const tempId = "tmp_" + Date.now();
-                                const tempEntry = { id: tempId, client: tpClient, channel: tpChannel };
-                                setTpLogged(prev => [tempEntry, ...prev]);
-                                setTpClient(null); setTpChannel(null); setShowTouchpoint(false); setTpSearch("");
-                                const { data, error } = await touchpointsDb.create(user.id, { client_id: clientObj.id, client_name: clientObj.name, channel: tpChannel });
-                                if (error || !data) {
-                                  console.error("Failed to log touchpoint:", error);
-                                  // Roll back the optimistic entry
-                                  setTpLogged(prev => prev.filter(l => l.id !== tempId));
-                                  return;
-                                }
-                                // Swap temp id for real id
-                                setTpLogged(prev => prev.map(l => l.id === tempId ? { id: data.id, client: data.client_name, channel: data.channel } : l));
-                              }} style={{ flex: 1, padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Log it</button>
-                            </div>
-                          </div>
-                        )}
+
+                  {openTasks.length === 0 && completedTasks.length === 0 && (
+                    <div style={{ textAlign: "center", padding: "60px 20px", background: C.primaryGhost || C.primarySoft, border: "1px dashed " + C.border, borderRadius: 14 }}>
+                      <div style={{ width: 56, height: 56, borderRadius: 28, background: C.card, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", border: "2px solid " + C.primary }}>
+                        <Icon name="check" size={26} color={C.primary} />
                       </div>
+                      <div style={{ fontSize: 18, fontWeight: 700 }}>Nothing on your plate.</div>
+                      <div style={{ fontSize: 13, color: C.textMuted, marginTop: 4 }}>Add something, or enjoy the quiet.</div>
+                    </div>
+                  )}
+
+                  {openTasks.length === 0 && completedTasks.length > 0 && (
+                    <div style={{ textAlign: "center", padding: "28px 20px", background: C.primaryGhost || C.primarySoft, border: "1px solid " + C.borderLight, borderRadius: 14, marginBottom: 14 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 22, background: C.card, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px", border: "2px solid " + C.primary }}>
+                        <Icon name="check" size={22} color={C.primary} />
+                      </div>
+                      <div style={{ fontSize: 17, fontWeight: 700 }}>Plate cleared.</div>
+                      <div style={{ fontSize: 12.5, color: C.textMuted, marginTop: 4 }}>{completedTasks.length} things done today. Take five.</div>
+                    </div>
+                  )}
+
+                  {/* OPEN TASKS */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {openTasks.map(t => {
+                      const client = clients.find(c => c.name === t.client);
+                      const kind = taskKind(t);
+                      const isFocus = focusTask?.id === t.id;
+                      const delta = client ? stubDelta(client.name) : 0;
+
+                      return (
+                        <div key={t.id} onClick={() => setFocusId(t.id)} className="rt-row"
+                          style={{
+                            display: "flex", alignItems: "center", gap: 12,
+                            padding: "12px 14px",
+                            background: C.card,
+                            border: "1px solid " + (isFocus ? C.btn : C.border),
+                            borderRadius: 12,
+                            boxShadow: isFocus ? "0 0 0 3px rgba(91,33,182,0.08), " + C.shadowSm : C.shadowSm,
+                            cursor: "pointer",
+                            transition: "border-color 150ms, box-shadow 150ms",
+                          }}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleTask(t.id); }}
+                            aria-label="mark complete"
+                            style={{
+                              width: 22, height: 22, borderRadius: 11, border: "1.5px solid " + C.border,
+                              background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                              flexShrink: 0, transition: "all 180ms", cursor: "pointer",
+                            }}>
+                          </button>
+
+                          {client ? <ClientAvatar client={client} size={28} /> : <div style={{ width: 28, height: 28, borderRadius: 14, background: C.borderLight, flexShrink: 0 }} />}
+
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {t.text}
+                            </div>
+                            <div className="rt-row-meta" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2, fontSize: 11.5, color: C.textMuted }}>
+                              {client && <>
+                                <span style={{ fontWeight: 500, color: C.textSec }}>{client.name}</span>
+                                <span style={{ opacity: 0.35 }}>·</span>
+                              </>}
+                              {kind === "rai" && (
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: C.btn, fontWeight: 500 }}>
+                                  <Icon name="sparkles" size={10} />
+                                  <span>Rai suggests</span>
+                                </span>
+                              )}
+                              {kind === "mine" && (
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: C.primary, fontWeight: 500 }}>
+                                  <Icon name="plus" size={10} />
+                                  <span>Yours</span>
+                                </span>
+                              )}
+                              {kind === "system" && (
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                  <Icon name="trendUp" size={10} />
+                                  <span>{typeLabel(t)}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <DuePill due={t.dueLabel || "today"} />
+                          {client && <ScoreChip score={client.ret} delta={delta} size="sm" />}
+
+                          <button onClick={(e) => { e.stopPropagation(); setDismissedIds({ ...dismissedIds, [t.id]: true }); if (t.ai) dismissAi(t.id); }}
+                            className="rt-dismiss"
+                            style={{ width: 26, height: 26, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, opacity: 0.3, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}
+                            aria-label="dismiss">
+                            <Icon name="x" size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* COMPLETED SECTION */}
+                  {completedTasks.length > 0 && (
+                    <div style={{ marginTop: 24, padding: 14, background: C.primarySoft, border: "1px solid " + C.borderLight, borderRadius: 12 }}>
+                      <div onClick={() => setCompletedOpen(!completedOpen)} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: C.primary, cursor: "pointer" }}>
+                        <Icon name="check" size={12} color={C.primary} />
+                        <span>{completedTasks.length} completed today</span>
+                        <span style={{ flex: 1 }} />
+                        <span style={{ fontSize: 10.5, color: C.textMuted }}>{completedOpen ? "Hide" : "Click to expand"}</span>
+                      </div>
+                      {completedOpen && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+                          {completedTasks.map(t => {
+                            const client = clients.find(c => c.name === t.client);
+                            return (
+                              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#fff", borderRadius: 8, border: "1px solid " + C.borderLight }}>
+                                <div style={{ width: 18, height: 18, borderRadius: 9, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                  <Icon name="check" size={11} color="#fff" />
+                                </div>
+                                {client && <ClientAvatar client={client} size={20} />}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 12.5, textDecoration: "line-through", color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.text}</div>
+                                </div>
+                                {client && <span style={{ fontSize: 10.5, color: C.textMuted }}>{client.name}</span>}
+                                <button onClick={() => toggleTask(t.id)} style={{ fontSize: 11, color: C.btn, fontWeight: 500, padding: "2px 8px", borderRadius: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>Undo</button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
-              {(newTask.trim() || newTaskClient || newTaskRecurring) && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-                  <button onClick={() => setShowClientPicker(!showClientPicker)} style={{ padding: "5px 12px", background: newTaskClient ? C.primarySoft : C.surface, color: newTaskClient ? C.primary : C.textMuted, border: "1px solid " + (newTaskClient ? C.primary + "44" : C.borderLight), borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                    {newTaskClient || "Assign to client"}
-                  </button>
-                  {newTaskClient && <button onClick={() => setNewTaskClient("")} style={{ background: "none", border: "none", fontSize: 12, color: C.textMuted, cursor: "pointer" }}>×</button>}
-                  <button onClick={() => setNewTaskRecurring(!newTaskRecurring)} style={{ padding: "5px 12px", background: newTaskRecurring ? C.primarySoft : C.surface, color: newTaskRecurring ? C.primary : C.textMuted, border: "1px solid " + (newTaskRecurring ? C.primary + "44" : C.borderLight), borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                    {newTaskRecurring ? "↻ Recurring" : "Make recurring"}
-                  </button>
+
+                {/* RIGHT COLUMN — FOCUS PANE / RAI MINI */}
+                <div className="rt-focus-col" style={{ position: "sticky", top: 20 }}>
+                  {focusTask && focusClient ? (
+                    <FocusPane
+                      task={focusTask}
+                      client={focusClient}
+                      retHistory={stubRetentionHistory(focusClient.ret || 60)}
+                      whyText={stubWhy(focusTask, focusClient)}
+                      confidence={stubConfidence()}
+                      draftText={stubDraft(focusClient.name)}
+                      C={C}
+                      Icon={Icon}
+                      Spark={Spark}
+                      ClientAvatar={ClientAvatar}
+                      ScoreChip={ScoreChip}
+                      retColor={retColor}
+                      onComplete={() => toggleTask(focusTask.id)}
+                    />
+                  ) : (
+                    <RaiMiniPanel />
+                  )}
                 </div>
-              )}
-              {showClientPicker && (newTask.trim() || newTaskClient || newTaskRecurring) && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6, padding: "8px 10px", background: C.card, borderRadius: 8, border: "1px solid " + C.border }}>
-                  <span style={{ fontSize: 12, padding: "3px 8px", borderRadius: 4, background: taskClientSearch ? C.primarySoft : C.bg, border: "1px solid " + C.borderLight, display: "inline-flex", alignItems: "center", gap: 3 }}>
-                    <span style={{ color: C.textMuted, fontSize: 12 }}>⌕</span>
-                    <input value={taskClientSearch} onChange={e => setTaskClientSearch(e.target.value)} placeholder={"Search " + clients.length + "..."} style={{ border: "none", background: "transparent", outline: "none", fontSize: 12, fontFamily: "inherit", fontWeight: 500, width: taskClientSearch ? 120 : 100, color: C.text, padding: 0 }} />
-                    {taskClientSearch && <span onClick={() => setTaskClientSearch("")} style={{ cursor: "pointer", color: C.textMuted, fontSize: 10 }}>×</span>}
-                  </span>
-                  <span onClick={() => { setNewTaskClient("All Clients"); setShowClientPicker(false); setTaskClientSearch(""); }} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 4, background: newTaskClient === "All Clients" ? C.primarySoft : C.bg, border: "1px solid " + C.borderLight, cursor: "pointer", fontWeight: 600, color: C.primary }}>All Clients</span>
-                  {[...clients].sort((a, b) => b.ret - a.ret).filter(c => !taskClientSearch || c.name.toLowerCase().includes(taskClientSearch.toLowerCase())).slice(0, 5).map(c => (
-                    <span key={c.id} onClick={() => { setNewTaskClient(c.name); setShowClientPicker(false); setTaskClientSearch(""); }} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 4, background: newTaskClient === c.name ? C.primarySoft : C.bg, border: "1px solid " + (retColor(c.ret) + "44"), cursor: "pointer", fontWeight: 500, color: retColor(c.ret) }}>{c.name}</span>
-                  ))}
+              </div>
+
+              {/* CONFETTI */}
+              {confetti && (
+                <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 200, overflow: "hidden" }}>
+                  {Array.from({ length: 18 }).map((_, i) => {
+                    const x = 40 + Math.random() * 20;
+                    const tx = (Math.random() - 0.5) * 60;
+                    const rot = Math.random() * 540;
+                    const dur = 900 + Math.random() * 600;
+                    const delay = Math.random() * 120;
+                    const colors = [C.primary, C.primaryLight, "#4FB896", C.btn, "#D17A1B", C.retElite];
+                    const c = colors[i % colors.length];
+                    return (
+                      <span key={i} style={{
+                        position: "absolute", top: "40%", left: `${x}%`,
+                        width: 8, height: 12, background: c, borderRadius: 2,
+                        animation: `confetti-fall ${dur}ms cubic-bezier(.2,.6,.3,1) ${delay}ms forwards`,
+                        "--tx": `${tx}vw`, "--rot": `${rot}deg`,
+                      }} />
+                    );
+                  })}
                 </div>
               )}
             </div>
-
-            {/* Logged touchpoints */}
-            {tpLogged.length > 0 && (
-              <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Logged Today</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {tpLogged.map((l) => (
-                    <span key={l.id} style={{ fontSize: 12, padding: "5px 10px", borderRadius: 6, background: C.primarySoft, color: C.primary, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                      {l.channel === "call" ? "📞" : l.channel === "text" ? "💬" : l.channel === "meeting" ? "🤝" : "📌"} {l.client}
-                      <span onClick={async () => {
-                        const snapshot = l;
-                        setTpLogged(prev => prev.filter(x => x.id !== l.id));
-                        // Skip deletion if this is still a pending optimistic insert
-                        if (typeof l.id === "string" && l.id.startsWith("tmp_")) return;
-                        const { error } = await touchpointsDb.delete(l.id);
-                        if (error) {
-                          console.error("Failed to delete touchpoint:", error);
-                          setTpLogged(prev => [snapshot, ...prev]);
-                        }
-                      }} style={{ cursor: "pointer", marginLeft: 4, color: C.primary, opacity: 0.5, fontSize: 13, lineHeight: 1 }}>×</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Suggested by Rai — alerts (red) + suggestions (green) */}
-            {aiTasks.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.primary, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Icon name="spark" size={12} color={C.primary} /> Suggested by Rai</div>
-                {aiTasks.filter(t => t.alert).map(t => (
-                  <div key={t.id} style={{ background: "linear-gradient(90deg, #FAE8E4 0%, #FDF5F3 40%, " + C.card + " 100%)", borderRadius: 14, marginBottom: 12, border: "1px solid " + C.border, overflow: "hidden", boxShadow: C.cardShadow }}>
-                    <div style={{ padding: "14px 16px", position: "relative" }}>
-                      <button onClick={() => dismissAi(t.id)} style={{ position: "absolute", top: 4, right: 4, background: "none", border: "none", fontSize: 20, color: C.border, cursor: "pointer", lineHeight: 1, padding: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
-                      <p style={{ fontSize: 14, color: C.text, fontWeight: 600, lineHeight: 1.5, paddingRight: 20 }}>{t.text}</p>
-                      {t.client && <p style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>{t.client}</p>}
-                    </div>
-                    <button className="btn-ghost-red" onClick={() => promoteAi(t.id)} style={{ width: "100%", padding: "10px", background: "transparent", border: "none", borderTop: "1px solid " + C.borderLight, fontSize: 13, fontWeight: 600, color: C.primary, fontFamily: "inherit" }}>Add to Tasks</button>
-                  </div>
-                ))}
-                {aiTasks.filter(t => !t.alert).slice(0, 5).map(t => (
-                  <div key={t.id} style={{ background: "linear-gradient(90deg, " + C.primarySoft + " 0%, #F0F5F1 40%, " + C.card + " 100%)", borderRadius: 14, marginBottom: 12, border: "1px solid " + C.border, overflow: "hidden", boxShadow: C.cardShadow }}>
-                    <div style={{ padding: "14px 16px", position: "relative" }}>
-                      <button onClick={() => dismissAi(t.id)} style={{ position: "absolute", top: 4, right: 4, background: "none", border: "none", fontSize: 20, color: C.border, cursor: "pointer", lineHeight: 1, padding: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
-                      <p style={{ fontSize: 14, color: C.text, lineHeight: 1.5, paddingRight: 20 }}>{t.text}</p>
-                      {t.client && <p style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>{t.client}</p>}
-                    </div>
-                    <button className="btn-ghost-green" onClick={() => promoteAi(t.id)} style={{ width: "100%", padding: "10px", background: "transparent", border: "none", borderTop: "1px solid " + C.borderLight, fontSize: 13, fontWeight: 600, color: C.primary, fontFamily: "inherit" }}>Add to Tasks</button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Tasks — unified list, drag to reorder */}
-            {countableTasks.length > 0 && (
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 0, marginTop: 24 }}>Your Tasks</div>
-                <div style={{ background: C.card, borderRadius: 14, padding: "0 16px", marginTop: 8, border: "1px solid " + C.border, boxShadow: C.cardShadow }}>
-                {getSortedTasks().map((t, ti, arr) => {
-                  return (
-                    <div key={t.id} style={{ display: "flex", gap: 12, padding: "14px 0", alignItems: "flex-start", borderBottom: ti < arr.length - 1 ? "1px solid " + C.borderLight : "none", opacity: t.done ? 0.45 : 1 }}>
-                      <div onClick={() => toggleTask(t.id)} style={{ width: 22, height: 22, borderRadius: 6, border: t.done ? "none" : "2px solid " + C.border, background: t.done ? C.success : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2, cursor: "pointer" }}>
-                        {t.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: 14, fontWeight: 500, color: t.done ? C.textMuted : C.text, lineHeight: 1.5, textDecoration: t.done ? "line-through" : "none" }}>{t.text}</p>
-                        {(t.client || t.recurring) && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                          {t.client && <span style={{ fontSize: 12, color: C.textMuted }}>{t.client}</span>}
-                          {t.recurring && <span style={{ fontSize: 8, color: C.textMuted, fontWeight: 600, padding: "0px 4px", borderRadius: 3, border: "1px solid " + C.border, background: C.surface, lineHeight: 1.5 }}>↻</span>}
-                        </div>}
-                      </div>
-                      <button onClick={(e) => { e.stopPropagation(); { setTasks(tasks.filter(x => x.id !== t.id)); tasksDb.delete(t.id); }; }} style={{ background: "none", border: "none", fontSize: 18, color: C.border, cursor: "pointer", padding: "4px", lineHeight: 1, flexShrink: 0, marginTop: 0 }}>×</button>
-                    </div>
-                  );
-                })}
-                </div>
-              </div>
-            )}
-
-            {tasksDone === tasksTotal && tasksTotal > 0 && <div style={{ background: C.heroGrad, borderRadius: 14, padding: "24px 20px", color: "#fff", marginTop: 16, textAlign: "center" }}><div style={{ fontSize: 32, marginBottom: 8 }}>🔥</div><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>All clear.</div><p style={{ fontSize: 13, color: "rgba(255,255,255,.5)" }}>Well done. See you tomorrow.</p></div>}
-            </div>
-            {/* RIGHT — Rai mini chat */}
-            <RaiMiniPanel />
-          </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ═══ SWEEPS (ENTERPRISE) ═══ */}
         {page === "sweeps" && tier === "enterprise" && (
