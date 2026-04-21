@@ -1697,10 +1697,11 @@ export default function App({ user }) {
         }
         .rt-row:hover { transform: translateY(-1px); }
         .rt-row:hover .rt-dismiss { opacity: 1 !important; }
-        /* Today v4 — mobile stacking */
+        /* Today v4 — mobile (<=900px): single column, no focus pane, no rai */
         @media (max-width: 900px) {
           .rt-grid { grid-template-columns: 1fr !important; }
-          .rt-focus-col { position: static !important; }
+          .rt-focus-col { display: none !important; }
+          .rt-rai-col { display: none !important; }
           .rt-band { flex-direction: column !important; align-items: flex-start !important; }
           .rt-band-right { display: none !important; }
           .rt-band-sub-pct { display: inline-block !important; }
@@ -1711,10 +1712,9 @@ export default function App({ user }) {
           .rt-row-meta span:nth-child(n+4) { display: none !important; }
           .rt-row-score { display: none !important; }
         }
-        /* Today v4 — desktop (>=1440px): show Rai mini right rail */
+        /* Today v4 — wide desktop (>=1440px): add Rai column on the right */
         @media (min-width: 1440px) {
-          .rt-grid { grid-template-columns: minmax(0, 1fr) 360px !important; }
-          .rt-focus-col { display: flex !important; }
+          .rt-rai-col { display: flex !important; }
         }
         @keyframes fwLaunch {
           0% { transform: translateY(0); opacity: 1; }
@@ -2067,7 +2067,8 @@ export default function App({ user }) {
 
           // ─── RENDER ──────────────────────────────────────────────────────
           return (
-            <div className="rt-today-v4" style={{ width: "100%" }}>
+            <div className="rt-today-v4" style={{ width: "100%", display: "flex", gap: 20, alignItems: "flex-start" }}>
+              <div className="rt-main-col" style={{ flex: 1, minWidth: 0 }}>
               {/* STATUS BAND */}
               <div className="rt-band" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
@@ -2243,7 +2244,7 @@ export default function App({ user }) {
               </div>
 
               {/* MAIN GRID: task list + focus pane */}
-              <div className="rt-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
+              <div className="rt-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 360px", gap: 20, alignItems: "start" }}>
                 {/* LEFT COLUMN — TASK LIST */}
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 4px 12px" }}>
@@ -2387,9 +2388,8 @@ export default function App({ user }) {
                   )}
                 </div>
 
-                {/* RIGHT COLUMN — Desktop 1440+ only. Rai Mini always, Focus Pane below when task selected */}
-                <div className="rt-focus-col" style={{ display: "none", flexDirection: "column", gap: 16 }}>
-                  <RaiMiniPanel />
+                {/* MIDDLE COLUMN — Focus Pane on desktop (>900px). Only when task selected. */}
+                <div className="rt-focus-col" style={{ display: "flex", flexDirection: "column", gap: 16, position: "sticky", top: 20 }}>
                   {focusTask && focusClient && (
                     <FocusPane
                       task={focusTask}
@@ -2408,6 +2408,12 @@ export default function App({ user }) {
                     />
                   )}
                 </div>
+              </div>
+              </div>
+
+              {/* OUTER RIGHT COLUMN — Rai mini, wide desktop only (>=1440px) */}
+              <div className="rt-rai-col" style={{ display: "none", flexDirection: "column", gap: 16, position: "sticky", top: 20, width: 360, flexShrink: 0 }}>
+                <RaiMiniPanel />
               </div>
 
               {/* CONFETTI */}
