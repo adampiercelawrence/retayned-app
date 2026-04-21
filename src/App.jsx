@@ -91,12 +91,11 @@ const FocusPane = ({ task, client, retHistory, whyText, confidence, draftText, C
 
       {/* Task headline */}
       <div style={{ marginTop: 18 }}>
-        {isRai && (
+        {isRai ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, color: C.btn, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>
-            <Icon name="sparkles" size={11} /> Rai suggests
+            <Icon name="sparkles" size={11} /> Assigned by Rai
           </span>
-        )}
-        {!isRai && (
+        ) : (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, color: C.primary, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>
             <Icon name="plus" size={11} /> Your task
           </span>
@@ -104,7 +103,7 @@ const FocusPane = ({ task, client, retHistory, whyText, confidence, draftText, C
         <h3 style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.35, margin: "8px 0 0", letterSpacing: -0.2, color: C.text }}>{task.text}</h3>
       </div>
 
-      {/* Why Rai flagged this */}
+      {/* Why Rai flagged this — Rai tasks only */}
       {isRai && whyText && (
         <div style={{ marginTop: 14, padding: 14, background: C.btnLight, borderRadius: 10, border: "1px solid #DCCEF2" }}>
           <div style={{ fontSize: 10.5, color: C.btn, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6 }}>Why</div>
@@ -121,7 +120,7 @@ const FocusPane = ({ task, client, retHistory, whyText, confidence, draftText, C
         </div>
       )}
 
-      {/* Drafted message */}
+      {/* Drafted message — Rai tasks only */}
       {isRai && draftText && (
         <div style={{ marginTop: 12, padding: 14, background: "#fff", border: "1px dashed " + C.border, borderRadius: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -144,24 +143,6 @@ const FocusPane = ({ task, client, retHistory, whyText, confidence, draftText, C
             Send draft
           </button>
         )}
-      </div>
-
-      {/* Log touchpoint */}
-      <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid " + C.borderLight }}>
-        <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>Log a touchpoint</span>
-        <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
-          {[
-            { icon: "phone", label: "Call" },
-            { icon: "mail", label: "Email" },
-            { icon: "chat", label: "DM" },
-            { icon: "video", label: "Loom" },
-            { icon: "mic", label: "Voice" },
-          ].map(q => (
-            <button key={q.label} title={q.label} style={{ width: 36, height: 36, borderRadius: 10, background: C.primaryGhost, color: C.textSec, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid " + C.borderLight, cursor: "pointer" }}>
-              <Icon name={q.icon} size={14} color={C.textSec} />
-            </button>
-          ))}
-        </div>
       </div>
     </aside>
   );
@@ -1730,11 +1711,10 @@ export default function App({ user }) {
           .rt-row-meta span:nth-child(n+4) { display: none !important; }
           .rt-row-score { display: none !important; }
         }
-        /* Today v4 — desktop (>=1440px): show Rai mini right rail, hide inline Focus Pane */
+        /* Today v4 — desktop (>=1440px): show Rai mini right rail */
         @media (min-width: 1440px) {
           .rt-grid { grid-template-columns: minmax(0, 1fr) 360px !important; }
           .rt-focus-col { display: flex !important; }
-          .rt-focus-inline { display: none !important; }
         }
         @keyframes fwLaunch {
           0% { transform: translateY(0); opacity: 1; }
@@ -2264,28 +2244,8 @@ export default function App({ user }) {
 
               {/* MAIN GRID: task list + focus pane */}
               <div className="rt-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
-                {/* LEFT COLUMN — FOCUS PANE (mobile/tablet, above tasks) + TASK LIST */}
+                {/* LEFT COLUMN — TASK LIST */}
                 <div style={{ minWidth: 0 }}>
-                  {/* Focus Pane shown here (above tasks) when below 1440px */}
-                  {focusTask && focusClient && (
-                    <div className="rt-focus-inline" style={{ marginBottom: 16 }}>
-                      <FocusPane
-                        task={focusTask}
-                        client={focusClient}
-                        retHistory={stubRetentionHistory(focusClient.ret || 60)}
-                        whyText={stubWhy(focusTask, focusClient)}
-                        confidence={stubConfidence()}
-                        draftText={stubDraft(focusClient.name)}
-                        C={C}
-                        Icon={Icon}
-                        Spark={Spark}
-                        ClientAvatar={ClientAvatar}
-                        ScoreChip={ScoreChip}
-                        retColor={retColor}
-                        onComplete={() => toggleTask(focusTask.id)}
-                      />
-                    </div>
-                  )}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 4px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Your plate</span>
