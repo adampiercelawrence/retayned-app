@@ -97,8 +97,8 @@ const FocusPane = ({ task, client, retHistory, whyText, whyNowText, patternText,
             <Icon name="sparkles" size={11} /> Assigned by Rai
           </span>
         ) : (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, color: C.primary, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>
-            <Icon name="plus" size={11} /> Your task
+          <span style={{ fontSize: 10.5, color: C.primary, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>
+            {task.recurring ? "Recurring Task" : "One-Time Task"}
           </span>
         )}
         <h3 style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.35, margin: "8px 0 0", letterSpacing: -0.2, color: C.text }}>{task.text}</h3>
@@ -121,8 +121,8 @@ const FocusPane = ({ task, client, retHistory, whyText, whyNowText, patternText,
               </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5 }}>
-              <span style={{ color: C.textSec }}>Last touch</span>
-              <span style={{ color: C.text, fontWeight: 500 }}>{contextData.lastTouch}</span>
+              <span style={{ color: C.textSec }}>Last task</span>
+              <span style={{ color: C.text, fontWeight: 500 }}>{contextData.lastTask}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5 }}>
               <span style={{ color: C.textSec }}>Upcoming</span>
@@ -915,6 +915,7 @@ export default function App({ user }) {
           text: t.text,
           client: t.client_name || "",
           done: reset ? false : t.is_done,
+          completed_at: reset ? null : t.completed_at,
           ai: t.is_ai_generated,
           alert: t.is_alert,
           recurring: t.is_recurring,
@@ -986,6 +987,7 @@ export default function App({ user }) {
           client: client?.name || "Unknown",
           ret: client?.retention_score || 0,
           due: isToday ? "Today" : dueDate ? dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—",
+          due_date: dueDate ? dueDate.toISOString() : null,
           overdue: overdue,
         };
       }));
@@ -1031,8 +1033,9 @@ export default function App({ user }) {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
     const newDone = !task.done;
+    const nowIso = new Date().toISOString();
     // Optimistic update
-    const updated = tasks.map(t => t.id === id ? { ...t, done: newDone } : t);
+    const updated = tasks.map(t => t.id === id ? { ...t, done: newDone, completed_at: newDone ? nowIso : null } : t);
     setTasks(updated);
     const countable = updated.filter(t => !t.ai);
     const doneNow = countable.filter(t => t.done).length;
@@ -1509,20 +1512,24 @@ export default function App({ user }) {
             <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.2 }}>Talk to Rai</div>
             <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Reading your portfolio</div>
           </div>
-          <button
-            onClick={() => { setAiMessages([]); setAiInput(""); }}
-            title="New chat"
-            style={{
-              width: 30, height: 30, borderRadius: 7,
-              border: "1px solid #E3D6F7",
-              background: "#fff",
-              color: C.textSec,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer"
-            }}
-          >
-            <Icon name="plus" size={14} color={C.textSec} />
-          </button>
+          {aiMessages.length > 0 && (
+            <button
+              onClick={() => { setAiMessages([]); setAiInput(""); }}
+              title="New chat"
+              style={{
+                height: 30, padding: "0 10px", borderRadius: 7,
+                border: "1px solid #E3D6F7",
+                background: "#fff",
+                color: C.btn,
+                display: "inline-flex", alignItems: "center", gap: 5,
+                cursor: "pointer",
+                fontSize: 12, fontWeight: 600, fontFamily: "inherit"
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 20h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              New chat
+            </button>
+          )}
         </div>
 
         {/* Body content */}
@@ -1564,10 +1571,9 @@ export default function App({ user }) {
                 color: aiInput.trim() ? "#fff" : C.textMuted,
                 cursor: aiInput.trim() ? "pointer" : "default",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontFamily: "monospace", fontWeight: 600,
                 flexShrink: 0
               }}
-            >↵</button>
+            ><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill={aiInput.trim() ? "#fff" : C.textMuted}/></svg></button>
           </div>
 
           {aiMessages.length === 0 ? (
@@ -2065,7 +2071,7 @@ export default function App({ user }) {
 
       {/* SIDEBAR */}
       <div className="r-desk" style={{ width: 240, background: C.sidebar, flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50, borderRight: "1px solid " + C.borderLight }}>
-        <div style={{ padding: "20px 18px 24px" }}><span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: C.text, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ color: C.primary, letterSpacing: "0" }}>.</span></span></div>
+        <div style={{ padding: "20px 18px 24px" }}><span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
         <div style={{ flex: 1, padding: "0 10px" }}>
           {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => (
             <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, marginBottom: 2, background: page === n.id ? C.card : "transparent", color: page === n.id ? C.text : C.textSec, fontWeight: page === n.id ? 700 : 500, boxShadow: page === n.id ? C.shadowSm : "none", cursor: "pointer" }}>
@@ -2173,12 +2179,47 @@ export default function App({ user }) {
             if ((client.ret || 60) < 60) return "3 clients on this curve lost 12+ pts in 30d";
             return "Similar clients stayed strong when touched now";
           };
-          const stubContext = (client) => {
+          // Relative time formatter — "Today" / "Yesterday" / "Nd ago" / "Nw ago" / "Nmo ago"
+          const relTime = (dateStr) => {
+            if (!dateStr) return "—";
+            const d = new Date(dateStr);
+            const diff = Date.now() - d.getTime();
+            const days = Math.floor(diff / 86400000);
+            if (days === 0) return "Today";
+            if (days === 1) return "Yesterday";
+            if (days < 7) return `${days}d ago`;
+            if (days < 30) return `${Math.floor(days / 7)}w ago`;
+            if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+            return `${Math.floor(days / 365)}y ago`;
+          };
+          // Real Context builder — reads last completed task + next health check / renewal
+          const buildContext = (client) => {
             if (!client) return null;
+            // Last task: most recently completed task for this client
+            const completed = tasks
+              .filter(t => t.client === client.name && t.done && t.completed_at)
+              .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+            const lastDone = completed[0];
+            const lastTask = lastDone ? `${lastDone.text} · ${relTime(lastDone.completed_at)}` : "No completed tasks yet";
+            // Upcoming: sooner of pending health check or renewal
+            const pendingHc = hcQueue.find(h => h.client === client.name);
+            const renewalHash = (client.name || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+            const renewalDays = (renewalHash % 180) + 5;
+            let upcoming = `Renewal in ${renewalDays}d`;
+            if (pendingHc) {
+              if (pendingHc.overdue > 0) {
+                upcoming = `Health check overdue ${pendingHc.overdue}d`;
+              } else if (pendingHc.due_date) {
+                const daysUntilHc = Math.ceil((new Date(pendingHc.due_date).getTime() - Date.now()) / 86400000);
+                if (daysUntilHc < renewalDays) {
+                  upcoming = daysUntilHc <= 0 ? "Health check today" : `Health check in ${daysUntilHc}d`;
+                }
+              }
+            }
             return {
               cadence: "On rhythm",
-              lastTouch: "Tue · 2d ago",
-              upcoming: "Renewal call in 11d",
+              lastTask,
+              upcoming,
             };
           };
 
@@ -2529,7 +2570,7 @@ export default function App({ user }) {
                           style={{
                             display: "flex", alignItems: "center", gap: 12,
                             padding: "12px 14px",
-                            background: C.card,
+                            background: isFocus ? C.surfaceSelected : C.card,
                             border: "1px solid " + C.borderSoft,
                             borderRadius: 12,
                             boxShadow: C.shadowSm,
@@ -2576,7 +2617,7 @@ export default function App({ user }) {
                               color={kind === "rai" ? C.btn : C.ink500}
                             />
                             <span className="rt-row-tag-label">
-                              {kind === "rai" ? "Assigned by Rai" : (t.recurring ? "Recurring" : "Today Only")}
+                              {kind === "rai" ? "Assigned by Rai" : (t.recurring ? "Recurring" : "Today")}
                             </span>
                           </div>
 
@@ -2639,7 +2680,7 @@ export default function App({ user }) {
                     patternText={stubPattern(focusTask, focusClient)}
                     confidence={stubConfidence()}
                     draftText={stubDraft(focusClient.name)}
-                    contextData={stubContext(focusClient)}
+                    contextData={buildContext(focusClient)}
                     C={C}
                     Icon={Icon}
                     Spark={Spark}
