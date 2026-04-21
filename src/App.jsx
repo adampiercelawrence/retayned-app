@@ -6,9 +6,10 @@ const C = {
   primary: "#33543E", primaryLight: "#558B68", primarySoft: "#E6EFE9", primaryGhost: "#F3F8F5",
   bg: "#FAFAF7", card: "#FFFFFF", surface: "#EEEFEB", surfaceWarm: "#F2EEE8",
   sidebar: "#FAFAF7",
-  text: "#1E261F", textSec: "#5A6E5E", textMuted: "#92A596",
+  text: "#1E261F", textSec: "#6B6B66", textMuted: "#9A9A93",
   ink900: "#0A0A0A", ink700: "#2A2A28", ink500: "#6B6B66", ink400: "#9A9A93", ink300: "#C4C4BD",
-  border: "#D8DFD8", borderLight: "#E8ECE6", borderSoft: "#EFEFEA",
+  border: "#D8DFD8", borderLight: "#EFEFEA", borderSoft: "#EFEFEA",
+  surfaceSelected: "#FAF6FE",
   heroGrad: "linear-gradient(145deg, #1E261F 0%, #2A382C 40%, #33543E 100%)",
   raiGrad: "linear-gradient(145deg, #1E261F 0%, #33543E 55%, #558B68 100%)",
   danger: "#C4432B", warning: "#B88B15", success: "#2D8659",
@@ -57,7 +58,7 @@ const Icon = ({ name, size = 18, color = "currentColor" }) => {
 };
 
 // ─── FocusPane — right-column card shown when a task is selected ──────────
-const FocusPane = ({ task, client, retHistory, whyText, confidence, draftText, C, Icon, Spark, ClientAvatar, ScoreChip, retColor, onComplete }) => {
+const FocusPane = ({ task, client, retHistory, whyText, whyNowText, patternText, confidence, draftText, contextData, C, Icon, Spark, ClientAvatar, ScoreChip, retColor, onComplete, onLog }) => {
   if (!task || !client) return null;
   const isRai = task.ai === true;
   const delta = (() => {
@@ -103,6 +104,34 @@ const FocusPane = ({ task, client, retHistory, whyText, confidence, draftText, C
         <h3 style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.35, margin: "8px 0 0", letterSpacing: -0.2, color: C.text }}>{task.text}</h3>
       </div>
 
+      {/* Context block — user tasks only */}
+      {!isRai && contextData && (
+        <div style={{ marginTop: 14, padding: 14, background: C.bg, border: "1px solid " + C.borderSoft, borderRadius: 10 }}>
+          <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 10 }}>Context</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5 }}>
+              <span style={{ color: C.textSec }}>Cadence</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.retGood, fontWeight: 500 }}>
+                <span style={{ display: "inline-flex", gap: 2 }}>
+                  <span style={{ width: 5, height: 5, borderRadius: 3, background: C.retGood }}></span>
+                  <span style={{ width: 5, height: 5, borderRadius: 3, background: C.retGood }}></span>
+                  <span style={{ width: 5, height: 5, borderRadius: 3, background: C.retGood }}></span>
+                </span>
+                {contextData.cadence}
+              </span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5 }}>
+              <span style={{ color: C.textSec }}>Last touch</span>
+              <span style={{ color: C.text, fontWeight: 500 }}>{contextData.lastTouch}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5 }}>
+              <span style={{ color: C.textSec }}>Upcoming</span>
+              <span style={{ color: C.text, fontWeight: 500 }}>{contextData.upcoming}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Why Rai flagged this — Rai tasks only */}
       {isRai && whyText && (
         <div style={{ marginTop: 14, padding: 14, background: C.btnLight, borderRadius: 10, border: "1px solid #DCCEF2" }}>
@@ -120,29 +149,51 @@ const FocusPane = ({ task, client, retHistory, whyText, confidence, draftText, C
         </div>
       )}
 
-      {/* Drafted message — Rai tasks only */}
+      {/* Why now + Pattern — Rai tasks only */}
+      {isRai && (whyNowText || patternText) && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+          {whyNowText && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: C.bg, border: "1px solid " + C.borderSoft, borderRadius: 8, fontSize: 12 }}>
+              <span style={{ display: "inline-flex", flexShrink: 0, color: C.textSec }}><Icon name="clock" size={11} /></span>
+              <span style={{ color: C.textMuted, fontWeight: 500, minWidth: 62 }}>Why now</span>
+              <span style={{ color: C.text, flex: 1 }}>{whyNowText}</span>
+            </div>
+          )}
+          {patternText && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: C.bg, border: "1px solid " + C.borderSoft, borderRadius: 8, fontSize: 12 }}>
+              <span style={{ display: "inline-flex", flexShrink: 0, color: C.textSec }}><Icon name="trendUp" size={11} /></span>
+              <span style={{ color: C.textMuted, fontWeight: 500, minWidth: 62 }}>Pattern</span>
+              <span style={{ color: C.text, flex: 1 }}>{patternText}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Suggested talking points — Rai tasks only (no send) */}
       {isRai && draftText && (
-        <div style={{ marginTop: 12, padding: 14, background: "#fff", border: "1px dashed " + C.border, borderRadius: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>Draft ready</span>
-            <button style={{ fontSize: 11, color: C.btn, fontWeight: 500, padding: "2px 8px", border: "1px solid " + C.border, borderRadius: 999, background: "none", cursor: "pointer", fontFamily: "inherit" }}>1 of 3</button>
+        <div style={{ marginTop: 12, padding: 14, background: "#fff", border: "1px dashed " + C.ink300, borderRadius: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>Suggested talking points</span>
+            <div style={{ display: "inline-flex", gap: 2, padding: 2, background: C.primaryGhost, border: "1px solid " + C.borderSoft, borderRadius: 6 }}>
+              <button style={{ padding: "3px 8px", fontSize: 10.5, fontWeight: 500, border: "none", background: "transparent", color: C.textMuted, borderRadius: 4, cursor: "pointer", fontFamily: "inherit" }}>Softer</button>
+              <button style={{ padding: "3px 8px", fontSize: 10.5, fontWeight: 500, border: "none", background: "#fff", color: C.text, borderRadius: 4, cursor: "pointer", fontFamily: "inherit", boxShadow: C.shadowSm }}>Neutral</button>
+              <button style={{ padding: "3px 8px", fontSize: 10.5, fontWeight: 500, border: "none", background: "transparent", color: C.textMuted, borderRadius: 4, cursor: "pointer", fontFamily: "inherit" }}>Firmer</button>
+            </div>
           </div>
           <div style={{ fontSize: 13, lineHeight: 1.6, color: C.textSec, fontFamily: "Georgia, serif", fontStyle: "italic" }}>{draftText}</div>
         </div>
       )}
 
-      {/* Actions */}
-      <div style={{ display: "flex", gap: 6, marginTop: 16 }}>
-        <button onClick={onComplete} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", background: C.btn, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-          <Icon name="check" size={14} color="#fff" />
-          Mark complete
+      {/* Actions — stacked Log Touchpoint + Mark Complete */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+        <button onClick={onLog} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", background: C.card, color: C.btn, borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1.5px solid " + C.btn, cursor: "pointer", fontFamily: "inherit" }}>
+          <Icon name="phone" size={14} />
+          Log Touchpoint
         </button>
-        {isRai && (
-          <button style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", background: C.card, color: C.text, borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1px solid " + C.border, cursor: "pointer", fontFamily: "inherit" }}>
-            <Icon name="send" size={14} />
-            Send draft
-          </button>
-        )}
+        <button onClick={onComplete} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", background: C.btn, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+          <Icon name="check" size={14} color="#fff" />
+          Mark Complete
+        </button>
       </div>
     </aside>
   );
@@ -1538,7 +1589,11 @@ export default function App({ user }) {
                       if (h >= 5 && h < 12) return "Good morning";
                       if (h >= 12 && h < 17) return "Good afternoon";
                       return "Good evening";
-                    })()}{user?.user_metadata?.full_name ? ", " + user.user_metadata.full_name.split(" ")[0] : ""}.
+                    })()}{(() => {
+                      const n = user?.user_metadata?.full_name?.split(" ")[0]
+                        || (user?.email ? user.email.split("@")[0].replace(/^\w/, c => c.toUpperCase()) : "");
+                      return n ? ", " + n : "";
+                    })()}.
                   </b>{" "}
                   <span style={{ color: C.textSec }}>I've been reading your book. Where should we start?</span>
                 </div>
@@ -1823,6 +1878,7 @@ export default function App({ user }) {
         }
         .rt-row:hover { transform: translateY(-1px); }
         .rt-row:hover .rt-dismiss { opacity: 1 !important; }
+        .rt-row-selected { background: ${C.surfaceSelected}; }
         /* Today v4 — Grid layout, 3 breakpoints */
         /* Default: narrow desktop (901-1439px) — 2 cols, status + composer span full width, tasks + focus below */
         .rt-today-v4 {
@@ -1845,10 +1901,10 @@ export default function App({ user }) {
           /* Band stays row-direction on mobile so compact % sits right of headline */
           .rt-band { flex-wrap: nowrap !important; gap: 12px !important; }
           .rt-band-right { display: block !important; min-width: 0 !important; flex-shrink: 0; }
-          .rt-band-right .rt-pct-num { font-size: 18px !important; }
-          .rt-band-right .rt-pct-num span { font-size: 11px !important; }
-          .rt-band-right .rt-pct-lbl { display: none !important; }
-          .rt-band-right .rt-pct-bar { width: 72px; height: 3px !important; margin-top: 4px !important; }
+          .rt-band-right .rt-pct-num { font-size: 26px !important; }
+          .rt-band-right .rt-pct-num span { font-size: 14px !important; }
+          .rt-band-right .rt-pct-lbl { display: block !important; font-size: 9.5px !important; }
+          .rt-band-right .rt-pct-bar { width: 140px; height: 5px !important; margin-top: 6px !important; }
           .rt-band-sub-pct { display: none !important; }
           .rt-band-sub-bar { display: none !important; }
           .rt-band-sub { width: 100% !important; }
@@ -1856,6 +1912,10 @@ export default function App({ user }) {
           .rt-composer-controls > button:last-child { margin-left: auto; }
           .rt-row-meta span:nth-child(n+4) { display: none !important; }
           .rt-row-score { display: none !important; }
+          /* Mobile: no selected-row fill (no Focus Pane to open) + tag collapses to icon */
+          .rt-row-selected { background: #FFFFFF !important; }
+          .rt-row-tag { padding: 0 !important; border: none !important; background: transparent !important; }
+          .rt-row-tag-label { display: none !important; }
         }
         /* Wide desktop (>=1440px): 3 cols, Rai spans composer+tasks rows */
         @media (min-width: 1440px) {
@@ -2102,6 +2162,25 @@ export default function App({ user }) {
             if (score < 55) return `Score is ${score} and they haven't heard from you in a while. Time to reconnect.`;
             return `This relationship is due for a proactive touch. Not urgent, but don't let it drift.`;
           };
+          const stubWhyNow = (task, client) => {
+            if (!client) return "";
+            const delta = stubDelta(client.name);
+            if (delta < -2) return "Score drift + cadence gap converging";
+            return `Last touch ${5 + Math.abs(delta)}d ago, longer than usual`;
+          };
+          const stubPattern = (task, client) => {
+            if (!client) return "";
+            if ((client.ret || 60) < 60) return "3 clients on this curve lost 12+ pts in 30d";
+            return "Similar clients stayed strong when touched now";
+          };
+          const stubContext = (client) => {
+            if (!client) return null;
+            return {
+              cadence: "On rhythm",
+              lastTouch: "Tue · 2d ago",
+              upcoming: "Renewal call in 11d",
+            };
+          };
 
           // ─── HANDLERS ────────────────────────────────────────────────────
           const greeting = (() => {
@@ -2113,7 +2192,9 @@ export default function App({ user }) {
             return "Late night";
           })();
 
-          const firstName = user?.user_metadata?.full_name?.split(" ")[0] || "";
+          const firstName = user?.user_metadata?.full_name?.split(" ")[0]
+            || (user?.email ? user.email.split("@")[0].replace(/^\w/, c => c.toUpperCase()) : "")
+            || "";
           const displayDate = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
           // Score chip component
@@ -2239,7 +2320,7 @@ export default function App({ user }) {
                     {greeting}{firstName ? ", " + firstName : ""}.
                   </h1>
                   <div className="rt-band-sub" style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span><b style={{ color: C.text, fontWeight: 700 }}>{remaining}</b> on your plate</span>
+                    <span><b style={{ color: C.text, fontWeight: 700 }}>{remaining}</b> tasks</span>
                     <span style={{ color: C.border }}>·</span>
                     <span><b style={{ color: C.text, fontWeight: 700 }}>{doneCount}</b> done</span>
                     <span className="rt-band-sub-pct" style={{ display: "none", marginLeft: "auto", fontSize: 11, fontWeight: 700, color: C.primary, background: C.primarySoft, padding: "2px 8px", borderRadius: 999 }}>
@@ -2294,7 +2375,7 @@ export default function App({ user }) {
                     />
                   </div>
                   <div className="rt-composer-controls" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <button onClick={() => setComposerMenuOpen(!composerMenuOpen)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px dashed " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                    <button onClick={() => setComposerMenuOpen(!composerMenuOpen)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: C.card, cursor: "pointer", fontFamily: "inherit" }}>
                       <Icon name="clients" size={12} /><span>Client</span>
                     </button>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 10px 6px 12px", border: "1px solid " + C.border, borderRadius: 8, background: C.card }}>
@@ -2443,66 +2524,61 @@ export default function App({ user }) {
                       const delta = client ? stubDelta(client.name) : 0;
 
                       return (
-                        <div key={t.id} onClick={() => setFocusId(t.id)} className="rt-row"
+                        <div key={t.id} onClick={() => setFocusId(t.id)}
+                          className={"rt-row" + (isFocus ? " rt-row-selected" : "")}
                           style={{
                             display: "flex", alignItems: "center", gap: 12,
                             padding: "12px 14px",
                             background: C.card,
-                            border: "1px solid " + (isFocus ? C.btn : C.border),
+                            border: "1px solid " + C.borderSoft,
                             borderRadius: 12,
-                            boxShadow: isFocus ? "0 0 0 3px rgba(91,33,182,0.08), " + C.shadowSm : C.shadowSm,
+                            boxShadow: C.shadowSm,
                             cursor: "pointer",
-                            transition: "border-color 150ms, box-shadow 150ms",
+                            transition: "background 150ms",
                           }}>
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleTask(t.id); }}
                             aria-label="mark complete"
                             style={{
-                              width: 22, height: 22, borderRadius: 11, border: "1.5px solid " + C.border,
+                              width: 22, height: 22, borderRadius: 11, border: "1.5px solid " + C.ink300,
                               background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
                               flexShrink: 0, transition: "all 180ms", cursor: "pointer",
                             }}>
                           </button>
 
-                          {client ? <ClientAvatar client={client} size={28} /> : <div style={{ width: 28, height: 28, borderRadius: 14, background: C.borderLight, flexShrink: 0 }} />}
+                          {client ? <ClientAvatar client={client} size={28} /> : <div style={{ width: 28, height: 28, borderRadius: 14, background: C.borderSoft, flexShrink: 0 }} />}
 
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {t.text}
                             </div>
-                            <div className="rt-row-meta" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2, fontSize: 11.5, color: C.textMuted }}>
-                              {client && <span style={{ fontWeight: 500, color: C.textSec }}>{client.name}</span>}
-                              {kind === "rai" && (
-                                <>
-                                  {client && <span style={{ opacity: 0.35 }}>·</span>}
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: C.btn, fontWeight: 500 }}>
-                                    <Icon name="sparkles" size={10} />
-                                    <span>Assigned by Rai</span>
-                                  </span>
-                                </>
-                              )}
-                              {kind === "system" && (
-                                <>
-                                  {client && <span style={{ opacity: 0.35 }}>·</span>}
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
-                                    <Icon name="trendUp" size={10} />
-                                    <span>{typeLabel(t)}</span>
-                                  </span>
-                                </>
-                              )}
-                              {t.recurring && (
-                                <>
-                                  <span style={{ opacity: 0.35 }}>·</span>
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: C.textSec, fontWeight: 500 }} title="Recurring">
-                                    <Icon name="clock" size={10} />
-                                    <span>Recurring</span>
-                                  </span>
-                                </>
-                              )}
+                            <div className="rt-row-meta" style={{ fontSize: 11.5, color: C.ink500, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {client ? client.name : ""}
                             </div>
                           </div>
 
-                          {client && <span className="rt-row-score"><ScoreChip score={client.ret} size="sm" /></span>}
+                          {/* Task-type tag — right slot, always one of three states */}
+                          <div className="rt-row-tag" style={{
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                            padding: "3px 9px",
+                            background: kind === "rai" ? C.btnLight : "transparent",
+                            color: kind === "rai" ? C.btn : C.ink500,
+                            border: kind === "rai" ? "none" : "1px solid " + C.ink300,
+                            borderRadius: 999,
+                            fontSize: 11,
+                            fontWeight: kind === "rai" ? 600 : 400,
+                            flexShrink: 0,
+                            whiteSpace: "nowrap",
+                          }}>
+                            <Icon
+                              name={kind === "rai" ? "sparkles" : (t.recurring ? "clock" : "today")}
+                              size={10}
+                              color={kind === "rai" ? C.btn : C.ink500}
+                            />
+                            <span className="rt-row-tag-label">
+                              {kind === "rai" ? "Assigned by Rai" : (t.recurring ? "Recurring" : "Today Only")}
+                            </span>
+                          </div>
 
                           <button onClick={(e) => { e.stopPropagation(); setDismissedIds({ ...dismissedIds, [t.id]: true }); if (t.ai) dismissAi(t.id); }}
                             className="rt-dismiss"
@@ -2559,8 +2635,11 @@ export default function App({ user }) {
                     client={focusClient}
                     retHistory={stubRetentionHistory(focusClient.ret || 60)}
                     whyText={stubWhy(focusTask, focusClient)}
+                    whyNowText={stubWhyNow(focusTask, focusClient)}
+                    patternText={stubPattern(focusTask, focusClient)}
                     confidence={stubConfidence()}
                     draftText={stubDraft(focusClient.name)}
+                    contextData={stubContext(focusClient)}
                     C={C}
                     Icon={Icon}
                     Spark={Spark}
@@ -2568,6 +2647,7 @@ export default function App({ user }) {
                     ScoreChip={ScoreChip}
                     retColor={retColor}
                     onComplete={() => toggleTask(focusTask.id)}
+                    onLog={() => { setShowTouchpoint(true); setTpClient(focusClient.name); }}
                   />
                 ) : (
                   <div style={{ padding: "28px 20px", background: "transparent", border: "1px dashed " + C.border, borderRadius: 14, textAlign: "center" }}>
