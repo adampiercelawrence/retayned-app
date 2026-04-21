@@ -2127,7 +2127,7 @@ export default function App({ user }) {
               </div>
               {/* Hero avg-health number */}
               <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 14 }}>
-                <div style={{ fontSize: 42, fontWeight: 800, color: C.text, letterSpacing: "-0.04em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{avgHealth}</div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: "-0.03em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{avgHealth}</div>
                 <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>Avg health</div>
               </div>
               {/* Stacked bar — only non-zero buckets */}
