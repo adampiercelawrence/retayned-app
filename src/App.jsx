@@ -1817,6 +1817,7 @@ export default function App({ user }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { background: ${C.bg}; }
         input, textarea, select { font-size: 16px !important; }
         @media (min-width: 768px) { input, textarea, select { font-size: 14px !important; } }
         ::selection { background: #33543E; color: #fff; }
@@ -1864,6 +1865,7 @@ export default function App({ user }) {
         .r-rai-chat .r-rai-inputbar { background: transparent !important; }
         @media (min-width: 768px) {
           :root { --sidebar-w: 240px; --page-gap: 14px; }
+          html, body { background: ${C.surface} !important; }
           .app-root { background: ${C.surface} !important; }
           .r-desk { display: flex !important; }
           .r-mob-top { display: none !important; }
@@ -2079,15 +2081,14 @@ export default function App({ user }) {
 
       {/* SIDEBAR */}
       <div className="r-desk" style={{ width: 240, background: C.surfaceWarm, flexDirection: "column", position: "fixed", top: 14, left: 14, bottom: 14, zIndex: 50, borderRadius: 14, boxShadow: "0 1px 2px rgba(10,10,10,0.03), 0 2px 8px rgba(10,10,10,0.05)" }}>
-        <div style={{ padding: "20px 18px 2px" }}><span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
-        <div style={{ padding: "0 18px 18px" }}><span style={{ fontSize: 11, color: C.textMuted, letterSpacing: 0.2, fontStyle: "italic", fontFamily: "Georgia, serif" }}>Your client book</span></div>
+        <div style={{ padding: "20px 18px 18px" }}><span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
         <div style={{ flex: 1, padding: "0 10px", overflowY: "auto" }}>
           {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => {
             const active = page === n.id;
             return (
               <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, marginBottom: 2, background: active ? C.primarySoft : "transparent", color: active ? C.primary : C.text, fontWeight: active ? 600 : 500, boxShadow: active ? C.shadowSm : "none", cursor: "pointer" }}>
                 <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={n.icon} size={16} color={active ? C.primary : C.ink500} /></span><span style={{ fontSize: 14, flex: 1 }}>{n.label}</span>
-                {hasDot(n.id) && <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.warning, boxShadow: "0 0 0 2.5px " + C.surfaceWarm, flexShrink: 0 }} />}
+                {hasDot(n.id) && <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.danger, boxShadow: "0 0 0 2.5px " + C.surfaceWarm, flexShrink: 0 }} />}
               </div>
             );
           })}
@@ -2158,7 +2159,7 @@ export default function App({ user }) {
             </div>
           );
         })()}
-        <div style={{ padding: "4px 10px 8px" }}>
+        <div style={{ padding: "4px 6px 8px" }}>
           <div onClick={() => setTier(tier === "core" ? "enterprise" : "core")} className="nav-item" style={{ display: "none", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, color: C.textSec }}>
             <span style={{ fontSize: 12, fontWeight: 600 }}>{tier === "enterprise" ? "Enterprise" : "Core"}</span>
             <div style={{ width: 36, height: 20, borderRadius: 10, background: tier === "enterprise" ? C.btn : C.border, position: "relative", transition: "background 0.2s", cursor: "pointer" }}>
@@ -2168,8 +2169,8 @@ export default function App({ user }) {
           {(() => {
             const active = page === "settings";
             return (
-              <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, color: active ? C.primary : C.text, background: active ? C.primarySoft : "transparent", fontWeight: active ? 600 : 500, boxShadow: active ? C.shadowSm : "none", cursor: "pointer" }}>
-                <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="settings" size={16} color={active ? C.primary : C.ink500} /></span><span style={{ fontSize: 14, flex: 1 }}>Settings</span>
+              <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", borderRadius: 8, color: active ? C.primary : C.text, background: active ? C.primarySoft : "transparent", fontWeight: active ? 600 : 500, boxShadow: active ? C.shadowSm : "none", cursor: "pointer" }}>
+                <span style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="settings" size={20} color={active ? C.primary : C.ink500} /></span><span style={{ fontSize: 14, flex: 1 }}>Settings</span>
               </div>
             );
           })()}
@@ -5967,7 +5968,7 @@ export default function App({ user }) {
             <div key={n.id} onClick={() => n.id === "more" ? setShowMore(!showMore) : goTo(n.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer", padding: "5px 10px", borderRadius: 10, background: active ? C.primarySoft : "transparent", position: "relative" }}>
               <Icon name={n.icon} size={20} color={active ? C.primary : C.ink500} />
               <span style={{ fontSize: 9.5, fontWeight: active ? 700 : 600, color: active ? C.primary : C.ink500 }}>{n.label}</span>
-              {dot && <div style={{ position: "absolute", top: 2, right: 6, width: 7, height: 7, borderRadius: "50%", background: C.warning, boxShadow: "0 0 0 2.5px " + (active ? C.primarySoft : C.surfaceWarm) }} />}
+              {dot && <div style={{ position: "absolute", top: 2, right: 6, width: 7, height: 7, borderRadius: "50%", background: C.danger, boxShadow: "0 0 0 2.5px " + (active ? C.primarySoft : C.surfaceWarm) }} />}
             </div>
           );
         })}
