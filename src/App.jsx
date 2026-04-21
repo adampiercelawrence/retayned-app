@@ -186,11 +186,11 @@ const FocusPane = ({ task, client, retHistory, whyText, whyNowText, patternText,
 
       {/* Actions — stacked Log Touchpoint + Mark Complete */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-        <button onClick={onLog} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", background: C.card, color: C.btn, borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1.5px solid " + C.btn, cursor: "pointer", fontFamily: "inherit" }}>
+        <button onClick={onLog} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", background: C.card, color: C.btn, borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1.5px solid " + C.btn, cursor: "pointer", fontFamily: "inherit", boxShadow: C.shadowSm }}>
           <Icon name="phone" size={14} />
           Log Touchpoint
         </button>
-        <button onClick={onComplete} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", background: C.btn, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+        <button onClick={onComplete} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", background: C.btn, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit", boxShadow: "0 1px 2px rgba(91,33,182,0.15), 0 2px 6px rgba(91,33,182,0.22)" }}>
           <Icon name="check" size={14} color="#fff" />
           Mark Complete
         </button>
@@ -1592,9 +1592,9 @@ export default function App({ user }) {
                   <b style={{ fontWeight: 700 }}>
                     {(() => {
                       const h = new Date().getHours();
-                      if (h >= 5 && h < 12) return "Good morning";
-                      if (h >= 12 && h < 17) return "Good afternoon";
-                      return "Good evening";
+                      if (h >= 5 && h < 12) return "Morning";
+                      if (h >= 12 && h < 17) return "Afternoon";
+                      return "Evening";
                     })()}{(() => {
                       const n = user?.user_metadata?.full_name?.split(" ")[0]
                         || (user?.email ? user.email.split("@")[0].replace(/^\w/, c => c.toUpperCase()) : "");
@@ -2098,7 +2098,7 @@ export default function App({ user }) {
             </div>
           )}
         </div>
-        {/* Portfolio widget — full health summary */}
+        {/* Portfolio widget — gradient bar · editorial */}
         {(() => {
           const total = clients.length;
           if (total === 0) return null;
@@ -2112,49 +2112,49 @@ export default function App({ user }) {
             else acc.critical++;
             return acc;
           }, { thriving: 0, healthy: 0, watch: 0, atRisk: 0, critical: 0 });
-          const circ = 2 * Math.PI * 26; // 163.36
-          const legend = [
+          const segs = [
             { n: buckets.thriving, label: "Thriving", color: C.retElite },
             { n: buckets.healthy,  label: "Healthy",  color: C.retGood  },
             { n: buckets.watch,    label: "Watch",    color: C.retOk    },
             { n: buckets.atRisk,   label: "At risk",  color: C.retWarn  },
             { n: buckets.critical, label: "Critical", color: C.retCrit  },
-          ];
+          ].filter(s => s.n > 0);
           return (
-            <div style={{ padding: 14, margin: "0 10px 8px", background: "rgba(255,255,255,0.55)", borderRadius: 12, border: "1px solid " + C.borderSoft }}>
-              <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 700, letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 12 }}>Portfolio</div>
-              <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-                <div style={{ width: 60, height: 60, position: "relative", flexShrink: 0 }}>
-                  <svg width="60" height="60" viewBox="0 0 60 60">
-                    <circle cx="30" cy="30" r="26" fill="none" stroke={C.borderSoft} strokeWidth="4" />
-                    <circle cx="30" cy="30" r="26" fill="none" stroke={C.primary} strokeWidth="4"
-                      strokeDasharray={`${(avgHealth / 100) * circ} ${circ}`}
-                      strokeLinecap="round"
-                      transform="rotate(-90 30 30)" />
-                  </svg>
-                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800, color: C.text, fontVariantNumeric: "tabular-nums" }}>{avgHealth}</div>
-                </div>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3, fontSize: 11 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: C.textSec }}>Clients</span><span style={{ color: C.text, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{total}</span></div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: C.textSec }}>MRR</span><span style={{ color: C.text, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>${(totalRev / 1000).toFixed(1)}k</span></div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: C.textSec }}>Avg health</span><span style={{ color: C.primary, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{avgHealth}</span></div>
-                </div>
+            <div style={{ padding: 16, margin: "0 10px 8px", background: "rgba(255,255,255,0.55)", borderRadius: 12, border: "1px solid " + C.borderSoft }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16 }}>
+                <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 700, letterSpacing: 0.7, textTransform: "uppercase" }}>Portfolio</div>
+                <div style={{ fontSize: 9.5, color: C.textMuted, fontStyle: "italic", fontFamily: "Georgia, serif" }}>This week</div>
               </div>
-              {/* Segmented bar */}
-              <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", marginBottom: 10, background: C.borderSoft }}>
-                {legend.filter(l => l.n > 0).map((l, i) => (
-                  <div key={i} style={{ flex: l.n, background: l.color }} />
+              {/* Hero avg-health number */}
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 14 }}>
+                <div style={{ fontSize: 42, fontWeight: 800, color: C.text, letterSpacing: "-0.04em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{avgHealth}</div>
+                <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>Avg health</div>
+              </div>
+              {/* Stacked bar — only non-zero buckets */}
+              <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", gap: 2, marginBottom: 10 }}>
+                {segs.map((s, i) => (
+                  <div key={i} style={{ flex: s.n, background: s.color, borderRadius: i === 0 ? "4px 0 0 4px" : i === segs.length - 1 ? "0 4px 4px 0" : 0 }} />
                 ))}
               </div>
-              {/* Legend */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11 }}>
-                {legend.map((l, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: l.color, flexShrink: 0 }} />
-                    <span style={{ color: C.text, fontWeight: 600, minWidth: 14, fontVariantNumeric: "tabular-nums" }}>{l.n}</span>
-                    <span style={{ color: C.textSec }}>{l.label}</span>
+              {/* Inline segment labels */}
+              <div style={{ display: "flex", gap: 2, marginBottom: 14, fontSize: 10.5 }}>
+                {segs.map((s, i) => (
+                  <div key={i} style={{ flex: s.n, paddingTop: 2 }}>
+                    <div style={{ color: s.color, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{s.n}</div>
+                    <div style={{ color: C.textSec }}>{s.label}</div>
                   </div>
                 ))}
+              </div>
+              {/* Scale stats — clients + MRR */}
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, paddingTop: 14, borderTop: "1px solid " + C.borderSoft }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{total}</div>
+                  <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase", marginTop: 2 }}>Clients</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>${(totalRev / 1000).toFixed(1)}k</div>
+                  <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase", marginTop: 2 }}>MRR</div>
+                </div>
               </div>
             </div>
           );
@@ -2306,9 +2306,9 @@ export default function App({ user }) {
           const greeting = (() => {
             const h = new Date().getHours();
             if (h < 5) return "Working late";
-            if (h < 12) return "Good morning";
-            if (h < 17) return "Good afternoon";
-            if (h < 21) return "Good evening";
+            if (h < 12) return "Morning";
+            if (h < 17) return "Afternoon";
+            if (h < 21) return "Evening";
             return "Late night";
           })();
 
@@ -2700,7 +2700,7 @@ export default function App({ user }) {
                             </span>
                           </div>
 
-                          <button onClick={(e) => { e.stopPropagation(); setDismissedIds({ ...dismissedIds, [t.id]: true }); if (t.ai) dismissAi(t.id); }}
+                          <button onClick={(e) => { e.stopPropagation(); if (t.ai) { dismissAi(t.id); } else { setTasks(tasks.filter(t2 => t2.id !== t.id)); tasksDb.delete(t.id); } }}
                             className="rt-dismiss"
                             style={{ width: 26, height: 26, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, opacity: 0.3, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}
                             aria-label="dismiss">
