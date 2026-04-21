@@ -508,7 +508,7 @@ export default function App({ user }) {
   const [clients, setClients] = useState([]);
   const [showAddClient, setShowAddClient] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
-  const [clientsSort, setClientsSort] = useState("attention");
+  const [clientsSort, setClientsSort] = useState("priority");
   const [clientsView, setClientsView] = useState(() => {
     try { return localStorage.getItem("clients-view") || "table"; } catch (e) { return "table"; }
   });
@@ -1863,6 +1863,17 @@ export default function App({ user }) {
           }
           .rt-rai-col { display: flex !important; }
         }
+        /* Clients v2 grid — 2 cols narrow desktop, 3 cols wide (>=1440) */
+        .rc-grid { grid-template-columns: 240px minmax(0, 1fr); }
+        @media (max-width: 900px) {
+          .rc-grid { grid-template-columns: 1fr !important; }
+          .rc-rai-col { display: none !important; }
+          .rc-rail { position: static !important; }
+        }
+        @media (min-width: 1440px) {
+          .rc-grid { grid-template-columns: 240px minmax(0, 1fr) 360px; }
+          .rc-rai-col { display: block !important; }
+        }
         @keyframes fwLaunch {
           0% { transform: translateY(0); opacity: 1; }
           100% { transform: translateY(-40vh); opacity: 1; }
@@ -2852,7 +2863,7 @@ export default function App({ user }) {
           const longestClient = [...activeClients].sort((a, b) => (b.months || 0) - (a.months || 0))[0];
 
           // ─── Sort + filter ─────────────────────────────────────────────────
-          const sortId = clientsSort || "attention";
+          const sortId = clientsSort || "priority";
           const filteredClients = (() => {
             let xs = activeClients;
             const q = (clientSearch || "").trim().toLowerCase();
@@ -2865,7 +2876,8 @@ export default function App({ user }) {
               );
             }
             const copy = [...xs];
-            if (sortId === "attention") copy.sort((a, b) => (a.ret || 0) - (b.ret || 0));
+            if (sortId === "priority") copy.sort((a, b) => getProfileSortScore(b.name) - getProfileSortScore(a.name));
+            else if (sortId === "attention") copy.sort((a, b) => (a.ret || 0) - (b.ret || 0));
             else if (sortId === "revenue") copy.sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
             else if (sortId === "trend") {
               const pct = c => {
@@ -2884,6 +2896,7 @@ export default function App({ user }) {
 
           const variant = clientsView || "table";
           const sortOptions = [
+            { id: "priority",   label: "Priority" },
             { id: "attention",  label: "Attention" },
             { id: "revenue",    label: "Revenue" },
             { id: "trend",      label: "Trend" },
@@ -2926,127 +2939,125 @@ export default function App({ user }) {
                 </div>
               </div>
 
-              {/* MAIN 2-COL GRID: left rail (240px) + main (flex) */}
-              <div className="rc-grid" style={{ display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
+              {/* MAIN GRID: rail + main + rai (rai shows on >=1440px) */}
+              <div className="rc-grid" style={{ display: "grid", gap: 20, alignItems: "start" }}>
 
-                {/* LEFT RAIL — Portfolio, Book history, Recent movement */}
+                {/* LEFT RAIL — Portfolio, Book history, Recent movement (3 separate cards) */}
                 <div className="rc-rail" style={{ position: "sticky", top: 20, display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, overflow: "hidden" }}>
-                    {/* Portfolio section */}
-                    <div style={{ padding: "14px", borderBottom: "1px solid " + C.borderLight }}>
-                      <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 10 }}>Portfolio</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
-                        <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
-                          <svg width={64} height={64} style={{ transform: "rotate(-90deg)" }}>
-                            <circle cx={32} cy={32} r={28} fill="none" stroke={C.borderLight} strokeWidth="3" />
-                            <circle cx={32} cy={32} r={28} fill="none" stroke={retColor(avgScore)} strokeWidth="3" strokeLinecap="round"
-                              strokeDasharray={2 * Math.PI * 28} strokeDashoffset={2 * Math.PI * 28 * (1 - avgScore / 100)} />
-                          </svg>
-                          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <div style={{ fontSize: 19, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums", letterSpacing: -0.3, lineHeight: 1 }}>{avgScore}</div>
-                          </div>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                            <span style={{ fontSize: 11.5, color: C.textMuted }}>Clients</span>
-                            <span style={{ fontSize: 12, color: C.textSec, fontVariantNumeric: "tabular-nums" }}>{activeClients.length}</span>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                            <span style={{ fontSize: 11.5, color: C.textMuted }}>MRR</span>
-                            <span style={{ fontSize: 12, color: C.text, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>${(totalMRR/1000).toFixed(1)}k</span>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                            <span style={{ fontSize: 11.5, color: C.textMuted }}>Avg health</span>
-                            <span style={{ fontSize: 12, color: retColor(avgScore), fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{avgScore}</span>
-                          </div>
+                  {/* Card 1: Portfolio */}
+                  <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
+                    <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 10 }}>Portfolio</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+                      <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
+                        <svg width={64} height={64} style={{ transform: "rotate(-90deg)" }}>
+                          <circle cx={32} cy={32} r={28} fill="none" stroke={C.borderLight} strokeWidth="3" />
+                          <circle cx={32} cy={32} r={28} fill="none" stroke={retColor(avgScore)} strokeWidth="3" strokeLinecap="round"
+                            strokeDasharray={2 * Math.PI * 28} strokeDashoffset={2 * Math.PI * 28 * (1 - avgScore / 100)} />
+                        </svg>
+                        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <div style={{ fontSize: 19, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums", letterSpacing: -0.3, lineHeight: 1 }}>{avgScore}</div>
                         </div>
                       </div>
-                      <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", gap: 1, marginBottom: 10 }} title={`Thriving ${byStage.retained} · Watch ${byStage.watch} · At risk ${byStage.atRisk} · Critical ${byStage.critical}`}>
-                        {byStage.retained > 0 && <div style={{ flex: byStage.retained, background: C.retGood }} />}
-                        {byStage.watch > 0 && <div style={{ flex: byStage.watch, background: C.retOk }} />}
-                        {byStage.atRisk > 0 && <div style={{ flex: byStage.atRisk, background: C.retWarn }} />}
-                        {byStage.critical > 0 && <div style={{ flex: byStage.critical, background: C.retCrit }} />}
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 10px" }}>
-                        {[
-                          { color: C.retGood, num: byStage.retained, label: "Thriving" },
-                          { color: C.retOk,   num: byStage.watch,    label: "Watch" },
-                          { color: C.retWarn, num: byStage.atRisk,   label: "At risk" },
-                          { color: C.retCrit, num: byStage.critical, label: "Critical" },
-                        ].map((s, i) => (
-                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                            <span style={{ width: 6, height: 6, borderRadius: 3, background: s.color, flexShrink: 0 }} />
-                            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums" }}>{s.num}</span>
-                            <span style={{ fontSize: 11, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
-                          </div>
-                        ))}
+                      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                          <span style={{ fontSize: 11.5, color: C.textMuted }}>Clients</span>
+                          <span style={{ fontSize: 12, color: C.textSec, fontVariantNumeric: "tabular-nums" }}>{activeClients.length}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                          <span style={{ fontSize: 11.5, color: C.textMuted }}>MRR</span>
+                          <span style={{ fontSize: 12, color: C.text, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>${(totalMRR/1000).toFixed(1)}k</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                          <span style={{ fontSize: 11.5, color: C.textMuted }}>Avg health</span>
+                          <span style={{ fontSize: 12, color: retColor(avgScore), fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{avgScore}</span>
+                        </div>
                       </div>
                     </div>
+                    <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", gap: 1, marginBottom: 10 }} title={`Thriving ${byStage.retained} · Watch ${byStage.watch} · At risk ${byStage.atRisk} · Critical ${byStage.critical}`}>
+                      {byStage.retained > 0 && <div style={{ flex: byStage.retained, background: C.retGood }} />}
+                      {byStage.watch > 0 && <div style={{ flex: byStage.watch, background: C.retOk }} />}
+                      {byStage.atRisk > 0 && <div style={{ flex: byStage.atRisk, background: C.retWarn }} />}
+                      {byStage.critical > 0 && <div style={{ flex: byStage.critical, background: C.retCrit }} />}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 10px" }}>
+                      {[
+                        { color: C.retGood, num: byStage.retained, label: "Thriving" },
+                        { color: C.retOk,   num: byStage.watch,    label: "Watch" },
+                        { color: C.retWarn, num: byStage.atRisk,   label: "At risk" },
+                        { color: C.retCrit, num: byStage.critical, label: "Critical" },
+                      ].map((s, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: 3, background: s.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums" }}>{s.num}</span>
+                          <span style={{ fontSize: 11, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-                    {/* Book history section */}
-                    <div style={{ padding: "14px", borderBottom: "1px solid " + C.borderLight }}>
-                      <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 10 }}>Book history</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-                        <div>
-                          <div style={{ fontSize: 19, fontWeight: 700, color: C.text, letterSpacing: -0.3, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-                            ${(activeClients.reduce((a, c) => a + (c.revenue || 0) * (c.months || 1), 0) / 1000000).toFixed(1)}M
-                          </div>
-                          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4, letterSpacing: 0.1 }}>Lifetime rev</div>
+                  {/* Card 2: Book history */}
+                  <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
+                    <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 10 }}>Book history</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 19, fontWeight: 700, color: C.text, letterSpacing: -0.3, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                          ${(activeClients.reduce((a, c) => a + (c.revenue || 0) * (c.months || 1), 0) / 1000000).toFixed(1)}M
                         </div>
-                        <div>
-                          <div style={{ fontSize: 19, fontWeight: 700, color: C.text, letterSpacing: -0.3, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-                            {activeClients.length ? (activeClients.reduce((a, c) => a + (c.months || 0), 0) / activeClients.length / 12).toFixed(1) : "0"} yr
-                          </div>
-                          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4, letterSpacing: 0.1 }}>Avg tenure</div>
-                        </div>
+                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4, letterSpacing: 0.1 }}>Lifetime rev</div>
                       </div>
-                      {longestClient && (
-                        <div style={{ display: "flex", alignItems: "baseline", gap: 6, paddingTop: 10, borderTop: "1px solid " + C.borderLight, fontSize: 11 }}>
-                          <span style={{ color: C.textMuted }}>Longest</span>
-                          <span style={{ color: C.text, fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{longestClient.name}</span>
-                          <span style={{ color: C.textMuted, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{((longestClient.months || 0) / 12).toFixed(1)} yr</span>
+                      <div>
+                        <div style={{ fontSize: 19, fontWeight: 700, color: C.text, letterSpacing: -0.3, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                          {activeClients.length ? (activeClients.reduce((a, c) => a + (c.months || 0), 0) / activeClients.length / 12).toFixed(1) : "0"} yr
                         </div>
-                      )}
+                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4, letterSpacing: 0.1 }}>Avg tenure</div>
+                      </div>
                     </div>
+                    {longestClient && (
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6, paddingTop: 10, borderTop: "1px solid " + C.borderLight, fontSize: 11 }}>
+                        <span style={{ color: C.textMuted }}>Longest</span>
+                        <span style={{ color: C.text, fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{longestClient.name}</span>
+                        <span style={{ color: C.textMuted, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{((longestClient.months || 0) / 12).toFixed(1)} yr</span>
+                      </div>
+                    )}
+                  </div>
 
-                    {/* Recent movement section */}
-                    <div style={{ padding: "14px" }}>
-                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
-                        <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Recent movement</span>
-                        <span style={{ fontSize: 10.5, color: C.textMuted, letterSpacing: 0.2 }}>7d</span>
-                      </div>
-                      {climbing.length > 0 && (
-                        <>
-                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6, color: C.retElite }}>Climbing</div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: climbing.length && slipping.length ? 10 : 0 }}>
-                            {climbing.map(({ c, d }) => (
-                              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                                <ScoreRing2 client={c} size={22} />
-                                <span style={{ fontSize: 12, color: C.text, fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
-                                <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums", flexShrink: 0, color: C.retGood }}>+{d}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                      {slipping.length > 0 && (
-                        <>
-                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6, color: C.retWarn }}>Slipping</div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                            {slipping.map(({ c, d }) => (
-                              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                                <ScoreRing2 client={c} size={22} />
-                                <span style={{ fontSize: 12, color: C.text, fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
-                                <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums", flexShrink: 0, color: C.retWarn }}>{d}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                      {climbing.length === 0 && slipping.length === 0 && (
-                        <div style={{ fontSize: 12, color: C.textMuted, fontStyle: "italic" }}>No significant movement this week.</div>
-                      )}
+                  {/* Card 3: Recent movement */}
+                  <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
+                      <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Recent movement</span>
+                      <span style={{ fontSize: 10.5, color: C.textMuted, letterSpacing: 0.2 }}>7d</span>
                     </div>
+                    {climbing.length > 0 && (
+                      <>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6, color: C.retElite }}>Climbing</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: climbing.length && slipping.length ? 10 : 0 }}>
+                          {climbing.map(({ c, d }) => (
+                            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                              <ScoreRing2 client={c} size={22} />
+                              <span style={{ fontSize: 12, color: C.text, fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums", flexShrink: 0, color: C.retGood }}>+{d}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {slipping.length > 0 && (
+                      <>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6, color: C.retWarn }}>Slipping</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                          {slipping.map(({ c, d }) => (
+                            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                              <ScoreRing2 client={c} size={22} />
+                              <span style={{ fontSize: 12, color: C.text, fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums", flexShrink: 0, color: C.retWarn }}>{d}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {climbing.length === 0 && slipping.length === 0 && (
+                      <div style={{ fontSize: 12, color: C.textMuted, fontStyle: "italic" }}>No significant movement this week.</div>
+                    )}
                   </div>
                 </div>
 
@@ -3344,7 +3355,7 @@ export default function App({ user }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: C.textMuted, padding: "0 4px 10px", letterSpacing: 0.1 }}>
                     <span>{filteredClients.length} {filteredClients.length === 1 ? "client" : "clients"}</span>
                     <span style={{ flex: 1 }} />
-                    <span>Sort: <b style={{ color: C.text, fontWeight: 500 }}>{sortOptions.find(s => s.id === sortId)?.label || "Attention"}</b></span>
+                    <span>Sort: <b style={{ color: C.text, fontWeight: 500 }}>{sortOptions.find(s => s.id === sortId)?.label || "Priority"}</b></span>
                   </div>
 
                   {/* COMPARE SURFACE — 3 variants */}
@@ -3355,8 +3366,9 @@ export default function App({ user }) {
                         <div style={{ width: 32, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }} />
                         <div style={{ flex: 1.4, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Client</div>
                         <div style={{ width: 56, textAlign: "center", fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Health</div>
-                        <div style={{ width: 96, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Owner</div>
                         <div style={{ width: 78, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Revenue</div>
+                        <div style={{ width: 64, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Tenure</div>
+                        <div style={{ width: 74, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>LCV</div>
                         <div style={{ width: 88, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>12-wk trend</div>
                         <div style={{ width: 92, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Cadence</div>
                         <div style={{ width: 64, textAlign: "right", fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Renews</div>
@@ -3366,7 +3378,6 @@ export default function App({ user }) {
                           const trend = stubTrend(c);
                           const trendStart = trend[0], trendEnd = trend[trend.length - 1];
                           const pct = ((trendEnd - trendStart) / Math.max(1, trendStart)) * 100;
-                          const owner = stubOwner(c.name);
                           const ct = stubCadenceTarget(c);
                           const ca = stubCadenceActual(c);
                           const renewStr = stubRenewal(c);
@@ -3390,12 +3401,23 @@ export default function App({ user }) {
                                   </span>
                                 )}
                               </div>
-                              <div style={{ width: 96, minWidth: 0, display: "flex", alignItems: "center" }}>
-                                <OwnerChip owner={owner.name} color={owner.color} size="sm" showLabel firstOnly />
-                              </div>
                               <div style={{ width: 78 }}>
                                 <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontVariantNumeric: "tabular-nums" }}>${((c.revenue || 0) / 1000).toFixed(1)}k</div>
                                 <div style={{ fontSize: 10.5, color: C.textMuted }}>/mo</div>
+                              </div>
+                              <div style={{ width: 64 }}>
+                                {(() => {
+                                  const months = c.months || 0;
+                                  const display = months < 12 ? `${months} mo` : `${(months / 12).toFixed(1)} yr`;
+                                  return <div style={{ fontSize: 13, fontWeight: 500, color: C.text, fontVariantNumeric: "tabular-nums" }}>{display}</div>;
+                                })()}
+                              </div>
+                              <div style={{ width: 74 }}>
+                                {(() => {
+                                  const lcv = (c.revenue || 0) * (c.months || 0);
+                                  const display = lcv >= 1000000 ? `$${(lcv / 1000000).toFixed(1)}M` : lcv >= 1000 ? `$${Math.round(lcv / 1000)}k` : `$${lcv}`;
+                                  return <div style={{ fontSize: 13, fontWeight: 500, color: C.text, fontVariantNumeric: "tabular-nums" }}>{display}</div>;
+                                })()}
                               </div>
                               <div style={{ width: 88, display: "flex", alignItems: "center", gap: 6 }}>
                                 <V2Sparkline points={trend} width={50} height={20} />
@@ -3544,6 +3566,11 @@ export default function App({ user }) {
                       <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>Try clearing the search or switching sort.</div>
                     </div>
                   )}
+                </div>
+
+                {/* RAI COLUMN — wide desktop only (>=1440px) */}
+                <div className="rc-rai-col" style={{ display: "none", position: "sticky", top: 20, alignSelf: "start" }}>
+                  <RaiMiniPanel />
                 </div>
               </div>
             </div>
