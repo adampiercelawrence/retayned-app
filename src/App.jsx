@@ -1765,7 +1765,8 @@ export default function App({ user }) {
         .r-desk { display: none; }
         .r-mob-top { display: flex; }
         .r-mob-bot { display: flex; }
-        .r-main { padding: 16px 16px 80px; }
+        .r-main { padding: 16px 16px 80px; background: radial-gradient(ellipse 55% 40% at 0% 0%, rgba(85, 139, 104, 0.16), transparent 65%); }
+        .r-main:has(.r-rai-page) { background: none; }
         .r-today-panel { display: none !important; }
         .r-client-modal { top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; transform: none !important; max-width: 100% !important; max-height: 100% !important; border-radius: 0 !important; }
         /* Mobile: Log button becomes icon-only, tighter padding */
@@ -1799,12 +1800,12 @@ export default function App({ user }) {
           .r-mob-bot { display: none !important; }
           .r-today-panel { display: block !important; }
           .r-client-modal { top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important; transform: translate(-50%, -50%) !important; max-width: 520px !important; max-height: 90vh !important; border-radius: 16px !important; }
-          .r-main { padding: 28px 48px; margin-left: var(--sidebar-w); }
+          .r-main { padding: 28px 48px; margin-left: var(--sidebar-w); background: radial-gradient(ellipse 50% 45% at 0% 0%, rgba(85, 139, 104, 0.16), transparent 60%); }
+          .r-main:has(.r-rai-page) { background: none; padding-bottom: 28px !important; }
           .r-log-label { display: inline !important; }
           .r-log-btn { padding: 0 14px !important; }
           .r-rai-inner { padding-top: 0 !important; }
           .r-rai-inputbar { padding: 12px 24px 28px !important; }
-          .r-main:has(.r-rai-page) { padding-bottom: 28px !important; }
           .r-chat-msg-user { scroll-margin-top: 24px !important; }
         }
         @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
@@ -2173,8 +2174,8 @@ export default function App({ user }) {
 
           // ─── COMPOSER helpers ────────────────────────────────────────────
           const clientMatches = composerQuery.trim()
-            ? clients.filter(c => c.name.toLowerCase().includes(composerQuery.trim().toLowerCase())).slice(0, 6)
-            : clients.slice(0, 6);
+            ? clients.filter(c => c.name.toLowerCase().includes(composerQuery.trim().toLowerCase()))
+            : clients;
 
           const submitComposer = async () => {
             if (!newTask.trim()) return;
