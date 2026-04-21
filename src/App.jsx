@@ -1773,7 +1773,7 @@ export default function App({ user }) {
         .r-desk { display: none; }
         .r-mob-top { display: flex; }
         .r-mob-bot { display: flex; }
-        .r-main { padding: 16px 16px 80px; background: radial-gradient(ellipse 55% 40% at 0% 0%, rgba(85, 139, 104, 0.16), transparent 65%); }
+        .r-main { padding: 16px 16px 80px; }
         .r-main:has(.r-rai-page) { background: none; }
         .r-today-panel { display: none !important; }
         .r-client-modal { top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; transform: none !important; max-width: 100% !important; max-height: 100% !important; border-radius: 0 !important; }
@@ -1808,7 +1808,7 @@ export default function App({ user }) {
           .r-mob-bot { display: none !important; }
           .r-today-panel { display: block !important; }
           .r-client-modal { top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important; transform: translate(-50%, -50%) !important; max-width: 520px !important; max-height: 90vh !important; border-radius: 16px !important; }
-          .r-main { padding: 28px 48px; margin-left: var(--sidebar-w); background: radial-gradient(ellipse 50% 45% at 0% 0%, rgba(85, 139, 104, 0.16), transparent 60%); }
+          .r-main { padding: 28px 48px; margin-left: var(--sidebar-w); }
           .r-main:has(.r-rai-page) { background: none; padding-bottom: 28px !important; }
           .r-log-label { display: inline !important; }
           .r-log-btn { padding: 0 14px !important; }
@@ -1842,10 +1842,15 @@ export default function App({ user }) {
           }
           .rt-focus-col { display: none !important; }
           .rt-rai-col { display: none !important; }
-          .rt-band { flex-direction: column !important; align-items: flex-start !important; }
-          .rt-band-right { display: none !important; }
-          .rt-band-sub-pct { display: inline-block !important; }
-          .rt-band-sub-bar { display: block !important; }
+          /* Band stays row-direction on mobile so compact % sits right of headline */
+          .rt-band { flex-wrap: nowrap !important; gap: 12px !important; }
+          .rt-band-right { display: block !important; min-width: 0 !important; flex-shrink: 0; }
+          .rt-band-right .rt-pct-num { font-size: 18px !important; }
+          .rt-band-right .rt-pct-num span { font-size: 11px !important; }
+          .rt-band-right .rt-pct-lbl { display: none !important; }
+          .rt-band-right .rt-pct-bar { width: 72px; height: 3px !important; margin-top: 4px !important; }
+          .rt-band-sub-pct { display: none !important; }
+          .rt-band-sub-bar { display: none !important; }
           .rt-band-sub { width: 100% !important; }
           .rt-composer-controls { width: 100%; justify-content: space-between; }
           .rt-composer-controls > button:last-child { margin-left: auto; }
@@ -2247,12 +2252,12 @@ export default function App({ user }) {
                 </div>
                 <div className="rt-band-right" style={{ minWidth: 220, textAlign: "right" }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "flex-end", gap: 8 }}>
-                    <span style={{ fontSize: 26, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
+                    <span className="rt-pct-num" style={{ fontSize: 26, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
                       {Math.round(pct * 100)}<span style={{ fontSize: 15, color: C.textMuted, fontWeight: 500 }}>%</span>
                     </span>
-                    <span style={{ fontSize: 11, color: C.textMuted, letterSpacing: 0.3, textTransform: "uppercase", fontWeight: 600 }}>of today done</span>
+                    <span className="rt-pct-lbl" style={{ fontSize: 11, color: C.textMuted, letterSpacing: 0.3, textTransform: "uppercase", fontWeight: 600 }}>of today done</span>
                   </div>
-                  <div style={{ height: 4, background: C.borderLight, borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
+                  <div className="rt-pct-bar" style={{ height: 4, background: C.borderLight, borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${pct * 100}%`, background: `linear-gradient(90deg, ${C.primaryLight}, ${C.primary})`, borderRadius: 2, transition: "width 400ms cubic-bezier(.2,.7,.3,1)" }} />
                   </div>
                 </div>
@@ -2727,7 +2732,7 @@ export default function App({ user }) {
             pts[pts.length - 1] = base;
             return pts;
           };
-          const stubStage = (score) => score >= 80 ? "retained" : score >= 65 ? "watch" : score >= 45 ? "at-risk" : "critical";
+          const stubStage = (score) => score >= 80 ? "thriving" : score >= 65 ? "healthy" : score >= 45 ? "watch" : score >= 30 ? "at-risk" : "critical";
           const stubRenewal = (c) => {
             const h = hashStr(c.name);
             const days = (h % 180) + 5; // 5-184 days
@@ -2842,7 +2847,8 @@ export default function App({ user }) {
           const avgScore = activeClients.length ? Math.round(activeClients.reduce((a, c) => a + (c.ret || 0), 0) / activeClients.length) : 0;
           const totalMRR = activeClients.reduce((a, c) => a + (c.revenue || 0), 0);
           const byStage = {
-            retained: activeClients.filter(c => stubStage(c.ret || 0) === "retained").length,
+            thriving: activeClients.filter(c => stubStage(c.ret || 0) === "thriving").length,
+            healthy:  activeClients.filter(c => stubStage(c.ret || 0) === "healthy").length,
             watch:    activeClients.filter(c => stubStage(c.ret || 0) === "watch").length,
             atRisk:   activeClients.filter(c => stubStage(c.ret || 0) === "at-risk").length,
             critical: activeClients.filter(c => stubStage(c.ret || 0) === "critical").length,
@@ -2884,13 +2890,14 @@ export default function App({ user }) {
                 const t = stubTrend(c);
                 return ((t[t.length - 1] - t[0]) / Math.max(1, t[0])) * 100;
               };
-              copy.sort((a, b) => pct(a) - pct(b));
+              copy.sort((a, b) => pct(b) - pct(a)); // flipped — green top → red bottom
             }
             else if (sortId === "cadence") {
               const drift = c => Math.abs(stubCadenceActual(c) - stubCadenceTarget(c)) / stubCadenceTarget(c);
               copy.sort((a, b) => drift(b) - drift(a));
             }
             else if (sortId === "renewal") copy.sort((a, b) => stubRenewalDays(a) - stubRenewalDays(b));
+            else if (sortId === "alpha") copy.sort((a, b) => a.name.localeCompare(b.name));
             return copy;
           })();
 
@@ -2902,6 +2909,7 @@ export default function App({ user }) {
             { id: "trend",      label: "Trend" },
             { id: "cadence",    label: "Cadence" },
             { id: "renewal",    label: "Renewal" },
+            { id: "alpha",      label: "A–Z" },
           ];
           const viewOptions = [
             { id: "table",   label: "Table",   icon: "sweeps" },
@@ -2973,22 +2981,24 @@ export default function App({ user }) {
                         </div>
                       </div>
                     </div>
-                    <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", gap: 1, marginBottom: 10 }} title={`Thriving ${byStage.retained} · Watch ${byStage.watch} · At risk ${byStage.atRisk} · Critical ${byStage.critical}`}>
-                      {byStage.retained > 0 && <div style={{ flex: byStage.retained, background: C.retGood }} />}
-                      {byStage.watch > 0 && <div style={{ flex: byStage.watch, background: C.retOk }} />}
-                      {byStage.atRisk > 0 && <div style={{ flex: byStage.atRisk, background: C.retWarn }} />}
+                    <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", gap: 1, marginBottom: 10 }} title={`Thriving ${byStage.thriving} · Healthy ${byStage.healthy} · Watch ${byStage.watch} · At risk ${byStage.atRisk} · Critical ${byStage.critical}`}>
+                      {byStage.thriving > 0 && <div style={{ flex: byStage.thriving, background: C.retElite }} />}
+                      {byStage.healthy > 0  && <div style={{ flex: byStage.healthy,  background: C.retGood }} />}
+                      {byStage.watch > 0    && <div style={{ flex: byStage.watch,    background: C.retOk }} />}
+                      {byStage.atRisk > 0   && <div style={{ flex: byStage.atRisk,   background: C.retWarn }} />}
                       {byStage.critical > 0 && <div style={{ flex: byStage.critical, background: C.retCrit }} />}
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 10px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       {[
-                        { color: C.retGood, num: byStage.retained, label: "Thriving" },
-                        { color: C.retOk,   num: byStage.watch,    label: "Watch" },
-                        { color: C.retWarn, num: byStage.atRisk,   label: "At risk" },
-                        { color: C.retCrit, num: byStage.critical, label: "Critical" },
+                        { color: C.retElite, num: byStage.thriving, label: "Thriving" },
+                        { color: C.retGood,  num: byStage.healthy,  label: "Healthy" },
+                        { color: C.retOk,    num: byStage.watch,    label: "Watch" },
+                        { color: C.retWarn,  num: byStage.atRisk,   label: "At risk" },
+                        { color: C.retCrit,  num: byStage.critical, label: "Critical" },
                       ].map((s, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                           <span style={{ width: 6, height: 6, borderRadius: 3, background: s.color, flexShrink: 0 }} />
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums" }}>{s.num}</span>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums", minWidth: 16 }}>{s.num}</span>
                           <span style={{ fontSize: 11, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
                         </div>
                       ))}
@@ -3439,12 +3449,13 @@ export default function App({ user }) {
                   )}
 
                   {variant === "columns" && (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "flex-start" }}>
                       {[
-                        { id: "retained", label: "Thriving",  color: C.retGood, bg: "#EFF5F1" },
-                        { id: "watch",    label: "Watch",     color: C.retOk,   bg: "#F6F4E5" },
-                        { id: "at-risk",  label: "At risk",   color: C.retWarn, bg: "#F9EEE0" },
-                        { id: "critical", label: "Critical",  color: C.retCrit, bg: "#F5E4E0" },
+                        { id: "thriving", label: "Thriving",  color: C.retElite, bg: "#E5EDE7" },
+                        { id: "healthy",  label: "Healthy",   color: C.retGood,  bg: "#EFF5F1" },
+                        { id: "watch",    label: "Watch",     color: C.retOk,    bg: "#F6F4E5" },
+                        { id: "at-risk",  label: "At risk",   color: C.retWarn,  bg: "#F9EEE0" },
+                        { id: "critical", label: "Critical",  color: C.retCrit,  bg: "#F5E4E0" },
                       ].map(s => {
                         const col = filteredClients.filter(c => stubStage(c.ret || 0) === s.id);
                         const mrr = col.reduce((a, c) => a + (c.revenue || 0), 0);
