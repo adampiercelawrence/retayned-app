@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "./lib/supabase";
 import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex as rolodexDb, referrals as referralsDb, raiSuggestions as suggestionsDb, raiConversations as convoDb, profile as profileDb, touchpoints as touchpointsDb, buildRaiContext } from "./lib/db";
- 
+
 const C = {
   primary: "#33543E", primaryLight: "#558B68", primarySoft: "#E6EFE9", primaryGhost: "#F3F8F5",
   bg: "#FAFAF7", card: "#FFFFFF", surface: "#EEEFEB", surfaceWarm: "#F2EEE8",
@@ -347,11 +347,11 @@ const integrations = [
 ];
 
 function retColor(v) {
-  if (v >= 80) return C.primary;      // Thriving
-  if (v >= 65) return "#558B68";      // Healthy
-  if (v >= 45) return C.warning;      // Watch
-  if (v >= 30) return C.danger;       // At Risk
-  return "#8B1E1E";                   // Critical
+  if (v >= 80) return "#0C3A2E";      // Elite (retElite)
+  if (v >= 65) return "#1F7A5C";      // Good (retGood)
+  if (v >= 45) return "#A8A420";      // Ok / Watch (retOk)
+  if (v >= 30) return "#D17A1B";      // Warn / At Risk (retWarn)
+  return "#B4341F";                    // Critical (retCrit)
 }
 function retBucket(v) {
   if (v >= 80) return "Thriving";
@@ -750,6 +750,43 @@ export default function App({ user }) {
       daysOld: 0,
     };
     setClients([...clients, client].sort((a, b) => (b.ret || 0) - (a.ret || 0)));
+
+    // ─── Auto-create initial Health Check with staggered due date ─────────
+    // Prevents pileups when users add many clients at once. Spreads across 14 days.
+    // If your hcDb.create signature differs or your column isn't "due_at",
+    // adjust the key names below to match lib/db.js.
+    try {
+      // Count clients created in the last 14 days (including this one)
+      const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+      const recentCount = clients.filter(c => {
+        // clients with no created_at fall back to "today" (safe default)
+        const ts = c.created_at ? new Date(c.created_at).getTime() : Date.now();
+        return ts >= fourteenDaysAgo;
+      }).length;
+      // +1 because this new client is being added too, and we want %14 cycle 1-14, not 0-13
+      const offsetDays = (recentCount % 14) + 1;
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + offsetDays);
+      dueDate.setHours(9, 0, 0, 0); // 9am local on the due day
+
+      const clientId = created?.id || client.id;
+      if (hcDb.create) {
+        await hcDb.create(user.id, {
+          client_id: clientId,
+          client_name: newClient.name,
+          due_at: dueDate.toISOString(),
+        });
+      } else if (hcDb.scheduleNext) {
+        // Fallback: use scheduleNext if a create method isn't exported.
+        // Note: scheduleNext may not honor a custom due_at — in that case the
+        // HC will be due immediately (same-day pileup) until lib/db.js is updated.
+        await hcDb.scheduleNext(user.id, clientId);
+      }
+    } catch (e) {
+      console.warn("Health check auto-schedule failed (non-fatal):", e);
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
     setShowAddClient(false);
     setNewClient({ name: "", contact: "", role: "", tag: "", revenue: "", months: "" });
     setProfileStep(0);
@@ -1639,9 +1676,24 @@ export default function App({ user }) {
         /* Mobile: chat user-message clearance from sticky top bar when scrolled */
         .r-rai-inner { padding-top: 56px !important; }
         .r-chat-msg-user { scroll-margin-top: 56px !important; }
-        /* Mobile: tighten chat input bar bottom padding — clear mobile nav (60px) without piling on */
-        .r-rai-inputbar { padding: 10px 16px 64px !important; }
+        /* Mobile: tighten chat input bar bottom padding — clear mobile nav (60px) + breathing room */
+        .r-rai-inputbar { padding: 10px 16px 88px !important; }
         .r-main:has(.r-rai-page) { padding-bottom: 0 !important; }
+        /* Rai purple gradient — stronger on intro empty-state, lighter once chat starts */
+        .r-rai-intro {
+          background:
+            radial-gradient(ellipse 75% 45% at 50% 8%, rgba(91,33,182,0.22), transparent 70%),
+            radial-gradient(ellipse 60% 35% at 50% 0%, rgba(91,33,182,0.35), transparent 60%),
+            ${C.bg};
+        }
+        .r-rai-chat {
+          background:
+            radial-gradient(ellipse 70% 35% at 50% 0%, rgba(91,33,182,0.10), transparent 75%),
+            ${C.bg};
+        }
+        /* Make the inputbar inherit the gradient background so it doesn't show a seam */
+        .r-rai-intro .r-rai-inputbar,
+        .r-rai-chat .r-rai-inputbar { background: transparent !important; }
         @media (min-width: 768px) {
           :root { --sidebar-w: 240px; }
           .r-desk { display: flex !important; }
@@ -1653,7 +1705,7 @@ export default function App({ user }) {
           .r-log-label { display: inline !important; }
           .r-log-btn { padding: 0 14px !important; }
           .r-rai-inner { padding-top: 0 !important; }
-          .r-rai-inputbar { padding: 12px 24px 16px !important; }
+          .r-rai-inputbar { padding: 12px 24px 28px !important; }
           .r-main:has(.r-rai-page) { padding-bottom: 28px !important; }
           .r-chat-msg-user { scroll-margin-top: 24px !important; }
         }
@@ -1669,11 +1721,20 @@ export default function App({ user }) {
           .rt-grid { grid-template-columns: 1fr !important; }
           .rt-focus-col { position: static !important; }
           .rt-band { flex-direction: column !important; align-items: flex-start !important; }
-          .rt-band-right { min-width: 0 !important; text-align: left !important; width: 100%; }
-          .rt-band-right > div:first-child { justify-content: flex-start !important; }
+          .rt-band-right { display: none !important; }
+          .rt-band-sub-pct { display: inline-block !important; }
+          .rt-band-sub-bar { display: block !important; }
+          .rt-band-sub { width: 100% !important; }
           .rt-composer-controls { width: 100%; justify-content: space-between; }
           .rt-composer-controls > button:last-child { margin-left: auto; }
           .rt-row-meta span:nth-child(n+4) { display: none !important; }
+          .rt-row-score { display: none !important; }
+        }
+        /* Today v4 — desktop (>=1440px): show Rai mini right rail, hide inline Focus Pane */
+        @media (min-width: 1440px) {
+          .rt-grid { grid-template-columns: minmax(0, 1fr) 360px !important; }
+          .rt-focus-col { display: flex !important; }
+          .rt-focus-inline { display: none !important; }
         }
         @keyframes fwLaunch {
           0% { transform: translateY(0); opacity: 1; }
@@ -1858,7 +1919,11 @@ export default function App({ user }) {
           // ─── DATA PREP ───────────────────────────────────────────────────
           // Visible tasks = non-dismissed. Open = not done. Completed = done.
           const visibleTasks = tasks.filter(t => !dismissedIds[t.id]);
-          const openTasks = visibleTasks.filter(t => !t.done);
+          const openTasks = visibleTasks.filter(t => !t.done).sort((a, b) => {
+            const psA = getProfileSortScore(a.client);
+            const psB = getProfileSortScore(b.client);
+            return psB - psA; // highest Profile Score first
+          });
           const completedTasks = visibleTasks.filter(t => t.done);
           const focusTask = openTasks.find(t => t.id === focusId) || openTasks[0] || null;
           const focusClient = focusTask ? clients.find(c => c.name === focusTask.client) : null;
@@ -1912,7 +1977,12 @@ export default function App({ user }) {
           const ScoreChip = ({ score, delta = null, size = "sm" }) => {
             if (score == null) return null;
             const color = retColor(score);
-            const bg = score >= 80 ? C.primarySoft : score >= 65 ? C.primaryGhost || "#F0F5F2" : score >= 45 ? "#FDF4DC" : "#FBE6DE";
+            // 5 soft background tints aligned with the 5-stop retention ramp
+            const bg = score >= 80 ? "#E6EFE9"    // Elite — deepest green tint
+                     : score >= 65 ? "#E8F3ED"   // Good — medium green tint
+                     : score >= 45 ? "#F3F0D8"   // Ok   — mustard tint
+                     : score >= 30 ? "#FDF4DC"   // Warn — amber tint
+                     :              "#FBE6DE";   // Crit — red tint
             const sizes = size === "sm" ? { fs: 11, pad: "2px 7px" } : { fs: 13, pad: "4px 10px" };
             return (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: bg, color, fontSize: sizes.fs, fontWeight: 700, fontVariantNumeric: "tabular-nums", padding: sizes.pad, borderRadius: 5 }}>
@@ -1957,7 +2027,7 @@ export default function App({ user }) {
           const ClientAvatar = ({ client, size = 28 }) => {
             if (!client) return null;
             const initials = client.name.split(/\s|&/).filter(Boolean).slice(0, 2).map(s => s[0]).join("").toUpperCase();
-            const color = client.color || retColor(client.ret || 60);
+            const color = retColor(client.ret || 60);
             return (
               <div style={{ width: size, height: size, borderRadius: "50%", background: color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.35, fontWeight: 700, flexShrink: 0, letterSpacing: 0.2 }}>
                 {initials}
@@ -1997,13 +2067,13 @@ export default function App({ user }) {
               text,
               client_name: clientName,
               client_id: clientObj?.id || null,
-              is_recurring: false,
+              is_recurring: newTaskRecurring,
             });
-            const task = { id: created?.id || "u" + Date.now(), text, client: clientName || null, done: false, ai: false, recurring: false, dueLabel: composerDue };
+            const task = { id: created?.id || "u" + Date.now(), text, client: clientName || null, done: false, ai: false, recurring: newTaskRecurring };
             setTasks(prev => [task, ...prev]);
             setNewTask("");
             setComposerClient("");
-            setComposerDue("today");
+            setNewTaskRecurring(false);
             setComposerMenuOpen(false);
           };
 
@@ -2017,7 +2087,7 @@ export default function App({ user }) {
 
           // ─── RENDER ──────────────────────────────────────────────────────
           return (
-            <div className="rt-today-v4" style={{ width: "100%", maxWidth: 1400, margin: "0 auto" }}>
+            <div className="rt-today-v4" style={{ width: "100%" }}>
               {/* STATUS BAND */}
               <div className="rt-band" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
@@ -2028,12 +2098,13 @@ export default function App({ user }) {
                   <div className="rt-band-sub" style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span><b style={{ color: C.text, fontWeight: 700 }}>{remaining}</b> on your plate</span>
                     <span style={{ color: C.border }}>·</span>
-                    <span>{doneCount} done</span>
-                    <span style={{ color: C.border }}>·</span>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <Icon name="flame" size={12} color="#D17A1B" />
-                      <b style={{ color: C.text, fontWeight: 700 }}>{streak || 1}</b> day streak
+                    <span><b style={{ color: C.text, fontWeight: 700 }}>{doneCount}</b> done</span>
+                    <span className="rt-band-sub-pct" style={{ display: "none", marginLeft: "auto", fontSize: 11, fontWeight: 700, color: C.primary, background: C.primarySoft, padding: "2px 8px", borderRadius: 999 }}>
+                      {Math.round(pct * 100)}%
                     </span>
+                  </div>
+                  <div className="rt-band-sub-bar" style={{ display: "none", height: 3, background: C.borderLight, borderRadius: 2, marginTop: 10, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pct * 100}%`, background: `linear-gradient(90deg, ${C.primaryLight}, ${C.primary})`, borderRadius: 2, transition: "width 400ms cubic-bezier(.2,.7,.3,1)" }} />
                   </div>
                 </div>
                 <div className="rt-band-right" style={{ minWidth: 220, textAlign: "right" }}>
@@ -2083,13 +2154,31 @@ export default function App({ user }) {
                     <button onClick={() => setComposerMenuOpen(!composerMenuOpen)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px dashed " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: "none", cursor: "pointer", fontFamily: "inherit" }}>
                       <Icon name="clients" size={12} /><span>Client</span>
                     </button>
-                    <div style={{ display: "inline-flex", background: C.borderLight, borderRadius: 8, padding: 2 }}>
-                      {[["today", "Today"], ["tomorrow", "Tmrw"], ["this week", "Week"]].map(([v, label]) => (
-                        <button key={v} onClick={() => setComposerDue(v)} style={{ padding: "5px 10px", fontSize: 11.5, color: composerDue === v ? C.text : C.textMuted, borderRadius: 6, fontWeight: 500, background: composerDue === v ? C.card : "transparent", boxShadow: composerDue === v ? C.shadowSm : "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                          {label}
-                        </button>
-                      ))}
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 10px 6px 12px", border: "1px solid " + C.border, borderRadius: 8, background: C.card }}>
+                      <Icon name="clock" size={12} color={newTaskRecurring ? C.btn : C.textMuted} />
+                      <span style={{ fontSize: 12, color: newTaskRecurring ? C.text : C.textSec, fontWeight: 500 }}>Recurring</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={newTaskRecurring}
+                        onClick={() => setNewTaskRecurring(!newTaskRecurring)}
+                        style={{
+                          width: 30, height: 18, borderRadius: 9,
+                          background: newTaskRecurring ? C.btn : C.border,
+                          position: "relative", transition: "background 180ms",
+                          border: "none", cursor: "pointer", padding: 0, flexShrink: 0,
+                        }}
+                      >
+                        <span style={{
+                          position: "absolute", top: 2, left: newTaskRecurring ? 14 : 2,
+                          width: 14, height: 14, borderRadius: 7, background: "#fff",
+                          transition: "left 180ms", boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+                        }} />
+                      </button>
                     </div>
+                    <button onClick={() => { setShowTouchpoint(!showTouchpoint); setTpClient(null); setTpChannel(null); }} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: C.card, cursor: "pointer", fontFamily: "inherit" }} title="Log a touchpoint">
+                      <Icon name="phone" size={12} /><span>Log</span>
+                    </button>
                     <button onClick={submitComposer} disabled={!newTask.trim()} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px 7px 14px", background: C.btn, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: newTask.trim() ? "pointer" : "default", opacity: newTask.trim() ? 1 : 0.4, fontFamily: "inherit" }}>
                       Add
                       <span style={{ background: "rgba(255,255,255,0.2)", padding: "1px 5px", borderRadius: 3, fontSize: 10.5, fontFamily: "monospace", fontWeight: 600 }}>↵</span>
@@ -2122,6 +2211,55 @@ export default function App({ user }) {
                   </div>
                 )}
 
+                {showTouchpoint && (
+                  <div style={{ position: "absolute", top: 64, right: 80, width: 320, background: "#fff", border: "1px solid " + C.border, borderRadius: 12, boxShadow: "0 12px 32px rgba(10,10,10,0.12)", zIndex: 30, padding: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Log a touchpoint</span>
+                      <button onClick={() => setShowTouchpoint(false)} style={{ padding: 2, background: "none", border: "none", cursor: "pointer", color: C.textMuted }}><Icon name="x" size={14} /></button>
+                    </div>
+                    {!tpClient && (
+                      <div>
+                        <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6 }}>Which client?</div>
+                        <div style={{ maxHeight: 220, overflow: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
+                          {clients.map(c => (
+                            <button key={c.id || c.name} onClick={() => setTpClient(c.name)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 6, textAlign: "left", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                              <ClientAvatar client={c} size={22} />
+                              <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                              <ScoreChip score={c.ret} size="sm" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {tpClient && (
+                      <div>
+                        <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6 }}>{tpClient} · How did you reach out?</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
+                          {[
+                            { key: "call", icon: "phone", label: "Call" },
+                            { key: "email", icon: "mail", label: "Email" },
+                            { key: "dm", icon: "chat", label: "DM" },
+                            { key: "loom", icon: "video", label: "Loom" },
+                            { key: "voice", icon: "mic", label: "Voice" },
+                          ].map(ch => (
+                            <button key={ch.key} onClick={async () => {
+                              const cObj = clients.find(c => c.name === tpClient);
+                              await touchpointsDb.create(user.id, { client_id: cObj?.id || null, client_name: tpClient, channel: ch.key });
+                              setTpLogged(prev => [...prev, { client: tpClient, channel: ch.key, t: Date.now() }]);
+                              setShowTouchpoint(false);
+                              setTpClient(null);
+                            }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "10px 4px", background: C.primaryGhost, border: "1px solid " + C.borderLight, borderRadius: 8, cursor: "pointer", fontFamily: "inherit" }}>
+                              <Icon name={ch.icon} size={16} color={C.textSec} />
+                              <span style={{ fontSize: 10.5, color: C.textSec, fontWeight: 500 }}>{ch.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <button onClick={() => setTpClient(null)} style={{ marginTop: 8, fontSize: 11, color: C.textMuted, background: "none", border: "none", cursor: "pointer", padding: 4, fontFamily: "inherit" }}>← Pick another client</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="rt-presets" style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 16px 12px", flexWrap: "wrap" }}>
                   <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", marginRight: 4 }}>Try</span>
                   {["Check in with", "Send proposal to", "Log call with", "Follow up on"].map(p => (
@@ -2133,9 +2271,29 @@ export default function App({ user }) {
               </div>
 
               {/* MAIN GRID: task list + focus pane */}
-              <div className="rt-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 360px", gap: 20, alignItems: "start" }}>
-                {/* LEFT COLUMN — TASK LIST */}
+              <div className="rt-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
+                {/* LEFT COLUMN — FOCUS PANE (mobile/tablet, above tasks) + TASK LIST */}
                 <div style={{ minWidth: 0 }}>
+                  {/* Focus Pane shown here (above tasks) when below 1440px */}
+                  {focusTask && focusClient && (
+                    <div className="rt-focus-inline" style={{ marginBottom: 16 }}>
+                      <FocusPane
+                        task={focusTask}
+                        client={focusClient}
+                        retHistory={stubRetentionHistory(focusClient.ret || 60)}
+                        whyText={stubWhy(focusTask, focusClient)}
+                        confidence={stubConfidence()}
+                        draftText={stubDraft(focusClient.name)}
+                        C={C}
+                        Icon={Icon}
+                        Spark={Spark}
+                        ClientAvatar={ClientAvatar}
+                        ScoreChip={ScoreChip}
+                        retColor={retColor}
+                        onComplete={() => toggleTask(focusTask.id)}
+                      />
+                    </div>
+                  )}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 4px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Your plate</span>
@@ -2207,13 +2365,13 @@ export default function App({ user }) {
                               {kind === "rai" && (
                                 <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: C.btn, fontWeight: 500 }}>
                                   <Icon name="sparkles" size={10} />
-                                  <span>Rai suggests</span>
+                                  <span>Assigned by Rai</span>
                                 </span>
                               )}
                               {kind === "mine" && (
                                 <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: C.primary, fontWeight: 500 }}>
                                   <Icon name="plus" size={10} />
-                                  <span>Yours</span>
+                                  <span>Assigned by you</span>
                                 </span>
                               )}
                               {kind === "system" && (
@@ -2222,11 +2380,19 @@ export default function App({ user }) {
                                   <span>{typeLabel(t)}</span>
                                 </span>
                               )}
+                              {t.recurring && (
+                                <>
+                                  <span style={{ opacity: 0.35 }}>·</span>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: C.textSec, fontWeight: 500 }} title="Recurring">
+                                    <Icon name="clock" size={10} />
+                                    <span>Recurring</span>
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </div>
 
-                          <DuePill due={t.dueLabel || "today"} />
-                          {client && <ScoreChip score={client.ret} delta={delta} size="sm" />}
+                          {client && <span className="rt-row-score"><ScoreChip score={client.ret} size="sm" /></span>}
 
                           <button onClick={(e) => { e.stopPropagation(); setDismissedIds({ ...dismissedIds, [t.id]: true }); if (t.ai) dismissAi(t.id); }}
                             className="rt-dismiss"
@@ -2272,9 +2438,10 @@ export default function App({ user }) {
                   )}
                 </div>
 
-                {/* RIGHT COLUMN — FOCUS PANE / RAI MINI */}
-                <div className="rt-focus-col" style={{ position: "sticky", top: 20 }}>
-                  {focusTask && focusClient ? (
+                {/* RIGHT COLUMN — Desktop 1440+ only. Rai Mini always, Focus Pane below when task selected */}
+                <div className="rt-focus-col" style={{ display: "none", flexDirection: "column", gap: 16 }}>
+                  <RaiMiniPanel />
+                  {focusTask && focusClient && (
                     <FocusPane
                       task={focusTask}
                       client={focusClient}
@@ -2290,8 +2457,6 @@ export default function App({ user }) {
                       retColor={retColor}
                       onComplete={() => toggleTask(focusTask.id)}
                     />
-                  ) : (
-                    <RaiMiniPanel />
                   )}
                 </div>
               </div>
@@ -3380,13 +3545,13 @@ export default function App({ user }) {
         })()}
         {/* ═══ COACH / TALK TO RAI — Claude-style chat ═══ */}
         {page === "coach" && (
-          <div className="r-rai-page" style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 56px)" }}>
-            <div className="r-rai-scroll" style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch" }}>
-              <div className="r-rai-inner" style={{ width: "100%", maxWidth: 720, margin: "0 auto", padding: "24px 24px 0" }}>
+          <div className={"r-rai-page " + (aiMessages.length === 0 ? "r-rai-intro" : "r-rai-chat")} style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 56px)" }}>
+            <div className="r-rai-scroll" style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch", display: "flex", flexDirection: "column" }}>
+              <div className="r-rai-inner" style={{ width: "100%", maxWidth: 720, margin: "0 auto", padding: "24px 24px 0", flex: aiMessages.length === 0 ? 1 : "0 0 auto", display: aiMessages.length === 0 ? "flex" : "block", flexDirection: "column", justifyContent: aiMessages.length === 0 ? "center" : "flex-start", paddingBottom: aiMessages.length === 0 ? 80 : 0 }}>
                 {aiMessages.length === 0 ? (
-                  <div>
+                  <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
                     <p style={{ fontSize: 22, fontWeight: 500, color: C.text, lineHeight: 1.4, marginBottom: 32, letterSpacing: "-0.01em" }}>What's on your mind today?</p>
-                    <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 14, padding: "14px 16px 10px" }}>
+                    <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 14, padding: "14px 16px 10px", textAlign: "left" }}>
                       <textarea value={aiInput} onChange={e => { setAiInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px"; }} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask about a client, draft a message, get advice…" rows={2} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 17, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.5, color: C.text, overflowY: "auto" }} />
                       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 4 }}>
                         <button onClick={() => sendAi()} disabled={!aiInput.trim()} style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: aiInput.trim() ? C.btn : C.borderLight, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: aiInput.trim() ? "pointer" : "default", transition: "background 0.15s" }}>
@@ -3394,6 +3559,7 @@ export default function App({ user }) {
                         </button>
                       </div>
                     </div>
+                    <p style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginTop: 10 }}>Rai can make mistakes. Double-check anything you act on.</p>
                   </div>
                 ) : (
                   <div style={{ paddingBottom: 200 }}>
@@ -3430,7 +3596,7 @@ export default function App({ user }) {
                       </button>
                     </div>
                   </div>
-                  <p style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginTop: 6 }}>Rai can make mistakes. Double-check anything you act on.</p>
+                  <p style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginTop: 10 }}>Rai can make mistakes. Double-check anything you act on.</p>
                 </div>
               </div>
             )}
