@@ -1814,9 +1814,23 @@ export default function App({ user }) {
         }
         .rt-row:hover { transform: translateY(-1px); }
         .rt-row:hover .rt-dismiss { opacity: 1 !important; }
-        /* Today v4 — mobile (<=900px): single column, no focus pane, no rai */
+        /* Today v4 — Grid layout, 3 breakpoints */
+        /* Default: narrow desktop (901-1439px) — 2 cols, status + composer span full width, tasks + focus below */
+        .rt-today-v4 {
+          grid-template-columns: minmax(0, 1fr) 360px;
+          grid-template-areas:
+            "band band"
+            "composer composer"
+            "tasks focus";
+        }
         @media (max-width: 900px) {
-          .rt-grid { grid-template-columns: 1fr !important; }
+          .rt-today-v4 {
+            grid-template-columns: 1fr;
+            grid-template-areas:
+              "band"
+              "composer"
+              "tasks";
+          }
           .rt-focus-col { display: none !important; }
           .rt-rai-col { display: none !important; }
           .rt-band { flex-direction: column !important; align-items: flex-start !important; }
@@ -1829,8 +1843,15 @@ export default function App({ user }) {
           .rt-row-meta span:nth-child(n+4) { display: none !important; }
           .rt-row-score { display: none !important; }
         }
-        /* Today v4 — wide desktop (>=1440px): add Rai column on the right */
+        /* Wide desktop (>=1440px): 3 cols, Rai spans composer+tasks rows */
         @media (min-width: 1440px) {
+          .rt-today-v4 {
+            grid-template-columns: minmax(0, 1fr) 360px 360px;
+            grid-template-areas:
+              "band band ."
+              "composer composer rai"
+              "tasks focus rai";
+          }
           .rt-rai-col { display: flex !important; }
         }
         @keyframes fwLaunch {
@@ -2184,10 +2205,9 @@ export default function App({ user }) {
 
           // ─── RENDER ──────────────────────────────────────────────────────
           return (
-            <div className="rt-today-v4" style={{ width: "100%", display: "flex", gap: 20, alignItems: "flex-start" }}>
-              <div className="rt-main-col" style={{ flex: 1, minWidth: 0 }}>
+            <div className="rt-today-v4" style={{ width: "100%", display: "grid", gap: 20, alignItems: "start" }}>
               {/* STATUS BAND */}
-              <div className="rt-band" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
+              <div className="rt-band" style={{ gridArea: "band", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>{displayDate}</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>
@@ -2219,7 +2239,7 @@ export default function App({ user }) {
               </div>
 
               {/* COMPOSER */}
-              <div className="rt-composer" style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 14, boxShadow: C.shadowMd, marginBottom: 20, position: "relative" }}>
+              <div className="rt-composer" style={{ gridArea: "composer", background: C.card, border: "1px solid " + C.border, borderRadius: 14, boxShadow: C.shadowMd, position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", flexWrap: "wrap" }}>
                   <div style={{ width: 28, height: 28, borderRadius: 14, background: C.btnLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <Icon name="plus" size={14} color={C.btn} />
@@ -2360,10 +2380,8 @@ export default function App({ user }) {
 
               </div>
 
-              {/* MAIN GRID: task list + focus pane */}
-              <div className="rt-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 360px", gap: 20, alignItems: "start" }}>
-                {/* LEFT COLUMN — TASK LIST */}
-                <div style={{ minWidth: 0 }}>
+              {/* TASKS COLUMN */}
+              <div className="rt-tasks-col" style={{ gridArea: "tasks", minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 4px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Your plate</span>
@@ -2505,31 +2523,36 @@ export default function App({ user }) {
                   )}
                 </div>
 
-                {/* MIDDLE COLUMN — Focus Pane on desktop (>900px). Only when task selected. */}
-                <div className="rt-focus-col" style={{ display: "flex", flexDirection: "column", gap: 16, position: "sticky", top: 20 }}>
-                  {focusTask && focusClient && (
-                    <FocusPane
-                      task={focusTask}
-                      client={focusClient}
-                      retHistory={stubRetentionHistory(focusClient.ret || 60)}
-                      whyText={stubWhy(focusTask, focusClient)}
-                      confidence={stubConfidence()}
-                      draftText={stubDraft(focusClient.name)}
-                      C={C}
-                      Icon={Icon}
-                      Spark={Spark}
-                      ClientAvatar={ClientAvatar}
-                      ScoreChip={ScoreChip}
-                      retColor={retColor}
-                      onComplete={() => toggleTask(focusTask.id)}
-                    />
-                  )}
+              {/* FOCUS PANE — on desktop (>900px). Only when task selected. */}
+              <div className="rt-focus-col" style={{ gridArea: "focus", display: "flex", flexDirection: "column", position: "sticky", top: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px 12px" }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Current focus</span>
                 </div>
-              </div>
+                {focusTask && focusClient ? (
+                  <FocusPane
+                    task={focusTask}
+                    client={focusClient}
+                    retHistory={stubRetentionHistory(focusClient.ret || 60)}
+                    whyText={stubWhy(focusTask, focusClient)}
+                    confidence={stubConfidence()}
+                    draftText={stubDraft(focusClient.name)}
+                    C={C}
+                    Icon={Icon}
+                    Spark={Spark}
+                    ClientAvatar={ClientAvatar}
+                    ScoreChip={ScoreChip}
+                    retColor={retColor}
+                    onComplete={() => toggleTask(focusTask.id)}
+                  />
+                ) : (
+                  <div style={{ padding: "28px 20px", background: "transparent", border: "1px dashed " + C.border, borderRadius: 14, textAlign: "center" }}>
+                    <div style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5 }}>Pick a task to focus on.</div>
+                  </div>
+                )}
               </div>
 
-              {/* OUTER RIGHT COLUMN — Rai mini, wide desktop only (>=1440px). Top aligned with composer. */}
-              <div className="rt-rai-col" style={{ display: "none", flexDirection: "column", gap: 16, position: "sticky", top: 20, width: 360, flexShrink: 0, marginTop: 118, alignSelf: "flex-start" }}>
+              {/* RAI COLUMN — wide desktop only (>=1440px). Grid auto-aligns with composer. */}
+              <div className="rt-rai-col" style={{ gridArea: "rai", display: "none", flexDirection: "column", gap: 16, position: "sticky", top: 20, alignSelf: "start" }}>
                 <RaiMiniPanel />
               </div>
 
