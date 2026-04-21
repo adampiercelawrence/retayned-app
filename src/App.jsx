@@ -894,7 +894,10 @@ export default function App({ user }) {
     })));
 
     if (taskRes.data) {
-      // Auto-reset recurring tasks that were completed before the most recent 2 AM local time
+      // Auto-cleanup at the most recent 2 AM local time:
+      //   - Recurring tasks completed before cutoff → reset is_done (they reappear fresh)
+      //   - Non-recurring user (non-AI) tasks completed before cutoff → hard delete
+      //   - AI tasks → left alone (managed by Rai's Daily Sweep)
       const now = new Date();
       const today2am = new Date(now);
       today2am.setHours(2, 0, 0, 0);
@@ -904,25 +907,32 @@ export default function App({ user }) {
         t.is_recurring && t.is_done &&
         t.completed_at && new Date(t.completed_at) < cutoff
       );
+      const toDelete = taskRes.data.filter(t =>
+        !t.is_recurring && !t.is_ai_generated && t.is_done &&
+        t.completed_at && new Date(t.completed_at) < cutoff
+      );
 
       // Fire off DB updates in background (don't block UI)
       toReset.forEach(t => { tasksDb.toggle(t.id, false); });
+      toDelete.forEach(t => { tasksDb.delete(t.id); });
 
-      setTasks(taskRes.data.map(t => {
-        const reset = toReset.find(r => r.id === t.id);
-        return {
-          id: t.id,
-          text: t.text,
-          client: t.client_name || "",
-          done: reset ? false : t.is_done,
-          completed_at: reset ? null : t.completed_at,
-          ai: t.is_ai_generated,
-          alert: t.is_alert,
-          recurring: t.is_recurring,
-          sort_order: t.sort_order,
-          raiPriority: t.is_alert || false,
-        };
-      }));
+      setTasks(taskRes.data
+        .filter(t => !toDelete.find(d => d.id === t.id))
+        .map(t => {
+          const reset = toReset.find(r => r.id === t.id);
+          return {
+            id: t.id,
+            text: t.text,
+            client: t.client_name || "",
+            done: reset ? false : t.is_done,
+            completed_at: reset ? null : t.completed_at,
+            ai: t.is_ai_generated,
+            alert: t.is_alert,
+            recurring: t.is_recurring,
+            sort_order: t.sort_order,
+            raiPriority: t.is_alert || false,
+          };
+        }));
     }
 
     if (refRes.data) setRefs(refRes.data.map(r => ({
@@ -1562,7 +1572,7 @@ export default function App({ user }) {
               }}
             />
             <button
-              onClick={sendAi}
+              onClick={() => sendAi()}
               disabled={!aiInput.trim()}
               style={{
                 width: 26, height: 26, borderRadius: 7,
