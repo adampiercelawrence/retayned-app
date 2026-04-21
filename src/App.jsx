@@ -508,6 +508,14 @@ export default function App({ user }) {
   const [clients, setClients] = useState([]);
   const [showAddClient, setShowAddClient] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
+  const [clientsSort, setClientsSort] = useState("attention");
+  const [clientsView, setClientsView] = useState(() => {
+    try { return localStorage.getItem("clients-view") || "table"; } catch (e) { return "table"; }
+  });
+  // Persist view choice
+  useEffect(() => {
+    try { localStorage.setItem("clients-view", clientsView); } catch (e) {}
+  }, [clientsView]);
   const [showImport, setShowImport] = useState(false);
   const [importTab, setImportTab] = useState("csv"); // "csv" | "paste"
   const [importPaste, setImportPaste] = useState("");
@@ -2664,25 +2672,388 @@ export default function App({ user }) {
           </div>
         )}
 
-        {/* ═══ CLIENTS ═══ */}
-        {page === "clients" && (
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-              <div><h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>Clients</h1><p style={{ fontSize: 14, color: C.textMuted }}>{clients.length} active · ${(totalRev / 1000).toFixed(1)}k/mo</p></div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {tier === "enterprise" && (
-                  <button onClick={() => { setShowImport(!showImport); setShowAddClient(false); }} style={{ padding: "10px 20px", background: "transparent", color: C.primary, border: "1px solid " + C.primary + "44", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Import Clients</button>
-                )}
-                <button className="r-btn" onClick={() => { setShowAddClient(true); setShowImport(false); }} style={{ padding: "10px 20px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Add Client</button>
-              </div>
-            </div>
-          <div className="r-today-cols" style={{ display: "flex", gap: 24 }}>
-          <div className="r-today-panel" style={{ width: 270, flexShrink: 0 }}>
-            <PortfolioPanel />
-          </div>
-          <div style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
+        {/* ═══ CLIENTS v2 — compare-first ═══ */}
+        {page === "clients" && (() => {
+          // ─── Stubs for v2-specific per-client fields ──────────────────────
+          // Real data lives in clients[]: name, ret, contact, role, months, revenue, velocity, lastHC, lastContact, tag
+          // Stubs provide: owner + ownerColor, cadence target/actual, 12-week trend array, score delta, stage bucket, renewal days
+          const hashStr = (s) => (s || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+          const stubDelta = (clientName) => {
+            if (!clientName) return 0;
+            return (hashStr(clientName) % 11) - 5;
+          };
+          const OWNERS = [
+            { name: "Ana K.",    color: "#2C9A76" },
+            { name: "Dev R.",    color: "#D17A1B" },
+            { name: "Jordan P.", color: "#6D2BD9" },
+            { name: "Sam L.",    color: "#1F7A5C" },
+          ];
+          const stubOwner = (name) => OWNERS[hashStr(name) % OWNERS.length];
+          const stubCadenceTarget = (c) => {
+            const h = hashStr(c.name);
+            return (h % 3 === 0) ? 14 : 7; // weekly or biweekly target
+          };
+          const stubCadenceActual = (c) => {
+            // derive from lastContact if available, else pseudo
+            const lc = (c.lastContact || "").toLowerCase();
+            if (lc.includes("today")) return 1;
+            const m = lc.match(/(\d+)\s*d/);
+            if (m) return parseInt(m[1], 10);
+            return (hashStr(c.name) % 20) + 5;
+          };
+          const stubTrend = (c) => {
+            // 12-week synthetic revenue trend keyed to current score direction
+            const base = c.revenue || 5000;
+            const delta = stubDelta(c.name);
+            const direction = delta > 1 ? 1 : delta < -1 ? -1 : 0;
+            const pts = [];
+            for (let i = 0; i < 12; i++) {
+              const progress = i / 11;
+              const shift = direction * base * 0.08 * progress;
+              const wobble = Math.sin((i + hashStr(c.name)) * 1.1) * base * 0.01;
+              pts.push(Math.round(base - direction * base * 0.08 + shift + wobble));
+            }
+            pts[pts.length - 1] = base;
+            return pts;
+          };
+          const stubStage = (score) => score >= 80 ? "retained" : score >= 65 ? "watch" : score >= 45 ? "at-risk" : "critical";
+          const stubRenewal = (c) => {
+            const h = hashStr(c.name);
+            const days = (h % 180) + 5; // 5-184 days
+            return days < 30 ? `${days}d` : `${Math.round(days / 30)}mo`;
+          };
+          const stubRenewalDays = (c) => (hashStr(c.name) % 180) + 5;
+          const cadenceHealth = (target, actual) => {
+            const drift = Math.abs(actual - target) / target;
+            if (drift <= 0.2) return "on-track";
+            if (drift <= 0.5) return "slipping";
+            return "broken";
+          };
 
-            {/* Import Clients (Enterprise) */}
+          // ─── v2 Primitives (local to Clients page) ─────────────────────────
+          const ScoreRing2 = ({ client, size = 38 }) => {
+            const r = (size - 4) / 2;
+            const circ = 2 * Math.PI * r;
+            const score = client.ret || 60;
+            const pct = Math.max(0, Math.min(1, score / 100));
+            const color = retColor(score);
+            const initials = (client.name || "?").split(/\s|&/).filter(Boolean).slice(0, 2).map(s => s[0]).join("").toUpperCase();
+            return (
+              <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+                <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+                  <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={C.borderLight} strokeWidth="2" />
+                  <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"
+                    strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)} />
+                </svg>
+                <div style={{
+                  position: "absolute", inset: 3, borderRadius: "50%",
+                  background: color, color: "#fff",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: size * 0.28, fontWeight: 700, letterSpacing: 0.2,
+                }}>{initials}</div>
+              </div>
+            );
+          };
+
+          const V2Sparkline = ({ points, width = 72, height = 22, stroke, fill, showEnd = false }) => {
+            if (!points || points.length === 0) return null;
+            const min = Math.min(...points);
+            const max = Math.max(...points);
+            const range = max - min || 1;
+            const pad = 1.5;
+            const w = width - pad * 2;
+            const h = height - pad * 2;
+            const coords = points.map((p, i) => {
+              const x = pad + (i / (points.length - 1)) * w;
+              const y = pad + h - ((p - min) / range) * h;
+              return [x, y];
+            });
+            const path = coords.map((c, i) => (i === 0 ? `M${c[0]},${c[1]}` : `L${c[0]},${c[1]}`)).join(" ");
+            const area = `${path} L${coords[coords.length-1][0]},${pad+h} L${coords[0][0]},${pad+h} Z`;
+            const last = coords[coords.length - 1];
+            const first = points[0], lastV = points[points.length - 1];
+            const dir = lastV > first ? "up" : lastV < first ? "dn" : "flat";
+            const auto = dir === "up" ? C.retGood : dir === "dn" ? C.retWarn : C.textMuted;
+            const sColor = stroke || auto;
+            return (
+              <svg width={width} height={height} style={{ display: "block" }}>
+                {fill && <path d={area} fill={sColor} fillOpacity={0.08} />}
+                <path d={path} fill="none" stroke={sColor} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+                {showEnd && <circle cx={last[0]} cy={last[1]} r={1.8} fill={sColor} />}
+              </svg>
+            );
+          };
+
+          const CadencePips = ({ target, actual, showLabel = false }) => {
+            const health = cadenceHealth(target, actual);
+            const color = health === "on-track" ? C.retGood : health === "slipping" ? C.retOk : C.retWarn;
+            const dots = [
+              { filled: true, color: C.borderLight },
+              { filled: true, color: health === "on-track" ? color : C.borderLight },
+              { filled: health !== "broken", color },
+            ];
+            const label = health === "on-track" ? "On rhythm" : health === "slipping" ? `${actual}d cadence` : `${actual}d silent`;
+            return (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "inline-flex", gap: 2 }}>
+                  {dots.map((d, i) => (
+                    <span key={i} style={{
+                      width: 5, height: 5, borderRadius: 3,
+                      background: d.filled ? d.color : "transparent",
+                      border: d.filled ? "none" : `1px solid ${d.color}`,
+                    }} />
+                  ))}
+                </div>
+                {showLabel && <span style={{ fontSize: 11, color, fontWeight: 500 }}>{label}</span>}
+              </div>
+            );
+          };
+
+          const OwnerChip = ({ owner, color, size = "md", showLabel = true, firstOnly = false }) => {
+            const dim = size === "sm" ? 18 : 22;
+            const initials = owner.split(" ").map(s => s[0]).join("").slice(0, 2);
+            const display = firstOnly ? owner.split(" ")[0] : owner;
+            return (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                <div style={{
+                  width: dim, height: dim, borderRadius: dim / 2, flexShrink: 0,
+                  background: color, color: "#fff",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: size === "sm" ? 9 : 10, fontWeight: 700, letterSpacing: 0.2,
+                }}>{initials}</div>
+                {showLabel && <span style={{ fontSize: 11.5, color: C.textSec, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{display}</span>}
+              </div>
+            );
+          };
+
+          // ─── Aggregates ────────────────────────────────────────────────────
+          const activeClients = clients || [];
+          const avgScore = activeClients.length ? Math.round(activeClients.reduce((a, c) => a + (c.ret || 0), 0) / activeClients.length) : 0;
+          const totalMRR = activeClients.reduce((a, c) => a + (c.revenue || 0), 0);
+          const byStage = {
+            retained: activeClients.filter(c => stubStage(c.ret || 0) === "retained").length,
+            watch:    activeClients.filter(c => stubStage(c.ret || 0) === "watch").length,
+            atRisk:   activeClients.filter(c => stubStage(c.ret || 0) === "at-risk").length,
+            critical: activeClients.filter(c => stubStage(c.ret || 0) === "critical").length,
+          };
+          const portfolioTrend = activeClients.reduce((a, c) => {
+            const t = stubTrend(c);
+            return a + (t[t.length - 1] - t[0]);
+          }, 0);
+          const trendPct = totalMRR > 0 ? (portfolioTrend / Math.max(1, totalMRR - portfolioTrend)) * 100 : 0;
+          const climbing = [...activeClients]
+            .map(c => ({ c, d: stubDelta(c.name) }))
+            .filter(x => x.d >= 2)
+            .sort((a, b) => b.d - a.d).slice(0, 3);
+          const slipping = [...activeClients]
+            .map(c => ({ c, d: stubDelta(c.name) }))
+            .filter(x => x.d <= -2)
+            .sort((a, b) => a.d - b.d).slice(0, 3);
+          const longestClient = [...activeClients].sort((a, b) => (b.months || 0) - (a.months || 0))[0];
+
+          // ─── Sort + filter ─────────────────────────────────────────────────
+          const sortId = clientsSort || "attention";
+          const filteredClients = (() => {
+            let xs = activeClients;
+            const q = (clientSearch || "").trim().toLowerCase();
+            if (q) {
+              xs = xs.filter(c =>
+                c.name.toLowerCase().includes(q) ||
+                (c.contact || "").toLowerCase().includes(q) ||
+                (c.tag || "").toLowerCase().includes(q) ||
+                stubOwner(c.name).name.toLowerCase().includes(q)
+              );
+            }
+            const copy = [...xs];
+            if (sortId === "attention") copy.sort((a, b) => (a.ret || 0) - (b.ret || 0));
+            else if (sortId === "revenue") copy.sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+            else if (sortId === "trend") {
+              const pct = c => {
+                const t = stubTrend(c);
+                return ((t[t.length - 1] - t[0]) / Math.max(1, t[0])) * 100;
+              };
+              copy.sort((a, b) => pct(a) - pct(b));
+            }
+            else if (sortId === "cadence") {
+              const drift = c => Math.abs(stubCadenceActual(c) - stubCadenceTarget(c)) / stubCadenceTarget(c);
+              copy.sort((a, b) => drift(b) - drift(a));
+            }
+            else if (sortId === "renewal") copy.sort((a, b) => stubRenewalDays(a) - stubRenewalDays(b));
+            return copy;
+          })();
+
+          const variant = clientsView || "table";
+          const sortOptions = [
+            { id: "attention",  label: "Attention" },
+            { id: "revenue",    label: "Revenue" },
+            { id: "trend",      label: "Trend" },
+            { id: "cadence",    label: "Cadence" },
+            { id: "renewal",    label: "Renewal" },
+          ];
+          const viewOptions = [
+            { id: "table",   label: "Table",   icon: "sweeps" },
+            { id: "columns", label: "Columns", icon: "bento" },
+            { id: "heatmap", label: "Heatmap", icon: "health" },
+          ];
+
+          return (
+            <div style={{ width: "100%" }}>
+              {/* STATUS BAND */}
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0, flex: "1 1 auto" }}>
+                  <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Your portfolio</div>
+                  <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Clients</h1>
+                  <div style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span><b style={{ color: C.text, fontWeight: 700 }}>{activeClients.length}</b> active</span>
+                    <span style={{ color: C.border }}>·</span>
+                    <span><b style={{ color: C.text, fontWeight: 700 }}>${(totalMRR/1000).toFixed(1)}k</b> /mo</span>
+                    <span style={{ color: C.border }}>·</span>
+                    <span>avg health <b style={{ color: retColor(avgScore), fontWeight: 700 }}>{avgScore}</b></span>
+                    <span style={{ color: C.border }}>·</span>
+                    <span style={{ color: trendPct >= 0 ? C.retGood : C.retWarn, fontWeight: 600 }}>
+                      {trendPct >= 0 ? "+" : ""}{trendPct.toFixed(1)}% 12wk
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  {tier === "enterprise" && (
+                    <button onClick={() => { setShowImport(!showImport); setShowAddClient(false); }} style={{ padding: "8px 14px", background: "transparent", color: C.primary, border: "1px solid " + C.primary + "44", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>Import Clients</button>
+                  )}
+                  <button className="r-btn" onClick={() => { setShowAddClient(true); setShowImport(false); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+                    <Icon name="plus" size={14} color="#fff" />
+                    <span style={{ whiteSpace: "nowrap" }}>Add client</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* MAIN 2-COL GRID: left rail (240px) + main (flex) */}
+              <div className="rc-grid" style={{ display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
+
+                {/* LEFT RAIL — Portfolio, Book history, Recent movement */}
+                <div className="rc-rail" style={{ position: "sticky", top: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, overflow: "hidden" }}>
+                    {/* Portfolio section */}
+                    <div style={{ padding: "14px", borderBottom: "1px solid " + C.borderLight }}>
+                      <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 10 }}>Portfolio</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+                        <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
+                          <svg width={64} height={64} style={{ transform: "rotate(-90deg)" }}>
+                            <circle cx={32} cy={32} r={28} fill="none" stroke={C.borderLight} strokeWidth="3" />
+                            <circle cx={32} cy={32} r={28} fill="none" stroke={retColor(avgScore)} strokeWidth="3" strokeLinecap="round"
+                              strokeDasharray={2 * Math.PI * 28} strokeDashoffset={2 * Math.PI * 28 * (1 - avgScore / 100)} />
+                          </svg>
+                          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <div style={{ fontSize: 19, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums", letterSpacing: -0.3, lineHeight: 1 }}>{avgScore}</div>
+                          </div>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                            <span style={{ fontSize: 11.5, color: C.textMuted }}>Clients</span>
+                            <span style={{ fontSize: 12, color: C.textSec, fontVariantNumeric: "tabular-nums" }}>{activeClients.length}</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                            <span style={{ fontSize: 11.5, color: C.textMuted }}>MRR</span>
+                            <span style={{ fontSize: 12, color: C.text, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>${(totalMRR/1000).toFixed(1)}k</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                            <span style={{ fontSize: 11.5, color: C.textMuted }}>Avg health</span>
+                            <span style={{ fontSize: 12, color: retColor(avgScore), fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{avgScore}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", gap: 1, marginBottom: 10 }} title={`Thriving ${byStage.retained} · Watch ${byStage.watch} · At risk ${byStage.atRisk} · Critical ${byStage.critical}`}>
+                        {byStage.retained > 0 && <div style={{ flex: byStage.retained, background: C.retGood }} />}
+                        {byStage.watch > 0 && <div style={{ flex: byStage.watch, background: C.retOk }} />}
+                        {byStage.atRisk > 0 && <div style={{ flex: byStage.atRisk, background: C.retWarn }} />}
+                        {byStage.critical > 0 && <div style={{ flex: byStage.critical, background: C.retCrit }} />}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 10px" }}>
+                        {[
+                          { color: C.retGood, num: byStage.retained, label: "Thriving" },
+                          { color: C.retOk,   num: byStage.watch,    label: "Watch" },
+                          { color: C.retWarn, num: byStage.atRisk,   label: "At risk" },
+                          { color: C.retCrit, num: byStage.critical, label: "Critical" },
+                        ].map((s, i) => (
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: 3, background: s.color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums" }}>{s.num}</span>
+                            <span style={{ fontSize: 11, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Book history section */}
+                    <div style={{ padding: "14px", borderBottom: "1px solid " + C.borderLight }}>
+                      <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 10 }}>Book history</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                        <div>
+                          <div style={{ fontSize: 19, fontWeight: 700, color: C.text, letterSpacing: -0.3, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                            ${(activeClients.reduce((a, c) => a + (c.revenue || 0) * (c.months || 1), 0) / 1000000).toFixed(1)}M
+                          </div>
+                          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4, letterSpacing: 0.1 }}>Lifetime rev</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 19, fontWeight: 700, color: C.text, letterSpacing: -0.3, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                            {activeClients.length ? (activeClients.reduce((a, c) => a + (c.months || 0), 0) / activeClients.length / 12).toFixed(1) : "0"} yr
+                          </div>
+                          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4, letterSpacing: 0.1 }}>Avg tenure</div>
+                        </div>
+                      </div>
+                      {longestClient && (
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 6, paddingTop: 10, borderTop: "1px solid " + C.borderLight, fontSize: 11 }}>
+                          <span style={{ color: C.textMuted }}>Longest</span>
+                          <span style={{ color: C.text, fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{longestClient.name}</span>
+                          <span style={{ color: C.textMuted, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{((longestClient.months || 0) / 12).toFixed(1)} yr</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Recent movement section */}
+                    <div style={{ padding: "14px" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
+                        <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Recent movement</span>
+                        <span style={{ fontSize: 10.5, color: C.textMuted, letterSpacing: 0.2 }}>7d</span>
+                      </div>
+                      {climbing.length > 0 && (
+                        <>
+                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6, color: C.retElite }}>Climbing</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: climbing.length && slipping.length ? 10 : 0 }}>
+                            {climbing.map(({ c, d }) => (
+                              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                                <ScoreRing2 client={c} size={22} />
+                                <span style={{ fontSize: 12, color: C.text, fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums", flexShrink: 0, color: C.retGood }}>+{d}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      {slipping.length > 0 && (
+                        <>
+                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6, color: C.retWarn }}>Slipping</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                            {slipping.map(({ c, d }) => (
+                              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                                <ScoreRing2 client={c} size={22} />
+                                <span style={{ fontSize: 12, color: C.text, fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums", flexShrink: 0, color: C.retWarn }}>{d}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      {climbing.length === 0 && slipping.length === 0 && (
+                        <div style={{ fontSize: 12, color: C.textMuted, fontStyle: "italic" }}>No significant movement this week.</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* MAIN COLUMN */}
+                <div style={{ minWidth: 0 }}>
+
+                  {/* Import & Add Client — unchanged blocks, preserved as-is */}
             {showImport && tier === "enterprise" && (
               <div style={{ background: C.card, borderRadius: 14, border: "1.5px solid " + C.primary, padding: "20px", marginBottom: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
@@ -2840,7 +3211,6 @@ export default function App({ user }) {
               </div>
             )}
 
-            {/* Add Client Flow */}
             {showAddClient && (
               <div style={{ background: C.card, borderRadius: 14, border: "2px solid " + C.primary, padding: "20px", marginBottom: 16, boxShadow: C.cardShadow }}>
                 {profileStep === 0 && (
@@ -2932,32 +3302,253 @@ export default function App({ user }) {
                 )}
               </div>
             )}
-            {/* Client Search */}
-            {clients.length > 5 && (
-              <div style={{ marginBottom: 12, overflow: "hidden" }}>
-                <input value={clientSearch} onChange={e => setClientSearch(e.target.value)} placeholder="Search clients..." style={{ width: "100%", padding: "0 16px", height: 44, border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", background: C.card, outline: "none", boxSizing: "border-box" }} />
-              </div>
-            )}
-            <div style={{ background: C.card, borderRadius: 14, border: "1px solid " + C.border, overflow: "hidden" }}>
-              {clients.filter(c => !clientSearch || c.name.toLowerCase().includes(clientSearch.toLowerCase()) || c.contact.toLowerCase().includes(clientSearch.toLowerCase()) || (c.tag || "").toLowerCase().includes(clientSearch.toLowerCase())).map((c, i, arr) => (
-                <div key={c.id} className="row-hover" onClick={() => { setSelectedClient(c); setRolodexConfirm(false); setRemoveConfirm(false); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: i < arr.length - 1 ? "1px solid " + C.borderLight : "none" }}>
-                  <ScoreRing score={c.ret} size={44} strokeWidth={4} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700 }}>{c.name}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{c.contact} · {c.role}</div>
+
+
+                  {/* Toolbar: search + sort + view toggle */}
+                  <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "10px 14px", marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Icon name="search" size={14} color={C.textMuted} />
+                      <input value={clientSearch} onChange={e => setClientSearch(e.target.value)} placeholder="Search clients, owners, industries…" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 14, padding: "2px 0", fontFamily: "inherit", color: C.text }} />
+                      {clientSearch && <button onClick={() => setClientSearch("")} style={{ width: 22, height: 22, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, background: "none", border: "none", cursor: "pointer" }}><Icon name="x" size={11} /></button>}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, paddingTop: 10, borderTop: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginRight: 2 }}>Sort</span>
+                        {sortOptions.map(s => (
+                          <button key={s.id} onClick={() => setClientsSort(s.id)} style={{
+                            padding: "4px 10px", fontSize: 11.5, borderRadius: 999, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+                            background: sortId === s.id ? C.text : "transparent",
+                            color: sortId === s.id ? "#fff" : C.textMuted,
+                            border: "1px solid " + (sortId === s.id ? C.text : C.borderLight),
+                          }}>{s.label}</button>
+                        ))}
+                      </div>
+                      <div style={{ display: "inline-flex", gap: 2, padding: 2, background: C.bg, border: "1px solid " + C.border, borderRadius: 8 }}>
+                        {viewOptions.map(v => (
+                          <button key={v.id} onClick={() => setClientsView(v.id)} title={v.label} style={{
+                            display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit",
+                            background: variant === v.id ? C.card : "transparent",
+                            color: variant === v.id ? C.text : C.textMuted,
+                            boxShadow: variant === v.id ? C.shadowSm : "none",
+                            border: "none",
+                          }}>
+                            <Icon name={v.icon} size={14} color={variant === v.id ? C.text : C.textMuted} />
+                            <span style={{ fontSize: 12, fontWeight: 500 }}>{v.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>${(c.revenue / 1000).toFixed(1)}k<span style={{ fontSize: 12, fontWeight: 400, color: C.textMuted }}>/mo</span></div>
-                    <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>${Math.round(getAdjustedLTV(c) / 1000)}k LCV</div>
+
+                  {/* Meta row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: C.textMuted, padding: "0 4px 10px", letterSpacing: 0.1 }}>
+                    <span>{filteredClients.length} {filteredClients.length === 1 ? "client" : "clients"}</span>
+                    <span style={{ flex: 1 }} />
+                    <span>Sort: <b style={{ color: C.text, fontWeight: 500 }}>{sortOptions.find(s => s.id === sortId)?.label || "Attention"}</b></span>
                   </div>
+
+                  {/* COMPARE SURFACE — 3 variants */}
+
+                  {variant === "table" && (
+                    <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, overflow: "hidden" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid " + C.borderLight, background: C.bg }}>
+                        <div style={{ width: 32, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }} />
+                        <div style={{ flex: 1.4, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Client</div>
+                        <div style={{ width: 56, textAlign: "center", fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Health</div>
+                        <div style={{ width: 96, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Owner</div>
+                        <div style={{ width: 78, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Revenue</div>
+                        <div style={{ width: 88, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>12-wk trend</div>
+                        <div style={{ width: 92, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Cadence</div>
+                        <div style={{ width: 64, textAlign: "right", fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Renews</div>
+                      </div>
+                      <div>
+                        {filteredClients.map((c, i, arr) => {
+                          const trend = stubTrend(c);
+                          const trendStart = trend[0], trendEnd = trend[trend.length - 1];
+                          const pct = ((trendEnd - trendStart) / Math.max(1, trendStart)) * 100;
+                          const owner = stubOwner(c.name);
+                          const ct = stubCadenceTarget(c);
+                          const ca = stubCadenceActual(c);
+                          const renewStr = stubRenewal(c);
+                          const renewDays = stubRenewalDays(c);
+                          const renewUrgent = renewDays <= 14;
+                          const delta = stubDelta(c.name);
+                          return (
+                            <div key={c.id} className="row-hover" onClick={() => { setSelectedClient(c); setRolodexConfirm(false); setRemoveConfirm(false); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderBottom: i < arr.length - 1 ? "1px solid " + C.borderLight : "none", cursor: "pointer" }}>
+                              <div style={{ width: 32, display: "flex", alignItems: "center" }}>
+                                <ScoreRing2 client={c} size={28} />
+                              </div>
+                              <div style={{ flex: 1.4, minWidth: 0 }}>
+                                <div style={{ fontSize: 13.5, fontWeight: 500, color: C.text, letterSpacing: -0.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 1 }}>{c.tag || "Client"} · last {c.lastContact || "—"}</div>
+                              </div>
+                              <div style={{ width: 56, display: "flex", justifyContent: "center", alignItems: "baseline", gap: 3 }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: retColor(c.ret || 0), fontVariantNumeric: "tabular-nums" }}>{c.ret || 0}</span>
+                                {delta !== 0 && (
+                                  <span style={{ fontSize: 10, fontWeight: 500, color: delta > 0 ? C.retGood : C.retWarn }}>
+                                    {delta > 0 ? "+" : ""}{delta}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ width: 96, minWidth: 0, display: "flex", alignItems: "center" }}>
+                                <OwnerChip owner={owner.name} color={owner.color} size="sm" showLabel firstOnly />
+                              </div>
+                              <div style={{ width: 78 }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontVariantNumeric: "tabular-nums" }}>${((c.revenue || 0) / 1000).toFixed(1)}k</div>
+                                <div style={{ fontSize: 10.5, color: C.textMuted }}>/mo</div>
+                              </div>
+                              <div style={{ width: 88, display: "flex", alignItems: "center", gap: 6 }}>
+                                <V2Sparkline points={trend} width={50} height={20} />
+                                <span style={{ fontSize: 11, fontWeight: 700, color: pct >= 1 ? C.retGood : pct <= -1 ? C.retWarn : C.textMuted, fontVariantNumeric: "tabular-nums" }}>
+                                  {pct >= 0 ? "+" : ""}{pct.toFixed(0)}%
+                                </span>
+                              </div>
+                              <div style={{ width: 92 }}>
+                                <CadencePips target={ct} actual={ca} showLabel />
+                              </div>
+                              <div style={{ width: 64, textAlign: "right" }}>
+                                <span style={{ fontSize: 12, fontVariantNumeric: "tabular-nums", color: renewUrgent ? C.retWarn : C.textSec, fontWeight: renewUrgent ? 700 : 500 }}>{renewStr}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {variant === "columns" && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, alignItems: "flex-start" }}>
+                      {[
+                        { id: "retained", label: "Thriving",  color: C.retGood, bg: "#EFF5F1" },
+                        { id: "watch",    label: "Watch",     color: C.retOk,   bg: "#F6F4E5" },
+                        { id: "at-risk",  label: "At risk",   color: C.retWarn, bg: "#F9EEE0" },
+                        { id: "critical", label: "Critical",  color: C.retCrit, bg: "#F5E4E0" },
+                      ].map(s => {
+                        const col = filteredClients.filter(c => stubStage(c.ret || 0) === s.id);
+                        const mrr = col.reduce((a, c) => a + (c.revenue || 0), 0);
+                        return (
+                          <div key={s.id} style={{ background: s.bg, border: "1px solid " + s.color + "22", borderRadius: 12, padding: 10, display: "flex", flexDirection: "column", gap: 8, minHeight: 200 }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 6px 8px", borderBottom: "1px solid " + C.borderLight }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{ width: 8, height: 8, borderRadius: 4, background: s.color }} />
+                                <span style={{ fontSize: 12.5, fontWeight: 700, color: C.text, letterSpacing: -0.1 }}>{s.label}</span>
+                                <span style={{ fontSize: 11, color: C.textMuted, fontVariantNumeric: "tabular-nums" }}>{col.length}</span>
+                              </div>
+                              <div style={{ fontSize: 11, color: C.textMuted, fontVariantNumeric: "tabular-nums" }}>${(mrr/1000).toFixed(1)}k</div>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                              {col.map(c => {
+                                const trend = stubTrend(c);
+                                const trendStart = trend[0], trendEnd = trend[trend.length - 1];
+                                const pct = ((trendEnd - trendStart) / Math.max(1, trendStart)) * 100;
+                                const owner = stubOwner(c.name);
+                                const ct = stubCadenceTarget(c);
+                                const ca = stubCadenceActual(c);
+                                const delta = stubDelta(c.name);
+                                return (
+                                  <div key={c.id} className="row-hover" onClick={() => setSelectedClient(c)} style={{ background: C.card, border: "1px solid " + C.borderLight, borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 8, cursor: "pointer" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                      <ScoreRing2 client={c} size={32} />
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 13, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: -0.1 }}>{c.name}</div>
+                                        <div style={{ fontSize: 10.5, color: C.textMuted, marginTop: 1 }}>{c.tag || "Client"} · renews {stubRenewal(c)}</div>
+                                      </div>
+                                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                                        <div style={{ fontSize: 12.5, fontWeight: 700, color: retColor(c.ret || 0), fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                                          {c.ret || 0}{delta !== 0 && <span style={{ fontSize: 9.5, marginLeft: 3, color: delta > 0 ? C.retGood : C.retWarn }}>{delta > 0 ? "+" : ""}{delta}</span>}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                                      <OwnerChip owner={owner.name} color={owner.color} size="sm" showLabel firstOnly />
+                                      <CadencePips target={ct} actual={ca} />
+                                    </div>
+                                    <div style={{ position: "relative", background: C.bg, border: "1px solid " + C.borderLight, borderRadius: 6, padding: "4px 6px" }}>
+                                      <V2Sparkline points={trend} width={156} height={28} fill />
+                                      <div style={{ position: "absolute", top: 4, left: 0, right: 6, display: "flex", justifyContent: "space-between", padding: "0 6px", pointerEvents: "none" }}>
+                                        <span style={{ fontSize: 11.5, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums" }}>${((c.revenue || 0)/1000).toFixed(1)}k</span>
+                                        <span style={{ fontSize: 10.5, fontWeight: 700, color: pct >= 1 ? C.retGood : pct <= -1 ? C.retWarn : C.textMuted, fontVariantNumeric: "tabular-nums" }}>{pct >= 0 ? "+" : ""}{pct.toFixed(0)}%</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {col.length === 0 && (
+                                <div style={{ fontSize: 12, color: C.textMuted, textAlign: "center", padding: "20px 0", fontStyle: "italic" }}>No clients</div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {variant === "heatmap" && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+                      {filteredClients.map(c => {
+                        const trend = stubTrend(c);
+                        const trendStart = trend[0], trendEnd = trend[trend.length - 1];
+                        const pct = ((trendEnd - trendStart) / Math.max(1, trendStart)) * 100;
+                        const scoreColor = retColor(c.ret || 0);
+                        const renewDays = stubRenewalDays(c);
+                        const renewUrgent = renewDays <= 14;
+                        const owner = stubOwner(c.name);
+                        const ct = stubCadenceTarget(c);
+                        const ca = stubCadenceActual(c);
+                        const delta = stubDelta(c.name);
+                        return (
+                          <div key={c.id} className="row-hover" onClick={() => setSelectedClient(c)} style={{ position: "relative", background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: 12, paddingLeft: 14, overflow: "hidden", cursor: "pointer" }}>
+                            <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: 3, background: scoreColor }} />
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                              <ScoreRing2 client={c} size={34} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 13.5, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: -0.1 }}>{c.name}</div>
+                                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 1 }}>{c.tag || "Client"}</div>
+                              </div>
+                              <div style={{ textAlign: "right" }}>
+                                <div style={{ fontSize: 15, fontWeight: 700, color: scoreColor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{c.ret || 0}</div>
+                                {delta !== 0 && (
+                                  <div style={{ fontSize: 10, fontWeight: 500, color: delta > 0 ? C.retGood : C.retWarn, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{delta > 0 ? "+" : ""}{delta} pts</div>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{ position: "relative", background: C.primaryGhost, border: "1px solid " + C.borderLight, borderRadius: 6, padding: "4px 6px", marginBottom: 10, overflow: "hidden" }}>
+                              <V2Sparkline points={trend} width={200} height={32} fill showEnd />
+                              <div style={{ position: "absolute", top: 4, left: 6, right: 6, display: "flex", justifyContent: "space-between", alignItems: "center", pointerEvents: "none" }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums", background: "rgba(255,255,255,0.9)", padding: "1px 4px", borderRadius: 3 }}>${((c.revenue || 0)/1000).toFixed(1)}k<span style={{ fontWeight: 400, fontSize: 10.5, color: C.textMuted }}>/mo</span></span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: pct >= 1 ? C.retGood : pct <= -1 ? C.retWarn : C.textMuted, fontVariantNumeric: "tabular-nums", background: "rgba(255,255,255,0.9)", padding: "1px 4px", borderRadius: 3 }}>{pct >= 0 ? "+" : ""}{pct.toFixed(0)}% 12w</span>
+                              </div>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, auto) minmax(0, auto)", gap: 10, alignItems: "center" }}>
+                              <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
+                                <OwnerChip owner={owner.name} color={owner.color} size="sm" showLabel firstOnly />
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
+                                <CadencePips target={ct} actual={ca} />
+                                <span style={{ fontSize: 10.5, color: C.textMuted, marginLeft: 5 }}>{ca}d</span>
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", minWidth: 0, justifyContent: "flex-end" }}>
+                                <Icon name="clock" size={10} color={renewUrgent ? C.retWarn : C.textMuted} />
+                                <span style={{ fontSize: 11, color: renewUrgent ? C.retWarn : C.textMuted, fontWeight: renewUrgent ? 700 : 500, marginLeft: 4, fontVariantNumeric: "tabular-nums" }}>{stubRenewal(c)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {filteredClients.length === 0 && (
+                    <div style={{ textAlign: "center", padding: "40px 20px", background: C.primaryGhost, border: "1px dashed " + C.border, borderRadius: 14 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>No clients match.</div>
+                      <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>Try clearing the search or switching sort.</div>
+                    </div>
+                  )}
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
-          <RaiMiniPanel />
-          </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ═══ HEALTH CHECKS ═══ */}
         {page === "health" && (() => {
