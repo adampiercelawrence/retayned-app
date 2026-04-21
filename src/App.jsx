@@ -5,7 +5,7 @@ import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex a
 const C = {
   primary: "#33543E", primaryLight: "#558B68", primarySoft: "#E6EFE9", primaryGhost: "#F3F8F5",
   bg: "#FAFAF7", card: "#FFFFFF", surface: "#EEEFEB", surfaceWarm: "#F2EEE8",
-  sidebar: "#D9D3C4",
+  sidebar: "#FAFAF7",
   text: "#1E261F", textSec: "#5A6E5E", textMuted: "#92A596",
   ink900: "#0A0A0A", ink700: "#2A2A28", ink500: "#6B6B66", ink400: "#9A9A93", ink300: "#C4C4BD",
   border: "#D8DFD8", borderLight: "#E8ECE6", borderSoft: "#EFEFEA",
@@ -2004,7 +2004,7 @@ export default function App({ user }) {
       )}
 
       {/* SIDEBAR */}
-      <div className="r-desk" style={{ width: 240, background: C.sidebar, flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50, borderRight: "1px solid #C4BCA8" }}>
+      <div className="r-desk" style={{ width: 240, background: C.sidebar, flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50, borderRight: "1px solid " + C.borderLight }}>
         <div style={{ padding: "20px 18px 24px" }}><span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: C.text, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ color: C.primary, letterSpacing: "0" }}>.</span></span></div>
         <div style={{ flex: 1, padding: "0 10px" }}>
           {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => (
@@ -2019,7 +2019,7 @@ export default function App({ user }) {
             </div>
           )}
         </div>
-        <div style={{ padding: "8px 10px", borderTop: "1px solid #C4BCA8" }}>
+        <div style={{ padding: "8px 10px", borderTop: "1px solid " + C.borderLight }}>
           <div onClick={() => setTier(tier === "core" ? "enterprise" : "core")} className="nav-item" style={{ display: "none", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, color: C.textSec }}>
             <span style={{ fontSize: 12, fontWeight: 600 }}>{tier === "enterprise" ? "Enterprise" : "Core"}</span>
             <div style={{ width: 36, height: 20, borderRadius: 10, background: tier === "enterprise" ? C.btn : C.border, position: "relative", transition: "background 0.2s", cursor: "pointer" }}>
@@ -2030,7 +2030,7 @@ export default function App({ user }) {
             <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="settings" size={16} color={page === "settings" ? C.text : C.textSec} /></span><span style={{ fontSize: 14 }}>Settings</span>
           </div>
         </div>
-        <div style={{ padding: "12px 18px 18px", borderTop: "1px solid #C4BCA8" }}>
+        <div style={{ padding: "12px 18px 18px", borderTop: "1px solid " + C.borderLight }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 30, height: 30, borderRadius: 8, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff" }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
             <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: 13, fontWeight: 600, color: C.text, textTransform: "capitalize", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}</div><div style={{ fontSize: 11, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.user_metadata?.company || ""}</div></div>
@@ -4536,6 +4536,23 @@ export default function App({ user }) {
         }[_driftLabel] || { fg: C.textSec, bg: C.bg };
         const _bucket = sc.ret ? (sc.ret >= 80 ? "Thriving" : sc.ret >= 65 ? "Healthy" : sc.ret >= 45 ? "Watch" : sc.ret >= 30 ? "At Risk" : "Critical") : "New";
 
+        // 12-week retention trend (stubbed) — synthesizes trajectory ending at current score
+        const _trend = (() => {
+          const score = sc.ret || 50;
+          const base = Math.max(10, score - _delta * 2.4);
+          const pts = [];
+          for (let i = 0; i < 12; i++) {
+            const progress = i / 11;
+            const target = base + (score - base) * progress;
+            const wobble = Math.sin((i + _hash(sc.name || "")) * 1.1) * 2;
+            pts.push(Math.max(1, Math.min(99, Math.round(target + wobble))));
+          }
+          pts[pts.length - 1] = score;
+          return pts;
+        })();
+        const _trendUp = _trend[_trend.length - 1] > _trend[0];
+        const _trendColor = _trendUp ? C.retGood : C.retWarn;
+
         return (
           <>
             <div onClick={() => setSelectedClient(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 90 }} />
@@ -4561,10 +4578,6 @@ export default function App({ user }) {
                       ) : (
                         <span style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999, color: C.textSec, background: C.bg }}>First check pending</span>
                       )}
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: C.textSec }}>
-                        <span style={{ width: 7, height: 7, borderRadius: 4, background: _owner.color }} />
-                        {_owner.name}
-                      </span>
                     </div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -4597,6 +4610,34 @@ export default function App({ user }) {
                 </div>
               )}
 
+              {/* 12-week trend graph */}
+              {sc.ret && (() => {
+                const w = 480, h = 72, pad = 2;
+                const min = Math.min(..._trend);
+                const max = Math.max(..._trend);
+                const range = Math.max(1, max - min);
+                const innerW = w - pad * 2;
+                const innerH = h - pad * 2;
+                const coords = _trend.map((v, i) => [
+                  pad + (i / (_trend.length - 1)) * innerW,
+                  pad + innerH - ((v - min) / range) * innerH,
+                ]);
+                const linePath = coords.map((c, i) => (i === 0 ? "M" : "L") + c[0].toFixed(1) + "," + c[1].toFixed(1)).join(" ");
+                const areaPath = `${linePath} L${coords[coords.length - 1][0].toFixed(1)},${pad + innerH} L${coords[0][0].toFixed(1)},${pad + innerH} Z`;
+                return (
+                  <div style={{ padding: "0 20px 14px" }}>
+                    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ display: "block" }}>
+                      <path d={areaPath} fill={_trendColor} fillOpacity="0.12" />
+                      <path d={linePath} fill="none" stroke={_trendColor} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                    </svg>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 10.5, color: C.textMuted, letterSpacing: 0.1 }}>
+                      <span>12 weeks ago</span>
+                      <span>this week</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div style={{ padding: "0 20px 0" }}>
                 <div style={{ display: "flex", gap: 0, background: C.surface, borderRadius: 10, padding: 3 }}>
                   {["Overview", "Profile", "Billing", "Timeline"].map(t => (
@@ -4611,7 +4652,7 @@ export default function App({ user }) {
                   <div>
                     {!editingOverview ? (
                       <>
-                        {[{ l: "Contact", v: sc.contact }, { l: "Role", v: sc.role }, { l: "Industry", v: sc.tag }, { l: "Together", v: sc.months + " months" }, { l: "Last Task", v: sc.lastContact }, { l: "Monthly Revenue", v: "$" + sc.revenue.toLocaleString() }, { l: "Lifetime Value", v: "$" + Math.round(getAdjustedLTV(sc)).toLocaleString() }, { l: "Health Check", v: sc.lastHC ? "Last: " + sc.lastHC : "Pending" }, { l: "Referrals", v: sc.referrals },
+                        {[{ l: "Contact", v: sc.contact }, { l: "Industry", v: sc.tag }, { l: "Together", v: sc.months + " months" }, { l: "Monthly Revenue", v: "$" + sc.revenue.toLocaleString() }, { l: "Lifetime Value", v: "$" + Math.round(getAdjustedLTV(sc)).toLocaleString() }, { l: "Health Check", v: sc.lastHC ? "Last: " + sc.lastHC : "Pending" }, { l: "Referrals", v: sc.referrals },
                         ].map((d, i) => (
                           <div key={i} onClick={d.flag ? async () => {
                               const newFlags = { ...(sc.qualifyingFlags || {}), [d.flag]: !sc.qualifyingFlags?.[d.flag] };
@@ -4701,22 +4742,6 @@ export default function App({ user }) {
                         </div>
                       </>
                     )}
-                    <div style={{ background: C.raiGrad, borderRadius: 14, padding: "18px", color: "#fff", marginTop: 16, boxShadow: "0 4px 24px rgba(30,38,31,0.25)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}><Icon name="spark" size={14} color="rgba(255,255,255,0.6)" /><span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(255,255,255,0.5)" }}>Rai</span></div>
-                      <p style={{ fontSize: 14, lineHeight: 1.55, color: "rgba(255,255,255,.65)" }}>
-                        {sc.ret >= 90 ? `${sc.name} — this relationship is strong. Keep showing up the way you have been. Great work!`
-                        : sc.ret >= 80 ? `${sc.name} — healthy. Nothing urgent that stands out, but don't coast — momentum is easier to keep than rebuild.`
-                        : sc.ret >= 70 ? `${sc.name} — nothing alarming, but worth considering what you can do slightly differently to improve this engagement.`
-                        : sc.ret >= 60 ? `${sc.name} — something is off. Think through what's changed and how you can address any new variables.`
-                        : sc.ret >= 50 ? `${sc.name} — there's a pattern forming. Multiple signals suggest this isn't a one-off rough patch. Have an honest conversation soon.`
-                        : sc.ret >= 40 ? `${sc.name} — several things need attention and they're compounding. The longer you wait, the harder each one gets to fix.`
-                        : sc.ret >= 30 ? `${sc.name} — this relationship has serious, overlapping problems. Build a retention gameplan today. Not this week — today.`
-                        : sc.ret >= 20 ? `${sc.name} — deep fractures on multiple fronts. If there's a path back, it requires a direct, honest conversation immediately.`
-                        : sc.ret ? `${sc.name} — there's no way to sugarcoat this one. Is a last effort worth it, or is it time for the Rolodex?`
-                        : `${sc.name} is new. Complete the first health check to start building the retention picture.`}
-                      </p>
-                      <button className="r-btn" onClick={() => { setSelectedClient(null); setPage("coach"); setAiMessages([{ role: "ai", text: coachOpeners[sc.name] || `Let's talk about ${sc.name}.` }]); }} style={{ width: "100%", marginTop: 10, padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Talk to Rai</button>
-                    </div>
                 {/* Remove client */}
                 <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 6 }}>
                   {!rolodexConfirm && !removeConfirm ? (
