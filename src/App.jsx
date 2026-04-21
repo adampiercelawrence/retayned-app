@@ -3660,151 +3660,229 @@ export default function App({ user }) {
           const justCompleted = hcQueue.filter(h => (h.overdue > 0 || h.due === "Today") && hcDone[h.client]);
           const upcomingQueue = hcQueue.filter(h => h.overdue === 0 && h.due !== "Today");
 
+          const totalClients = clients.length;
+          const checkedThisMonth = hcQueue.filter(h => hcDone[h.client]).length;
+          const pctChecked = totalClients > 0 ? Math.round((checkedThisMonth / totalClients) * 100) : 0;
+          const now = new Date();
+          const monthLabel = now.toLocaleString("en-US", { month: "long", year: "numeric" });
+
           return (
-            <div>
-              <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>Health Checks</h1>
-              <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 20 }}>Monthly cadence · {activeQueue.filter(h => h.overdue > 0).length} overdue · {activeQueue.filter(h => h.due === "Today").length} due today</p>
-            <div className="r-today-cols" style={{ display: "flex", gap: 24 }}>
-            <div className="r-today-panel" style={{ width: 270, flexShrink: 0 }}>
-              <PortfolioPanel />
-            </div>
-            <div style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
-
-              {activeQueue.length === 0 && justCompleted.length === 0 && (
-                <div style={{ textAlign: "center", padding: "40px 20px" }}>
-                  
-                  <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>All caught up</p>
-                  <p style={{ fontSize: 12, color: C.textMuted }}>No health checks due right now. Check back when the next one is ready.</p>
+            <div style={{ width: "100%" }}>
+              {/* STATUS BAND */}
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0, flex: "1 1 auto" }}>
+                  <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Monthly cadence · {monthLabel}</div>
+                  <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Health Checks</h1>
+                  <div style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span><b style={{ color: C.text, fontWeight: 700 }}>{activeQueue.length}</b> in queue</span>
+                    <span style={{ color: C.border }}>·</span>
+                    <span style={{ color: activeQueue.filter(h => h.overdue > 0).length > 0 ? C.retWarn : C.textMuted, fontWeight: 600 }}>
+                      <b>{activeQueue.filter(h => h.overdue > 0).length}</b> overdue
+                    </span>
+                    <span style={{ color: C.border }}>·</span>
+                    <span><b style={{ color: C.text, fontWeight: 700 }}>{activeQueue.filter(h => h.due === "Today").length}</b> due today</span>
+                    {justCompleted.length > 0 && <>
+                      <span style={{ color: C.border }}>·</span>
+                      <span style={{ color: C.retGood, fontWeight: 600 }}>
+                        <b>{justCompleted.length}</b> done today
+                      </span>
+                    </>}
+                  </div>
                 </div>
-              )}
-
-              {/* Active Queue — Card Stack */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {activeQueue.map((h, i) => {
-                  const isOpen = hcOpen === h.client;
-                  const step = hcStep[h.client] || 0;
-                  const answers = hcAnswers[h.client] || [];
-                  const allAnswered = answers.length === 5 && answers.every(a => a !== undefined);
-
-                  return (
-                    <div key={i} style={{ background: C.card, borderRadius: 14, border: "1.5px solid " + (isOpen ? C.primary : C.border), transition: "all 0.2s", boxShadow: C.cardShadow }}>
-                      <div onClick={() => setHcOpen(isOpen ? null : h.client)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", cursor: "pointer" }}>
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ fontSize: 15, fontWeight: 700 }}>{h.client}</span>
-                            <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: retColor(h.ret) }}>{h.ret}%</span>
-                          </div>
-                          <div style={{ fontSize: 13, color: h.overdue > 0 ? C.danger : C.warning, marginTop: 3 }}>
-                            {h.overdue > 0 ? `Overdue by ${h.overdue}d` : "Due today"}
-                          </div>
-                        </div>
-                        {!isOpen && (
-                          <button className="r-btn" style={{ padding: "10px 22px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Start</button>
-                        )}
-                      </div>
-
-                      {/* Expanded HC Flow */}
-                      {isOpen && (
-                        <div style={{ padding: "0 18px 18px" }}>
-                          {/* Progress */}
-                          <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-                            {Array.from({ length: hcQuestions.length }).map((_, qi) => (
-                              <div key={qi} style={{ flex: 1, height: 3, borderRadius: 2, background: qi < step || answers[qi] !== undefined ? C.primary : C.borderLight }} />
-                            ))}
-                          </div>
-
-                          {/* Current question */}
-                          {step < hcQuestions.length && (
-                            <div style={{ marginBottom: 12 }}>
-                              <p style={{ fontSize: 16, fontWeight: 700, marginBottom: 14, lineHeight: 1.4 }}>{hcQuestions[step].q}</p>
-                              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                {hcQuestions[step].options.map((opt, oi) => {
-                                  const isSelected = answers[step] === opt.mod;
-                                  return (
-                                    <div key={oi} onClick={() => selectAnswer(h.client, step, opt.mod)} style={{
-                                      padding: "14px 16px", borderRadius: 10, cursor: "pointer",
-                                      background: isSelected ? C.primarySoft : C.bg,
-                                      border: "1.5px solid " + (isSelected ? C.primary : C.borderLight),
-                                      fontSize: 15, color: isSelected ? C.primary : C.textSec,
-                                      fontWeight: isSelected ? 600 : 400,
-                                      transition: "all 0.15s",
-                                    }}>{opt.text}</div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Nav */}
-                          {step < hcQuestions.length && (
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                              <button onClick={() => step > 0 && setHcStep({ ...hcStep, [h.client]: step - 1 })} style={{ padding: "10px 16px", background: step > 0 ? C.surface : "transparent", color: step > 0 ? C.textSec : "transparent", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: step > 0 ? "pointer" : "default", fontFamily: "inherit" }}>Back</button>
-                              <span style={{ fontSize: 12, color: C.textMuted }}>{step + 1} of {hcQuestions.length}</span>
-                              {(() => {
-                                const answered = answers[step] !== undefined;
-                                return <button onClick={() => answered && setHcStep({ ...hcStep, [h.client]: step + 1 })} style={{ padding: "10px 22px", background: answered ? C.primary : C.surface, color: answered ? "#fff" : C.textMuted, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: answered ? "pointer" : "default", fontFamily: "inherit" }}>Next</button>;
-                              })()}
-                            </div>
-                          )}
-
-                          {/* Auto-close on completion */}
-                          {step >= hcQuestions.length && allAnswered && (() => {
-                            if (!hcDone[h.client]) {
-                              setTimeout(() => submitHc(h.client), 0);
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                <div style={{ flexShrink: 0, textAlign: "right", minWidth: 140 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "flex-end", gap: 8 }}>
+                    <span style={{ fontSize: 26, fontWeight: 700, color: C.text, fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
+                      {pctChecked}<span style={{ fontSize: 15, color: C.textMuted, fontWeight: 500 }}>%</span>
+                    </span>
+                    <span style={{ fontSize: 11, color: C.textMuted, letterSpacing: 0.3, textTransform: "uppercase", fontWeight: 600 }}>checked</span>
+                  </div>
+                  <div style={{ height: 4, background: C.borderLight, borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pctChecked}%`, background: `linear-gradient(90deg, ${C.primaryLight}, ${C.primary})`, borderRadius: 2, transition: "width 400ms cubic-bezier(.2,.7,.3,1)" }} />
+                  </div>
+                  <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>{checkedThisMonth} of {totalClients} this month</div>
+                </div>
               </div>
 
-              {/* Done Today */}
-              {justCompleted.length > 0 && (
-                <div style={{ marginTop: 24 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>Done today ({justCompleted.length})</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {justCompleted.map((h, i) => {
-                      const drift = clientDrift[h.client];
-                      return (
-                        <div key={"done-" + i} style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.borderLight, padding: "12px 18px", opacity: 0.55, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div>
-                            <span style={{ fontSize: 14, fontWeight: 600, color: C.textMuted, textDecoration: "line-through" }}>{h.client}</span>
-                            <div style={{ fontSize: 12, color: C.text, marginTop: 2 }}>Completed</div>
+              {/* MAIN GRID: rail + main + rai (rai shows on >=1440px) */}
+              <div className="rc-grid" style={{ display: "grid", gap: 20, alignItems: "start" }}>
+
+                {/* LEFT RAIL — queue of clients awaiting health check */}
+                <div className="rc-rail" style={{ position: "sticky", top: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
+                      <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Queue</span>
+                      <span style={{ fontSize: 10.5, color: C.textMuted, fontVariantNumeric: "tabular-nums" }}>{activeQueue.length}</span>
+                    </div>
+                    {activeQueue.length === 0 && (
+                      <div style={{ fontSize: 12, color: C.textMuted, fontStyle: "italic", padding: "10px 0" }}>All caught up.</div>
+                    )}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      {activeQueue.map((h, i) => {
+                        const isOpen = hcOpen === h.client;
+                        const overdueDays = h.overdue;
+                        const subLabel = overdueDays > 0 ? `${overdueDays}d overdue` : "Due today";
+                        const subColor = overdueDays > 0 ? C.retWarn : C.retOk;
+                        return (
+                          <div key={i} onClick={() => setHcOpen(isOpen ? null : h.client)} style={{
+                            padding: "10px 12px", borderRadius: 8, cursor: "pointer",
+                            background: isOpen ? C.primaryGhost : "transparent",
+                            border: "1px solid " + (isOpen ? C.primary + "55" : "transparent"),
+                            display: "flex", alignItems: "center", gap: 10,
+                          }}>
+                            <div style={{ width: 24, height: 24, borderRadius: 12, background: retColor(h.ret), color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
+                              {h.client.split(/\s|&/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase()}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.client}</div>
+                              <div style={{ fontSize: 10.5, color: subColor, marginTop: 1 }}>{subLabel}</div>
+                            </div>
                           </div>
-                          {drift && (
-                            <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20, background: driftBg(drift), color: driftColor(drift) }}>{drift}</span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* MAIN COLUMN */}
+                <div style={{ minWidth: 0 }}>
+                  {activeQueue.length === 0 && justCompleted.length === 0 && (
+                    <div style={{ textAlign: "center", padding: "60px 20px", background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, color: C.text }}>All caught up</div>
+                      <div style={{ fontSize: 12.5, color: C.textMuted }}>No health checks due right now. Check back when the next one is ready.</div>
+                    </div>
+                  )}
+
+                  {/* Active HC cards */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {activeQueue.map((h, i) => {
+                      const isOpen = hcOpen === h.client;
+                      const step = hcStep[h.client] || 0;
+                      const answers = hcAnswers[h.client] || [];
+                      const allAnswered = answers.length === 5 && answers.every(a => a !== undefined);
+                      const client = clients.find(c => c.name === h.client);
+
+                      return (
+                        <div key={i} style={{ background: C.card, borderRadius: 12, border: "1px solid " + (isOpen ? C.primary + "55" : C.border), boxShadow: C.shadowSm, transition: "border-color 150ms" }}>
+                          <div onClick={() => setHcOpen(isOpen ? null : h.client)} style={{ padding: "14px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: 18, background: retColor(h.ret), color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                              {h.client.split(/\s|&/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase()}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: -0.2 }}>{h.client}</span>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: retColor(h.ret), fontVariantNumeric: "tabular-nums" }}>{h.ret}</span>
+                                {client?.tag && <span style={{ fontSize: 11, color: C.textMuted }}>· {client.tag}</span>}
+                              </div>
+                              <div style={{ fontSize: 12, color: h.overdue > 0 ? C.retWarn : C.retOk, marginTop: 2, fontWeight: 500 }}>
+                                {h.overdue > 0 ? `Overdue by ${h.overdue}d` : "Due today"}
+                              </div>
+                            </div>
+                            {!isOpen && (
+                              <button className="r-btn" style={{ padding: "8px 16px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Start</button>
+                            )}
+                          </div>
+
+                          {/* Expanded HC flow */}
+                          {isOpen && (
+                            <div style={{ padding: "0 18px 18px", borderTop: "1px solid " + C.borderLight, marginTop: 4 }}>
+                              {/* Progress */}
+                              <div style={{ display: "flex", gap: 4, margin: "16px 0" }}>
+                                {Array.from({ length: hcQuestions.length }).map((_, qi) => (
+                                  <div key={qi} style={{ flex: 1, height: 3, borderRadius: 2, background: qi < step || answers[qi] !== undefined ? C.primary : C.borderLight, transition: "background 200ms" }} />
+                                ))}
+                              </div>
+
+                              {step < hcQuestions.length && (
+                                <div style={{ marginBottom: 12 }}>
+                                  <p style={{ fontSize: 16, fontWeight: 600, margin: "0 0 14px", lineHeight: 1.4, color: C.text, letterSpacing: -0.2 }}>{hcQuestions[step].q}</p>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                    {hcQuestions[step].options.map((opt, oi) => {
+                                      const isSelected = answers[step] === opt.mod;
+                                      return (
+                                        <div key={oi} onClick={() => selectAnswer(h.client, step, opt.mod)} style={{
+                                          padding: "12px 14px", borderRadius: 8, cursor: "pointer",
+                                          background: isSelected ? C.primaryGhost : C.bg,
+                                          border: "1px solid " + (isSelected ? C.primary : C.borderLight),
+                                          fontSize: 14, color: isSelected ? C.primary : C.textSec,
+                                          fontWeight: isSelected ? 600 : 400,
+                                          transition: "all 150ms",
+                                        }}>{opt.text}</div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {step < hcQuestions.length && (
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+                                  <button onClick={() => step > 0 && setHcStep({ ...hcStep, [h.client]: step - 1 })} style={{ padding: "8px 14px", background: step > 0 ? C.surface : "transparent", color: step > 0 ? C.textSec : "transparent", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: step > 0 ? "pointer" : "default", fontFamily: "inherit" }}>Back</button>
+                                  <span style={{ fontSize: 11, color: C.textMuted, fontVariantNumeric: "tabular-nums" }}>{step + 1} of {hcQuestions.length}</span>
+                                  {(() => {
+                                    const answered = answers[step] !== undefined;
+                                    return <button onClick={() => answered && setHcStep({ ...hcStep, [h.client]: step + 1 })} style={{ padding: "8px 18px", background: answered ? C.primary : C.surface, color: answered ? "#fff" : C.textMuted, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: answered ? "pointer" : "default", fontFamily: "inherit" }}>Next</button>;
+                                  })()}
+                                </div>
+                              )}
+
+                              {step >= hcQuestions.length && allAnswered && (() => {
+                                if (!hcDone[h.client]) {
+                                  setTimeout(() => submitHc(h.client), 0);
+                                }
+                                return null;
+                              })()}
+                            </div>
                           )}
                         </div>
                       );
                     })}
                   </div>
-                </div>
-              )}
 
-              {/* Upcoming */}
-              {upcomingQueue.length > 0 && (
-                <div style={{ marginTop: 24 }}>
-                  <div className="row-hover" onClick={() => setShowUpcoming(!showUpcoming)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderRadius: 10, cursor: "pointer", border: "1px solid " + C.borderLight }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: C.textMuted }}>Upcoming ({upcomingQueue.length})</span>
-                  </div>
-                  {showUpcoming && (
-                    <div style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.borderLight, overflow: "hidden", marginTop: 6 }}>
-                      {upcomingQueue.map((h, i) => (
-                        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderBottom: i < upcomingQueue.length - 1 ? "1px solid " + C.borderLight : "none", opacity: 0.5 }}>
-                          <span style={{ fontSize: 13, color: C.textMuted }}>{h.client}</span>
-                          <span style={{ fontSize: 12, color: C.textMuted }}>{h.due}</span>
+                  {/* Done today */}
+                  {justCompleted.length > 0 && (
+                    <div style={{ marginTop: 24 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Done today · {justCompleted.length}</div>
+                      <div style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.borderLight, overflow: "hidden" }}>
+                        {justCompleted.map((h, i) => {
+                          const drift = clientDrift[h.client];
+                          return (
+                            <div key={"done-" + i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: i < justCompleted.length - 1 ? "1px solid " + C.borderLight : "none", opacity: 0.7 }}>
+                              <span style={{ fontSize: 13.5, fontWeight: 500, color: C.textSec }}>{h.client}</span>
+                              {drift && (
+                                <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 10px", borderRadius: 999, background: driftBg(drift), color: driftColor(drift) }}>{drift}</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upcoming */}
+                  {upcomingQueue.length > 0 && (
+                    <div style={{ marginTop: 24 }}>
+                      <div onClick={() => setShowUpcoming(!showUpcoming)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 8, cursor: "pointer", border: "1px solid " + C.borderLight, background: C.card }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: C.textSec }}>Upcoming · {upcomingQueue.length}</span>
+                        <span style={{ fontSize: 12, color: C.textMuted }}>{showUpcoming ? "Hide" : "Show"}</span>
+                      </div>
+                      {showUpcoming && (
+                        <div style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.borderLight, overflow: "hidden", marginTop: 6 }}>
+                          {upcomingQueue.map((h, i) => (
+                            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderBottom: i < upcomingQueue.length - 1 ? "1px solid " + C.borderLight : "none", opacity: 0.6 }}>
+                              <span style={{ fontSize: 13, color: C.textSec }}>{h.client}</span>
+                              <span style={{ fontSize: 12, color: C.textMuted }}>{h.due}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-            <RaiMiniPanel />
-            </div>
+
+                {/* RAI COLUMN — wide desktop only (>=1440px) */}
+                <div className="rc-rai-col" style={{ display: "none", position: "sticky", top: 20, alignSelf: "start" }}>
+                  <RaiMiniPanel />
+                </div>
+              </div>
             </div>
           );
         })()}
@@ -3918,119 +3996,206 @@ export default function App({ user }) {
         )}
 
         {/* ═══ REFERRALS ═══ */}
-        {page === "referrals" && (
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-              <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 4 }}>Referrals</h1>
-                <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 4 }}>Your clients are your best salespeople. Track who they send your way.</p>
-              </div>
-              <button className="r-btn" onClick={() => setRefForm(true)} style={{ padding: "10px 20px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Log Referral</button>
-            </div>
-          <div className="r-today-cols" style={{ display: "flex", gap: 24 }}>
-          <div className="r-today-panel" style={{ width: 270, flexShrink: 0 }}>
-            <ReferralsPanel />
-          </div>
-          <div style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
+        {page === "referrals" && (() => {
+          // Aggregates
+          const totalRefs = refs.length;
+          const activeRefs = refs.filter(r => r.status === "converted" || (r.converted && r.status !== "closed"));
+          const becameClients = activeRefs.length;
+          const mrrAdded = activeRefs.reduce((a, r) => a + (r.revenue || 0), 0);
+          const avgTenureMo = clients.length ? clients.reduce((a, c) => a + (c.months || 0), 0) / clients.length : 24;
+          const projLCV = Math.round(mrrAdded * Math.max(12, avgTenureMo));
+          const conversionRate = totalRefs > 0 ? Math.round((becameClients / totalRefs) * 100) : 0;
 
-            {/* Stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
-              {[{ l: "Total", v: refs.length }, { l: "Active", v: refsConverted.length, c: C.success }, { l: "Revenue", v: "$" + refsRevenue.toLocaleString(), c: C.primary }].map((s, i) => (
-                <div key={i} style={{ background: C.card, borderRadius: 10, padding: "12px 14px", border: "1px solid " + C.border, textAlign: "center" }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, textTransform: "uppercase", marginBottom: 3 }}>{s.l}</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: s.c || C.text }}>{s.v}</div>
-                </div>
-              ))}
-            </div>
+          // "Who to ask next" — strongest relationships that haven't been referred from yet
+          const referredFrom = new Set(refs.map(r => r.from));
+          const askNext = [...clients]
+            .filter(c => !referredFrom.has(c.name) && (c.ret || 0) >= 65)
+            .sort((a, b) => (b.ret || 0) - (a.ret || 0))
+            .slice(0, 5);
+          const strengthMeta = (ret) => ret >= 85 ? { label: "STRONG", color: C.retElite, bg: "#E5EDE7" } : ret >= 75 ? { label: "STRONG", color: C.retGood, bg: "#EFF5F1" } : { label: "MEDIUM", color: C.retOk, bg: "#F6F4E5" };
 
-            {/* Search */}
-            {refs.length > 15 && (
-              <div style={{ marginBottom: 12 }}>
-                <input value={refSearch} onChange={e => setRefSearch(e.target.value)} placeholder="Search referrals..." style={{ width: "100%", padding: "0 16px", height: 44, border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", background: C.card, outline: "none" }} />
-              </div>
-            )}
-
-            {/* Add referral */}
-            {refForm ? (
-              <div style={{ background: C.card, borderRadius: 12, border: "1.5px solid " + C.primary, padding: "16px", marginBottom: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>New Referral</div>
-
-                <div style={{ marginBottom: 10 }}>
-                  <label style={{ fontSize: 14, fontWeight: 600, color: C.textMuted, display: "block", marginBottom: 4 }}>Who was referred to you?</label>
-                  <input value={refName} onChange={e => setRefName(e.target.value)} placeholder="Person or company name" style={{ width: "100%", padding: "12px 16px", border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg }} />
-                </div>
-
-                <div style={{ marginBottom: 10 }}>
-                  <label style={{ fontSize: 14, fontWeight: 600, color: C.textMuted, display: "block", marginBottom: 4 }}>Which client referred them?</label>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                    {[...clients].sort((a, b) => b.ret - a.ret).map(c => (
-                      <span key={c.id} onClick={() => setRefFrom(c.name)} style={{ fontSize: 12, padding: "5px 12px", borderRadius: 6, background: refFrom === c.name ? C.primarySoft : C.bg, border: "1.5px solid " + (refFrom === c.name ? C.primary : C.borderLight), cursor: "pointer", fontWeight: refFrom === c.name ? 600 : 500, color: refFrom === c.name ? C.primary : retColor(c.ret) }}>{c.name}</span>
-                    ))}
+          return (
+            <div style={{ width: "100%" }}>
+              {/* STATUS BAND */}
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0, flex: "1 1 auto" }}>
+                  <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Word of mouth · this quarter</div>
+                  <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Referrals</h1>
+                  <div style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span><b style={{ color: C.text, fontWeight: 700 }}>{totalRefs}</b> referrals</span>
+                    <span style={{ color: C.border }}>·</span>
+                    <span><b style={{ color: C.text, fontWeight: 700 }}>{becameClients}</b> became clients</span>
+                    <span style={{ color: C.border }}>·</span>
+                    <span><b style={{ color: C.retGood, fontWeight: 700 }}>${mrrAdded.toLocaleString()}</b>/mo added</span>
+                    {projLCV > 0 && <>
+                      <span style={{ color: C.border }}>·</span>
+                      <span><b style={{ color: C.btn, fontWeight: 700 }}>${projLCV.toLocaleString()}</b> projected LCV</span>
+                    </>}
                   </div>
                 </div>
-
-                <div style={{ marginBottom: 14 }}>
-                  <label style={{ fontSize: 14, fontWeight: 600, color: C.textMuted, display: "block", marginBottom: 4 }}>Status</label>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {[{ id: "converted", label: "Active" }, { id: "closed", label: "Closed" }].map(s => {
-                      const sel = refStatus === s.id;
-                      const isRed = s.id === "closed";
-                      return (
-                      <button key={s.id} onClick={() => setRefStatus(s.id)} style={{ padding: "6px 14px", borderRadius: 6, border: "1.5px solid " + (sel ? (isRed ? C.danger : C.primary) : C.borderLight), background: sel ? (isRed ? "#FAE8E4" : C.primarySoft) : C.bg, color: sel ? (isRed ? C.danger : C.primary) : C.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{s.label}</button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 14 }}>
-                  <label style={{ fontSize: 14, fontWeight: 600, color: C.textMuted, display: "block", marginBottom: 4 }}>Average monthly revenue ($)</label>
-                  <input type="number" value={refRevenue} onChange={e => setRefRevenue(e.target.value)} placeholder="0" style={{ width: "100%", padding: "12px 16px", border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg }} />
-                </div>
-
-                {refStatus === "closed" && (
-                  <div style={{ marginBottom: 14 }}>
-                    <label style={{ fontSize: 14, fontWeight: 600, color: C.textMuted, display: "block", marginBottom: 4 }}>Total revenue earned ($)</label>
-                    <input type="number" value={refTotalRevenue} onChange={e => setRefTotalRevenue(e.target.value)} placeholder="0" style={{ width: "100%", padding: "12px 16px", border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg }} />
-                  </div>
-                )}
-
-                <div style={{ display: "flex", gap: 8 }}>
-                  {(() => {
-                    const ready = refName.trim() && refFrom;
-                    return <button className="r-btn" onClick={() => ready && addRef()} style={{ flex: 1, padding: "10px", background: ready ? C.btn : C.surface, color: ready ? "#fff" : C.textMuted, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: ready ? "pointer" : "default", fontFamily: "inherit" }}>Log Referral</button>;
-                  })()}
-                  <button onClick={() => { setRefForm(false); setRefName(""); setRefFrom(""); setRefStatus("converted"); setRefTotalRevenue(""); }} style={{ padding: "10px 16px", background: C.surface, color: C.textMuted, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                <div style={{ flexShrink: 0 }}>
+                  <button className="r-btn" onClick={() => setRefForm(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                    <Icon name="plus" size={14} color="#fff" />
+                    Log referral
+                  </button>
                 </div>
               </div>
-            ) : null}
 
-            {/* Referral log */}
-            <div style={{ background: C.card, borderRadius: 14, border: "1px solid " + C.border, overflow: "hidden", boxShadow: C.cardShadow }}>
-              {refs.filter(r => !refSearch || r.to.toLowerCase().includes(refSearch.toLowerCase()) || r.from.toLowerCase().includes(refSearch.toLowerCase())).map((r, i, arr) => (
-                <div key={r.id || i} className="row-hover" onClick={() => { setRefEditing(r.id || i); setRefEditData({ to: r.to, from: r.from, status: r.status || (r.converted ? "converted" : "lost"), converted: r.converted, revenue: r.revenue || "", totalRevenue: r.totalRevenue || "" }); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: i < arr.length - 1 ? "1px solid " + C.borderLight : "none", cursor: "pointer" }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700 }}>{r.to}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Referred by {r.from} · {r.date}</div>
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 4, fontWeight: 600, background: (r.status === "converted" || (r.converted && r.status !== "closed")) ? "#E2F3EB" : "#FAE8E4", color: (r.status === "converted" || (r.converted && r.status !== "closed")) ? C.success : C.danger }}>{(r.status === "converted" || (r.converted && r.status !== "closed")) ? "Active" : "Closed"}</span>
-                    {(r.revenue > 0 || r.totalRevenue > 0) && <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>{(r.status === "converted" || (r.converted && r.status !== "closed")) && r.revenue > 0 ? "$" + r.revenue.toLocaleString() + "/mo" : ""}{r.status === "closed" && r.totalRevenue > 0 ? "$" + r.totalRevenue.toLocaleString() + " total" : ""}</div>}
+              {/* MAIN GRID */}
+              <div className="rc-grid" style={{ display: "grid", gap: 20, alignItems: "start" }}>
+
+                {/* LEFT RAIL — Who to ask next + This quarter */}
+                <div className="rc-rail" style={{ position: "sticky", top: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+                  {askNext.length > 0 && (
+                    <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
+                      <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 3 }}>Who to ask next</div>
+                      <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 10 }}>Strongest signals first</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {askNext.map((c, i) => {
+                          const sm = strengthMeta(c.ret || 0);
+                          return (
+                            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                              <div style={{ width: 22, height: 22, borderRadius: 11, background: retColor(c.ret || 0), color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
+                                {c.name.split(/\s|&/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase()}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 12, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                                <div style={{ fontSize: 10.5, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>Score {c.ret}</div>
+                              </div>
+                              <span style={{ fontSize: 9.5, fontWeight: 700, padding: "2px 7px", borderRadius: 3, letterSpacing: 0.4, color: sm.color, background: sm.bg, flexShrink: 0 }}>{sm.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
+                    <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 12 }}>This quarter</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: C.text, letterSpacing: -0.3, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{totalRefs}</div>
+                        <div style={{ fontSize: 10.5, color: C.textMuted, marginTop: 4 }}>Referrals in</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: C.retGood, letterSpacing: -0.3, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{conversionRate}%</div>
+                        <div style={{ fontSize: 10.5, color: C.textMuted, marginTop: 4 }}>Conversion</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: C.text, letterSpacing: -0.3, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>${(mrrAdded / 1000).toFixed(1)}k</div>
+                        <div style={{ fontSize: 10.5, color: C.textMuted, marginTop: 4 }}>MRR added</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: C.btn, letterSpacing: -0.3, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>${projLCV >= 1000000 ? (projLCV / 1000000).toFixed(1) + "M" : (projLCV / 1000).toFixed(0) + "k"}</div>
+                        <div style={{ fontSize: 10.5, color: C.textMuted, marginTop: 4 }}>Proj. LCV</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
 
-            {/* AI insight */}
-            <div style={{ background: C.raiGrad, borderRadius: 14, padding: "22px", color: "#fff", marginTop: 16, boxShadow: "0 4px 24px rgba(30,38,31,0.25)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}><Icon name="spark" size={14} color="rgba(255,255,255,0.6)" /><span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(255,255,255,0.5)" }}>Rai</span></div>
-              <p style={{ fontSize: 14, color: "rgba(255,255,255,.7)", lineHeight: 1.6, marginBottom: 14 }}>Ready for more business? Your happiest clients know people like them. Rai can help you figure out who to ask and when the timing is right.</p>
-              <button className="r-btn" onClick={() => { setPage("coach"); setAiMessages([{ role: "ai", text: "Let's talk referrals. Your strongest relationships are your best source of new business. Who are you thinking about asking?" }]); }} style={{ width: "100%", padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Talk to Rai</button>
+                {/* MAIN COLUMN */}
+                <div style={{ minWidth: 0 }}>
+                  {/* Search */}
+                  {refs.length > 15 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <input value={refSearch} onChange={e => setRefSearch(e.target.value)} placeholder="Search referrals..." style={{ width: "100%", padding: "10px 16px", border: "1px solid " + C.border, borderRadius: 10, fontSize: 14, fontFamily: "inherit", background: C.card, outline: "none", boxSizing: "border-box", boxShadow: C.shadowSm }} />
+                    </div>
+                  )}
+
+                  {/* Add referral form */}
+                  {refForm && (
+                    <div style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.primary + "55", padding: "16px 18px", marginBottom: 14, boxShadow: C.shadowSm }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>New referral</div>
+                        <button onClick={() => { setRefForm(false); setRefName(""); setRefFrom(""); setRefStatus("converted"); setRefTotalRevenue(""); }} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.textMuted, lineHeight: 1, padding: 0, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                      </div>
+
+                      <div style={{ marginBottom: 12 }}>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, display: "block", marginBottom: 5, letterSpacing: 0.2 }}>Who was referred to you?</label>
+                        <input value={refName} onChange={e => setRefName(e.target.value)} placeholder="Person or company name" style={{ width: "100%", padding: "10px 14px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg, boxSizing: "border-box" }} />
+                      </div>
+
+                      <div style={{ marginBottom: 12 }}>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, display: "block", marginBottom: 5, letterSpacing: 0.2 }}>Which client referred them?</label>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                          {[...clients].sort((a, b) => (b.ret || 0) - (a.ret || 0)).map(c => (
+                            <span key={c.id} onClick={() => setRefFrom(c.name)} style={{ fontSize: 11.5, padding: "5px 12px", borderRadius: 999, background: refFrom === c.name ? C.primaryGhost : C.bg, border: "1px solid " + (refFrom === c.name ? C.primary : C.borderLight), cursor: "pointer", fontWeight: refFrom === c.name ? 600 : 500, color: refFrom === c.name ? C.primary : retColor(c.ret || 0) }}>{c.name}</span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: 12 }}>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, display: "block", marginBottom: 5, letterSpacing: 0.2 }}>Status</label>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          {[{ id: "converted", label: "Active" }, { id: "closed", label: "Closed" }].map(s => {
+                            const sel = refStatus === s.id;
+                            const isRed = s.id === "closed";
+                            return (
+                              <button key={s.id} onClick={() => setRefStatus(s.id)} style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid " + (sel ? (isRed ? C.retWarn : C.primary) : C.borderLight), background: sel ? (isRed ? "#FBF1E2" : C.primaryGhost) : C.bg, color: sel ? (isRed ? C.retWarn : C.primary) : C.textMuted, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{s.label}</button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: 12 }}>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, display: "block", marginBottom: 5, letterSpacing: 0.2 }}>Average monthly revenue ($)</label>
+                        <input type="number" value={refRevenue} onChange={e => setRefRevenue(e.target.value)} placeholder="0" style={{ width: "100%", padding: "10px 14px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg, boxSizing: "border-box" }} />
+                      </div>
+
+                      {refStatus === "closed" && (
+                        <div style={{ marginBottom: 12 }}>
+                          <label style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, display: "block", marginBottom: 5, letterSpacing: 0.2 }}>Total revenue earned ($)</label>
+                          <input type="number" value={refTotalRevenue} onChange={e => setRefTotalRevenue(e.target.value)} placeholder="0" style={{ width: "100%", padding: "10px 14px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg, boxSizing: "border-box" }} />
+                        </div>
+                      )}
+
+                      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                        {(() => {
+                          const ready = refName.trim() && refFrom;
+                          return <button className="r-btn" onClick={() => ready && addRef()} style={{ flex: 1, padding: "10px", background: ready ? C.btn : C.surface, color: ready ? "#fff" : C.textMuted, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: ready ? "pointer" : "default", fontFamily: "inherit" }}>Log referral</button>;
+                        })()}
+                        <button onClick={() => { setRefForm(false); setRefName(""); setRefFrom(""); setRefStatus("converted"); setRefTotalRevenue(""); }} style={{ padding: "10px 18px", background: C.surface, color: C.textMuted, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Referral log */}
+                  <div style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.border, overflow: "hidden", boxShadow: C.shadowSm }}>
+                    <div style={{ padding: "10px 16px", borderBottom: "1px solid " + C.borderLight, background: C.bg, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Log · {refs.length}</div>
+                    {refs.length === 0 ? (
+                      <div style={{ padding: "36px 20px", textAlign: "center" }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4 }}>No referrals yet</div>
+                        <div style={{ fontSize: 12, color: C.textMuted }}>Your best clients know people like them. Start logging the word-of-mouth.</div>
+                      </div>
+                    ) : (
+                      refs.filter(r => !refSearch || r.to.toLowerCase().includes(refSearch.toLowerCase()) || r.from.toLowerCase().includes(refSearch.toLowerCase())).map((r, i, arr) => {
+                        const isActive = r.status === "converted" || (r.converted && r.status !== "closed");
+                        return (
+                          <div key={r.id || i} className="row-hover" onClick={() => { setRefEditing(r.id || i); setRefEditData({ to: r.to, from: r.from, status: r.status || (r.converted ? "converted" : "lost"), converted: r.converted, revenue: r.revenue || "", totalRevenue: r.totalRevenue || "" }); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", borderBottom: i < arr.length - 1 ? "1px solid " + C.borderLight : "none", cursor: "pointer" }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{r.to}</div>
+                              <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Referred by {r.from} · {r.date}</div>
+                            </div>
+                            <div style={{ textAlign: "right", flexShrink: 0 }}>
+                              <span style={{ fontSize: 10.5, padding: "3px 9px", borderRadius: 999, fontWeight: 700, letterSpacing: 0.3, background: isActive ? "#E5EDE7" : "#FBF1E2", color: isActive ? C.retElite : C.retWarn }}>
+                                {isActive ? "ACTIVE" : "CLOSED"}
+                              </span>
+                              {(r.revenue > 0 || r.totalRevenue > 0) && <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{isActive && r.revenue > 0 ? "$" + r.revenue.toLocaleString() + "/mo" : ""}{r.status === "closed" && r.totalRevenue > 0 ? "$" + r.totalRevenue.toLocaleString() + " total" : ""}</div>}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* RAI COLUMN — wide desktop only */}
+                <div className="rc-rai-col" style={{ display: "none", position: "sticky", top: 20, alignSelf: "start" }}>
+                  <RaiMiniPanel />
+                </div>
+              </div>
             </div>
-          </div>
-          <RaiMiniPanel />
-          </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ═══ ROLODEX ═══ */}
         {page === "retros" && (() => {
@@ -4054,216 +4219,311 @@ export default function App({ user }) {
           const savedMedium = saved.filter(r => r.priority === "medium");
           const savedLow = saved.filter(r => r.priority === "low");
 
-          const priorityLabel = (p) => p === "high" ? "High priority" : p === "medium" ? "Medium priority" : "Low priority";
-          const priorityColor = (p) => p === "high" ? C.success : p === "medium" ? C.warning : C.textMuted;
+          // Aggregates
+          const totalFiled = saved.length;
+          const wouldRefer = saved.filter(r => (r.tags || []).some(t => t.toLowerCase().includes("refer"))).length;
 
           return (
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-                <div>
-                  <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 4 }}>Rolodex</h1>
-                  <p style={{ fontSize: 14, color: C.textMuted }}>People you've worked with. Some come back. Some refer. All worth a check-in.</p>
+            <div style={{ width: "100%" }}>
+              {/* STATUS BAND */}
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0, flex: "1 1 auto" }}>
+                  <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Past clients · one-offs · kept warm</div>
+                  <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Rolodex</h1>
+                  <div style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span><b style={{ color: C.text, fontWeight: 700 }}>{totalFiled}</b> filed</span>
+                    {savedHigh.length > 0 && <>
+                      <span style={{ color: C.border }}>·</span>
+                      <span><b style={{ color: C.retGood, fontWeight: 700 }}>{savedHigh.length}</b> high priority</span>
+                    </>}
+                    {pending.length > 0 && <>
+                      <span style={{ color: C.border }}>·</span>
+                      <span style={{ color: C.retWarn, fontWeight: 600 }}>
+                        <b>{pending.length}</b> awaiting retro
+                      </span>
+                    </>}
+                    {wouldRefer > 0 && <>
+                      <span style={{ color: C.border }}>·</span>
+                      <span><b style={{ color: C.btn, fontWeight: 700 }}>{wouldRefer}</b> would refer</span>
+                    </>}
+                  </div>
                 </div>
-                <button className="r-btn" onClick={() => setShowAddRolodex(true)} style={{ padding: "10px 20px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Add Lead</button>
+                <div style={{ flexShrink: 0 }}>
+                  <button className="r-btn" onClick={() => setShowAddRolodex(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                    <Icon name="plus" size={14} color="#fff" />
+                    New contact
+                  </button>
+                </div>
               </div>
-            <div className="r-today-cols" style={{ display: "flex", gap: 24 }}>
-            <div className="r-today-panel" style={{ width: 270, flexShrink: 0 }}>
-              <RolodexPanel />
-            </div>
-            <div style={{ flex: 1, minWidth: 0, maxWidth: 720 }}>
 
-              {/* Add to Rolodex — one-off entry */}
-              {showAddRolodex && (
-                <div style={{ background: C.card, borderRadius: 14, border: "2px solid " + C.primary, padding: "20px", marginBottom: 16, boxShadow: C.cardShadow }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Add to Rolodex</h3>
-                  <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 12 }}>One-time clients, past projects, anyone worth a future check-in.</p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <input value={newRolodexEntry.client} onChange={e => setNewRolodexEntry({...newRolodexEntry, client: e.target.value})} placeholder="Company or person name" style={{ padding: "12px 16px", border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg }} />
-                    <input value={newRolodexEntry.contact} onChange={e => setNewRolodexEntry({...newRolodexEntry, contact: e.target.value})} placeholder="Contact name" style={{ padding: "12px 16px", border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg }} />
-                    <input value={newRolodexEntry.work} onChange={e => setNewRolodexEntry({...newRolodexEntry, work: e.target.value})} placeholder="What did you do for them?" style={{ padding: "12px 16px", border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg }} />
-                  </div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-                    {(() => {
-                      const ready = newRolodexEntry.client.trim() && newRolodexEntry.contact.trim();
-                      return <button className="r-btn" onClick={async () => { if (ready) { const newEntry = { client: newRolodexEntry.client.trim(), contact: newRolodexEntry.contact.trim(), months: 0, type: "oneoff", date: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }), tags: [], priority: null, work: newRolodexEntry.work.trim() };
-                const { data: createdRolodex } = await rolodexDb.create(user.id, {
-                  client_name: newEntry.client,
-                  contact_name: newEntry.contact,
-                  type: "oneoff",
-                  date_added: newEntry.date,
-                  notes: newEntry.work,
-                });
-                newEntry.id = createdRolodex?.id || Date.now();
-                setRolodex(prev => [...prev, newEntry]); setNewRolodexEntry({ client: "", contact: "", work: "" }); setShowAddRolodex(false); setRolodexFlowOpen(newEntry.id); } }} style={{ flex: 1, padding: "10px", background: ready ? C.btn : C.surface, color: ready ? "#fff" : C.textMuted, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: ready ? "pointer" : "default", fontFamily: "inherit" }}>Add & Start Flow</button>;
-                    })()}
-                    <button onClick={() => { setShowAddRolodex(false); setNewRolodexEntry({ client: "", contact: "", work: "" }); }} style={{ padding: "10px 14px", background: C.surface, color: C.textMuted, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-                  </div>
-                </div>
-              )}
+              {/* MAIN GRID */}
+              <div className="rc-grid" style={{ display: "grid", gap: 20, alignItems: "start" }}>
 
-              {/* Pending — need to complete flow */}
-              {pending.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.primary, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>Ready to process</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {pending.map((r) => {
-                      const isOpen = rolodexFlowOpen === r.id;
-                      const answers = retroAnswers[r.id] || {};
-                      const questions = r.type === "former" ? formerQuestions : oneoffQuestions;
-                      const step = retroStep;
-                      const allQuestionsAnswered = questions.every(q => (answers[q.key] || "").trim());
-                      const priorityPicked = answers._priority;
-                      const totalSteps = questions.length + 1;
-
-                      return (
-                        <div key={r.id} style={{ background: C.card, borderRadius: 12, border: "1px solid " + (isOpen ? C.primary : C.border) }}>
-                          <div onClick={() => setRolodexFlowOpen(isOpen ? null : r.id)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", cursor: "pointer" }}>
-                            <div>
-                              <span style={{ fontSize: 14, fontWeight: 600 }}>{r.client}</span>
-                              <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{r.contact}{r.months > 0 ? " · " + r.months + "mo together" : ""}{r.type === "oneoff" ? " · One-off" : ""}</div>
-                            </div>
-                            {!isOpen && <button className="r-btn" style={{ padding: "6px 14px", background: C.btn, color: "#fff", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Begin</button>}
-                          </div>
-
-                          {isOpen && (
-                            <div style={{ padding: "0 16px 16px" }}>
-                              <div style={{ display: "flex", gap: 3, marginBottom: 14 }}>
-                                {Array.from({ length: totalSteps }).map((_, qi) => (
-                                  <div key={qi} style={{ flex: 1, height: 3, borderRadius: 2, background: qi < step || (qi === questions.length && priorityPicked) ? C.primary : C.borderLight }} />
-                                ))}
-                              </div>
-
-                              {step < questions.length && (
-                                <div style={{ marginBottom: 12 }}>
-                                  <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, lineHeight: 1.4 }}>{questions[step].label}</p>
-                                  <textarea value={answers[questions[step].key] || ""} onChange={e => (() => {
-                                    const updated = { ...answers, [questions[step].key]: e.target.value };
-                                    setRetroAnswers({ ...retroAnswers, [r.id]: updated });
-                                    // Debounced persist handled on priority save
-                                  })()} placeholder={questions[step].placeholder} style={{ width: "100%", padding: "10px 12px", border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg, minHeight: 80, resize: "vertical" }} />
-                                </div>
-                              )}
-
-                              {step >= questions.length && (
-                                <div style={{ marginBottom: 12 }}>
-                                  {!priorityPicked && (
-                                    <div>
-                                      <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, lineHeight: 1.4 }}>How should we prioritize this contact?</p>
-                                      <p style={{ fontSize: 12, color: C.textMuted, marginBottom: 10 }}>This helps Rai know who to surface first.</p>
-                                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                        {[
-                                          { id: "high", label: "High priority", desc: "Warm lead. Reach out soon.", color: C.success },
-                                          { id: "medium", label: "Medium priority", desc: "Worth staying in touch.", color: C.warning },
-                                          { id: "low", label: "Low priority", desc: "Long shot. Check in eventually.", color: C.textMuted },
-                                        ].map(opt => (
-                                          <button key={opt.id} onClick={() => {
-                                            const tags = [];
-                                            if ((answers.terms || "").toLowerCase().includes("good")) tags.push("Good terms");
-                                            if ((answers.refer || "").toLowerCase().includes("yes")) tags.push("Would refer");
-                                            if ((answers.comeback || "").toLowerCase().includes("yes")) tags.push("Would come back");
-                                            if (r.type === "oneoff") tags.push("One-off");
-                                            setRolodex(prev => prev.map(x => x.id === r.id ? { ...x, priority: opt.id, tags } : x));
-                                            setRetroAnswers({ ...retroAnswers, [r.id]: { ...answers, _priority: opt.id } });
-                                            // Persist priority + answers
-                                            rolodexDb.update(r.id, { priority: opt.id, retro_answers: { ...answers, _priority: opt.id } });
-                                          }} style={{ padding: "12px 14px", borderRadius: 8, border: "1.5px solid " + C.borderLight, background: C.bg, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-                                            <span style={{ fontSize: 14, fontWeight: 600, color: opt.color }}>{opt.label}</span>
-                                            <span style={{ display: "block", fontSize: 12, color: C.textMuted, marginTop: 2 }}>{opt.desc}</span>
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {priorityPicked && (
-                                    <div>
-                                      <div style={{ background: C.raiGrad, borderRadius: 12, padding: "14px 16px", color: "#fff", marginBottom: 12 }}>
-                                        <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", color: "rgba(255,255,255,.3)", marginBottom: 6 }}>Rai</div>
-                                        <p style={{ fontSize: 14, lineHeight: 1.55, color: "rgba(255,255,255,.65)" }}>Rai will track {r.client} and remind you when it's time to reconnect. Past clients are your warmest leads.</p>
-                                      </div>
-                                      <button className="r-btn" onClick={() => { setRolodexFlowOpen(null); setRetroStep(0); }} style={{ width: "100%", padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Done</button>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              {step < questions.length && (
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                  <button onClick={() => step > 0 && setRetroStep(step - 1)} style={{ padding: "8px 14px", background: step > 0 ? C.surface : "transparent", color: step > 0 ? C.textSec : "transparent", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: step > 0 ? "pointer" : "default", fontFamily: "inherit" }}>Back</button>
-                                  <span style={{ fontSize: 12, color: C.textMuted }}>{step + 1} of {totalSteps}</span>
-                                  {(() => {
-                                    const answered = (answers[questions[step].key] || "").trim();
-                                    return <button onClick={() => answered && setRetroStep(step + 1)} style={{ padding: "6px 14px", background: answered ? C.primary : C.surface, color: answered ? "#fff" : C.textMuted, border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: answered ? "pointer" : "default", fontFamily: "inherit" }}>Next</button>;
-                                  })()}
-                                </div>
-                              )}
-                            </div>
-                          )}
+                {/* LEFT RAIL — Stacks + Awaiting retro */}
+                <div className="rc-rail" style={{ position: "sticky", top: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
+                    <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 10 }}>Stacks</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {[
+                        { key: "high",   label: "High",   count: savedHigh.length,   color: C.retGood },
+                        { key: "medium", label: "Medium", count: savedMedium.length, color: C.retOk },
+                        { key: "low",    label: "Low",    count: savedLow.length,    color: C.textMuted },
+                      ].map(s => (
+                        <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: C.bg, border: "1px solid " + C.borderLight, borderRadius: 8 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: 4, background: s.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, letterSpacing: 0.5, textTransform: "uppercase", flex: 1 }}>{s.label}</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: s.count > 0 ? C.text : C.textMuted, fontVariantNumeric: "tabular-nums" }}>{s.count}</span>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
 
-              {/* Search */}
-              {rolodex.length > 15 && (
-                <div style={{ marginBottom: 12 }}>
-                  <input value={rolodexSearch} onChange={e => setRolodexSearch(e.target.value)} placeholder="Search rolodex..." style={{ width: "100%", padding: "0 16px", height: 44, border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", background: C.card, outline: "none" }} />
-                </div>
-              )}
-
-              {/* Saved — grouped by priority */}
-              {saved.length > 0 && (
-                <div>
-                  {[
-                    { key: "high", items: savedHigh, label: "High priority", color: C.success },
-                    { key: "medium", items: savedMedium, label: "Medium priority", color: C.warning },
-                    { key: "low", items: savedLow, label: "Low priority", color: C.textMuted },
-                  ].filter(g => g.items.length > 0).map(group => (
-                    <div key={group.key} style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: group.color, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>{group.label}</div>
-                      <div style={{ background: C.card, borderRadius: 14, border: "1px solid " + C.border, overflow: "hidden", boxShadow: C.cardShadow }}>
-                        {group.items.map((r, i) => {
-                          const answers = retroAnswers[r.id] || {};
-                          const summary = r.type === "former" ? (answers.what || answers.terms || null) : (answers.work || null);
+                  {pending.length > 0 && (
+                    <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
+                        <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Awaiting retro</span>
+                        <span style={{ fontSize: 10.5, color: C.textMuted, fontVariantNumeric: "tabular-nums" }}>{pending.length}</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        {pending.map(r => {
+                          const isOpen = rolodexFlowOpen === r.id;
                           return (
-                          <div key={r.id} className="row-hover" onClick={() => { setSelectedRolodex(r); setRolodexRemoveConfirm(false); setRolodexEditing(false); }} style={{ padding: "14px 16px", borderBottom: i < group.items.length - 1 ? "1px solid " + C.borderLight : "none", cursor: "pointer" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                              <span style={{ fontSize: 15, fontWeight: 700 }}>{r.client}</span>
-                              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 3, background: C.surface, color: C.textMuted }}>{r.type === "oneoff" ? "One-off" : "Former"}</span>
-                            </div>
-                            <div style={{ fontSize: 12, color: C.textMuted, marginBottom: (r.tags && r.tags.length > 0) || summary ? 6 : 0 }}>{r.contact}{r.months > 0 ? " · " + r.months + "mo" : ""}</div>
-                            {r.tags && r.tags.length > 0 && (
-                              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: summary ? 6 : 0 }}>
-                                {r.tags.map((t, ti) => (
-                                  <span key={ti} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: C.primarySoft, color: C.primary, fontWeight: 600 }}>{t}</span>
-                                ))}
+                            <div key={r.id} onClick={() => setRolodexFlowOpen(isOpen ? null : r.id)} style={{
+                              padding: "9px 10px", borderRadius: 8, cursor: "pointer",
+                              background: isOpen ? C.primaryGhost : "transparent",
+                              border: "1px solid " + (isOpen ? C.primary + "55" : "transparent"),
+                              display: "flex", alignItems: "center", gap: 9,
+                            }}>
+                              <div style={{ width: 22, height: 22, borderRadius: 11, background: C.textMuted, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
+                                {r.client.split(/\s|&/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase()}
                               </div>
-                            )}
-                            {summary && (
-                              <p style={{ fontSize: 12, color: C.textSec, lineHeight: 1.4, fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</p>
-                            )}
-                          </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 12, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.client}</div>
+                                <div style={{ fontSize: 10.5, color: C.textMuted, marginTop: 1 }}>{r.type === "oneoff" ? "One-off" : "Former"} · {r.contact?.split(" ")[0] || "—"}</div>
+                              </div>
+                            </div>
                           );
                         })}
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
 
-              {/* Empty state */}
-              {rolodex.length === 0 && !showAddRolodex && (
-                <div style={{ textAlign: "center", padding: "40px 20px" }}>
-                  <div style={{ fontSize: 32, marginBottom: 12 }}>📇</div>
-                  <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Your Rolodex is empty</p>
-                  <p style={{ fontSize: 12, color: C.textMuted, marginBottom: 16 }}>Move clients here when relationships end, or add one-off contacts worth a future check-in.</p>
+                {/* MAIN COLUMN */}
+                <div style={{ minWidth: 0 }}>
+                  {/* Add to rolodex */}
+                  {showAddRolodex && (
+                    <div style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.primary + "55", padding: "16px 18px", marginBottom: 14, boxShadow: C.shadowSm }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: C.text }}>New contact</h3>
+                        <button onClick={() => { setShowAddRolodex(false); setNewRolodexEntry({ client: "", contact: "", work: "" }); }} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.textMuted, lineHeight: 1, padding: 0, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                      </div>
+                      <p style={{ fontSize: 12.5, color: C.textMuted, margin: "0 0 12px" }}>One-time clients, past projects, anyone worth a future check-in.</p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <input value={newRolodexEntry.client} onChange={e => setNewRolodexEntry({...newRolodexEntry, client: e.target.value})} placeholder="Company or person name" style={{ padding: "10px 14px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg, boxSizing: "border-box" }} />
+                        <input value={newRolodexEntry.contact} onChange={e => setNewRolodexEntry({...newRolodexEntry, contact: e.target.value})} placeholder="Contact name" style={{ padding: "10px 14px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg, boxSizing: "border-box" }} />
+                        <input value={newRolodexEntry.work} onChange={e => setNewRolodexEntry({...newRolodexEntry, work: e.target.value})} placeholder="What did you do for them?" style={{ padding: "10px 14px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg, boxSizing: "border-box" }} />
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                        {(() => {
+                          const ready = newRolodexEntry.client.trim() && newRolodexEntry.contact.trim();
+                          return <button className="r-btn" onClick={async () => { if (ready) { const newEntry = { client: newRolodexEntry.client.trim(), contact: newRolodexEntry.contact.trim(), months: 0, type: "oneoff", date: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }), tags: [], priority: null, work: newRolodexEntry.work.trim() };
+                            const { data: createdRolodex } = await rolodexDb.create(user.id, {
+                              client_name: newEntry.client,
+                              contact_name: newEntry.contact,
+                              type: "oneoff",
+                              date_added: newEntry.date,
+                              notes: newEntry.work,
+                            });
+                            newEntry.id = createdRolodex?.id || Date.now();
+                            setRolodex(prev => [...prev, newEntry]); setNewRolodexEntry({ client: "", contact: "", work: "" }); setShowAddRolodex(false); setRolodexFlowOpen(newEntry.id); } }} style={{ flex: 1, padding: "10px", background: ready ? C.btn : C.surface, color: ready ? "#fff" : C.textMuted, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: ready ? "pointer" : "default", fontFamily: "inherit" }}>Add & start retro</button>;
+                        })()}
+                        <button onClick={() => { setShowAddRolodex(false); setNewRolodexEntry({ client: "", contact: "", work: "" }); }} style={{ padding: "10px 18px", background: C.surface, color: C.textMuted, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ready to process — retro flow */}
+                  {pending.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.primary, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Ready to process · {pending.length}</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {pending.map((r) => {
+                          const isOpen = rolodexFlowOpen === r.id;
+                          const answers = retroAnswers[r.id] || {};
+                          const questions = r.type === "former" ? formerQuestions : oneoffQuestions;
+                          const step = retroStep;
+                          const priorityPicked = answers._priority;
+                          const totalSteps = questions.length + 1;
+
+                          return (
+                            <div key={r.id} style={{ background: C.card, borderRadius: 12, border: "1px solid " + (isOpen ? C.primary + "55" : C.border), boxShadow: C.shadowSm }}>
+                              <div onClick={() => setRolodexFlowOpen(isOpen ? null : r.id)} style={{ padding: "13px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+                                <div style={{ width: 32, height: 32, borderRadius: 16, background: C.textMuted, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                                  {r.client.split(/\s|&/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase()}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                                    <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{r.client}</span>
+                                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 3, letterSpacing: 0.4, textTransform: "uppercase", background: C.bg, color: C.textMuted, border: "1px solid " + C.borderLight }}>
+                                      {r.type === "oneoff" ? "One-off" : "Former"}
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 2 }}>{r.contact}{r.months > 0 ? " · " + r.months + "mo together" : ""}</div>
+                                </div>
+                                {!isOpen && <button className="r-btn" style={{ padding: "7px 14px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Begin</button>}
+                              </div>
+
+                              {isOpen && (
+                                <div style={{ padding: "0 16px 16px", borderTop: "1px solid " + C.borderLight, marginTop: 4 }}>
+                                  <div style={{ display: "flex", gap: 3, margin: "14px 0" }}>
+                                    {Array.from({ length: totalSteps }).map((_, qi) => (
+                                      <div key={qi} style={{ flex: 1, height: 3, borderRadius: 2, background: qi < step || (qi === questions.length && priorityPicked) ? C.primary : C.borderLight, transition: "background 200ms" }} />
+                                    ))}
+                                  </div>
+
+                                  {step < questions.length && (
+                                    <div style={{ marginBottom: 12 }}>
+                                      <p style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px", lineHeight: 1.4, color: C.text, letterSpacing: -0.1 }}>{questions[step].label}</p>
+                                      <textarea value={answers[questions[step].key] || ""} onChange={e => {
+                                        const updated = { ...answers, [questions[step].key]: e.target.value };
+                                        setRetroAnswers({ ...retroAnswers, [r.id]: updated });
+                                      }} placeholder={questions[step].placeholder} style={{ width: "100%", padding: "10px 12px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg, minHeight: 80, resize: "vertical", boxSizing: "border-box" }} />
+                                    </div>
+                                  )}
+
+                                  {step >= questions.length && (
+                                    <div style={{ marginBottom: 12 }}>
+                                      {!priorityPicked && (
+                                        <div>
+                                          <p style={{ fontSize: 14, fontWeight: 600, margin: "0 0 4px", lineHeight: 1.4, color: C.text }}>How should we prioritize this contact?</p>
+                                          <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 10px" }}>This helps Rai know who to surface first.</p>
+                                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                            {[
+                                              { id: "high", label: "High priority", desc: "Warm lead. Reach out soon.", color: C.retGood },
+                                              { id: "medium", label: "Medium priority", desc: "Worth staying in touch.", color: C.retOk },
+                                              { id: "low", label: "Low priority", desc: "Long shot. Check in eventually.", color: C.textMuted },
+                                            ].map(opt => (
+                                              <button key={opt.id} onClick={() => {
+                                                const tags = [];
+                                                if ((answers.terms || "").toLowerCase().includes("good")) tags.push("Good terms");
+                                                if ((answers.refer || "").toLowerCase().includes("yes")) tags.push("Would refer");
+                                                if ((answers.comeback || "").toLowerCase().includes("yes")) tags.push("Would come back");
+                                                if (r.type === "oneoff") tags.push("One-off");
+                                                setRolodex(prev => prev.map(x => x.id === r.id ? { ...x, priority: opt.id, tags } : x));
+                                                setRetroAnswers({ ...retroAnswers, [r.id]: { ...answers, _priority: opt.id } });
+                                                rolodexDb.update(r.id, { priority: opt.id, retro_answers: { ...answers, _priority: opt.id } });
+                                              }} style={{ padding: "12px 14px", borderRadius: 8, border: "1px solid " + C.borderLight, background: C.bg, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                                                <span style={{ fontSize: 13, fontWeight: 600, color: opt.color }}>{opt.label}</span>
+                                                <span style={{ display: "block", fontSize: 12, color: C.textMuted, marginTop: 2 }}>{opt.desc}</span>
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {priorityPicked && (
+                                        <div>
+                                          <div style={{ background: C.primaryGhost, border: "1px solid " + C.primary + "33", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+                                            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: C.primary, marginBottom: 6 }}>Filed</div>
+                                            <p style={{ fontSize: 13, lineHeight: 1.5, color: C.text, margin: 0 }}>{r.client} is in your Rolodex. Rai will surface them when the timing is right.</p>
+                                          </div>
+                                          <button className="r-btn" onClick={() => { setRolodexFlowOpen(null); setRetroStep(0); }} style={{ width: "100%", padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Done</button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {step < questions.length && (
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+                                      <button onClick={() => step > 0 && setRetroStep(step - 1)} style={{ padding: "8px 14px", background: step > 0 ? C.surface : "transparent", color: step > 0 ? C.textSec : "transparent", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: step > 0 ? "pointer" : "default", fontFamily: "inherit" }}>Back</button>
+                                      <span style={{ fontSize: 11, color: C.textMuted, fontVariantNumeric: "tabular-nums" }}>{step + 1} of {totalSteps}</span>
+                                      {(() => {
+                                        const answered = (answers[questions[step].key] || "").trim();
+                                        return <button onClick={() => answered && setRetroStep(step + 1)} style={{ padding: "8px 18px", background: answered ? C.primary : C.surface, color: answered ? "#fff" : C.textMuted, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: answered ? "pointer" : "default", fontFamily: "inherit" }}>Next</button>;
+                                      })()}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Search */}
+                  {rolodex.length > 15 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <input value={rolodexSearch} onChange={e => setRolodexSearch(e.target.value)} placeholder="Search rolodex..." style={{ width: "100%", padding: "10px 16px", border: "1px solid " + C.border, borderRadius: 10, fontSize: 14, fontFamily: "inherit", background: C.card, outline: "none", boxSizing: "border-box", boxShadow: C.shadowSm }} />
+                    </div>
+                  )}
+
+                  {/* Filed — grouped by priority */}
+                  {saved.length > 0 && (
+                    <div>
+                      {[
+                        { key: "high",   items: savedHigh,   label: "HIGH",   color: C.retGood },
+                        { key: "medium", items: savedMedium, label: "MEDIUM", color: C.retOk },
+                        { key: "low",    items: savedLow,    label: "LOW",    color: C.textMuted },
+                      ].filter(g => g.items.length > 0).map(group => (
+                        <div key={group.key} style={{ marginBottom: 16 }}>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, color: group.color, letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: 3, background: group.color }} />
+                            {group.label} · {group.items.length}
+                          </div>
+                          <div style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.border, overflow: "hidden", boxShadow: C.shadowSm }}>
+                            {group.items.map((r, i) => {
+                              const answers = retroAnswers[r.id] || {};
+                              const summary = r.type === "former" ? (answers.what || answers.terms || null) : (answers.work || null);
+                              return (
+                                <div key={r.id} className="row-hover" onClick={() => { setSelectedRolodex(r); setRolodexRemoveConfirm(false); setRolodexEditing(false); }} style={{ padding: "13px 16px", borderBottom: i < group.items.length - 1 ? "1px solid " + C.borderLight : "none", cursor: "pointer", display: "flex", gap: 12, alignItems: "flex-start" }}>
+                                  <div style={{ width: 32, height: 32, borderRadius: 16, background: group.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                                    {r.client.split(/\s|&/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase()}
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 2 }}>
+                                      <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{r.client}</span>
+                                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 3, letterSpacing: 0.4, textTransform: "uppercase", background: C.bg, color: C.textMuted, border: "1px solid " + C.borderLight }}>
+                                        {r.type === "oneoff" ? "One-off" : "Former"}
+                                      </span>
+                                    </div>
+                                    <div style={{ fontSize: 11.5, color: C.textMuted, marginBottom: (r.tags && r.tags.length > 0) || summary ? 6 : 0 }}>{r.contact}{r.months > 0 ? " · " + r.months + "mo" : ""}</div>
+                                    {r.tags && r.tags.length > 0 && (
+                                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: summary ? 6 : 0 }}>
+                                        {r.tags.map((t, ti) => (
+                                          <span key={ti} style={{ fontSize: 10.5, padding: "2px 8px", borderRadius: 999, background: C.primaryGhost, color: C.primary, fontWeight: 600 }}>{t}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {summary && (
+                                      <p style={{ fontSize: 12, color: C.textSec, lineHeight: 1.45, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: "italic" }}>{summary}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Empty state */}
+                  {rolodex.length === 0 && !showAddRolodex && (
+                    <div style={{ textAlign: "center", padding: "60px 20px", background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, color: C.text }}>Your Rolodex is empty</div>
+                      <div style={{ fontSize: 12.5, color: C.textMuted }}>Move clients here when relationships end, or add one-off contacts worth a future check-in.</div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <RaiMiniPanel />
-            </div>
+
+                {/* RAI COLUMN — wide desktop only */}
+                <div className="rc-rai-col" style={{ display: "none", position: "sticky", top: 20, alignSelf: "start" }}>
+                  <RaiMiniPanel />
+                </div>
+              </div>
             </div>
           );
         })()}
