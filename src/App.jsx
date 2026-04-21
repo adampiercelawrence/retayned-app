@@ -1419,72 +1419,98 @@ export default function App({ user }) {
   };
 
   const RaiMiniPanel = () => (
-    <div className="r-today-panel" style={{ width: 360, flexShrink: 0, position: "sticky", top: 28, alignSelf: "flex-start" }}>
-      <div style={{ background: "transparent", borderRadius: 16, border: "1px solid " + C.borderLight, padding: "14px", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 80px)" }}>
-        {/* Rai header */}
-        <div style={{ display: "flex", gap: 10, alignItems: "center", paddingBottom: 12, borderBottom: "1px solid " + C.borderLight, marginBottom: 12 }}>
-          <div style={{ width: 38, height: 38, borderRadius: "50%", overflow: "hidden", flexShrink: 0, position: "relative" }}>
-            <img src="/favicon.png" alt="Rai" style={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }} />
-            <div style={{ position: "absolute", bottom: -1, right: -1, width: 10, height: 10, borderRadius: "50%", background: C.success, border: "2px solid " + C.bg }} />
+    <div className="r-today-panel" style={{ width: "100%", flexShrink: 0 }}>
+      <div style={{ background: "transparent", borderRadius: 16, border: "1px solid " + C.borderLight, padding: "16px", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 140px)" }}>
+        {/* Header — Talk to Rai */}
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14 }}>
+          <div style={{ width: 34, height: 34, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: C.btnLight, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon name="sparkles" size={16} color={C.btn} />
           </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 800 }}>Rai</div>
-            <div style={{ fontSize: 11, color: C.success, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, display: "inline-block" }} />
-              Watching your portfolio
-            </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Talk to Rai</div>
+            <div style={{ fontSize: 11, color: C.textMuted }}>Reading your portfolio</div>
+          </div>
+          <button onClick={() => { setAiMessages([]); setAiInput(""); }} title="New chat" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid " + C.borderLight, background: C.card, color: C.textSec, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <Icon name="plus" size={12} color={C.textSec} />
+          </button>
+        </div>
+
+        {/* Input */}
+        <div style={{ border: "1.5px solid " + C.border, borderRadius: 12, padding: "10px 12px 8px", background: C.card, marginBottom: 14 }}>
+          <input
+            value={aiInput}
+            onChange={e => setAiInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }}
+            placeholder="Ask Rai about your book..."
+            style={{ width: "100%", border: "none", outline: "none", background: "transparent", fontSize: 13.5, fontFamily: "inherit", color: C.text, padding: "2px 0" }}
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 2 }}>
+            <button onClick={sendAi} disabled={!aiInput.trim()} style={{ width: 24, height: 24, borderRadius: 6, border: "none", background: aiInput.trim() ? C.btn : C.borderLight, color: "#fff", cursor: aiInput.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: 11, fontFamily: "monospace", fontWeight: 600 }}>↵</span>
+            </button>
           </div>
         </div>
-        {/* Messages */}
-        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-          {aiMessages.length === 0 ? (
-            <>
-              <div style={{ fontSize: 14, lineHeight: 1.55, color: C.text, padding: "4px 2px 8px" }}>
+
+        {aiMessages.length === 0 ? (
+          <>
+            {/* Greeting */}
+            <div style={{ fontSize: 13, lineHeight: 1.55, color: C.text, padding: "2px 2px 12px" }}>
+              <b style={{ fontWeight: 700 }}>
                 {(() => {
                   const h = new Date().getHours();
                   if (h >= 5 && h < 12) return "Good morning";
                   if (h >= 12 && h < 17) return "Good afternoon";
                   return "Good evening";
-                })()}{user?.user_metadata?.full_name ? ", " + user.user_metadata.full_name.split(" ")[0] : ""}.<br />
-                What do you want to think through?
-              </div>
-              {/* Suggested prompts */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 4 }}>
-                {[
-                  "Who should I focus on this week?",
-                  "What patterns am I missing? Any blind spots?",
-                  "Where's the biggest opportunity right now?",
-                ].map((p, i) => (
-                  <div key={i} onClick={() => { setAiInput(p); }} style={{ background: C.card, border: "1px solid " + C.borderLight, borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, color: C.btn, cursor: "pointer" }}>
-                    {p}
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              {aiMessages.map((m, i) => (
-                m.role === "user" ? (
-                  <div key={i} style={{ alignSelf: "flex-end", background: C.surface, color: C.text, borderRadius: 18, padding: "8px 14px", fontSize: 13, lineHeight: 1.5, maxWidth: "85%" }}>
-                    {m.text}
-                  </div>
-                ) : (
-                  <div key={i} style={{ padding: "2px 2px", color: C.text }}>
-                    <RaiMarkdown text={m.text} size={13} lineHeight={1.55} />
-                  </div>
-                )
+                })()}{user?.user_metadata?.full_name ? ", " + user.user_metadata.full_name.split(" ")[0] : ""}.
+              </b>{" "}
+              I've been reading your book. Where should we start?
+            </div>
+
+            {/* SUGGESTED list */}
+            <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginTop: 4, marginBottom: 6 }}>Suggested</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {[
+                { icon: "sparkles", label: "Who needs me today?" },
+                { icon: "trendUp", label: "Summarize this week" },
+                { icon: "bolt", label: "Find risk patterns" },
+                { icon: "mail", label: "Draft a renewal note" },
+                { icon: "search", label: "Find clients missing cadence" },
+              ].map((p, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setAiInput(p.label); }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit", color: C.text, transition: "background 120ms" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = C.primaryGhost; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  <Icon name={p.icon} size={13} color={C.textSec} />
+                  <span style={{ flex: 1, fontSize: 13, color: C.text }}>{p.label}</span>
+                  <Icon name="plus" size={11} color={C.textMuted} />
+                </button>
               ))}
-              {aiTyping && <div style={{ display: "flex", gap: 4, padding: "2px 2px", alignSelf: "flex-start" }}>{[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: C.textMuted, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }} />)}</div>}
-            </>
-          )}
-        </div>
-        {/* Input */}
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid " + C.borderLight, display: "flex", gap: 6 }}>
-          <input value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask Rai anything..." style={{ flex: 1, padding: "10px 14px", border: "1px solid " + C.borderLight, borderRadius: 20, fontSize: 13, fontFamily: "inherit", background: C.card, outline: "none" }} />
-          <button onClick={sendAi} style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.btn, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
-          </button>
-        </div>
+            </div>
+
+            {/* Disclaimer */}
+            <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.5, marginTop: 14, paddingTop: 12, borderTop: "1px solid " + C.borderLight }}>
+              Rai only knows what's in your book. Ask about clients, cadence, revenue, or renewals.
+            </div>
+          </>
+        ) : (
+          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+            {aiMessages.map((m, i) => (
+              m.role === "user" ? (
+                <div key={i} style={{ alignSelf: "flex-end", background: C.surface, color: C.text, borderRadius: 18, padding: "8px 14px", fontSize: 13, lineHeight: 1.5, maxWidth: "85%" }}>
+                  {m.text}
+                </div>
+              ) : (
+                <div key={i} style={{ padding: "2px 2px", color: C.text }}>
+                  <RaiMarkdown text={m.text} size={13} lineHeight={1.55} />
+                </div>
+              )
+            ))}
+            {aiTyping && <div style={{ display: "flex", gap: 4, padding: "2px 2px", alignSelf: "flex-start" }}>{[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: C.textMuted, animation: `pulse 1.2s ease-in-out ${j*0.2}s infinite` }} />)}</div>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2411,8 +2437,8 @@ export default function App({ user }) {
               </div>
               </div>
 
-              {/* OUTER RIGHT COLUMN — Rai mini, wide desktop only (>=1440px) */}
-              <div className="rt-rai-col" style={{ display: "none", flexDirection: "column", gap: 16, position: "sticky", top: 20, width: 360, flexShrink: 0 }}>
+              {/* OUTER RIGHT COLUMN — Rai mini, wide desktop only (>=1440px). Top aligned with composer. */}
+              <div className="rt-rai-col" style={{ display: "none", flexDirection: "column", gap: 16, position: "sticky", top: 20, width: 360, flexShrink: 0, marginTop: 118, alignSelf: "flex-start" }}>
                 <RaiMiniPanel />
               </div>
 
