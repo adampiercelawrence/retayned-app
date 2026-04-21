@@ -1834,7 +1834,7 @@ export default function App({ user }) {
         .r-desk { display: none; }
         .r-mob-top { display: flex; }
         .r-mob-bot { display: flex; }
-        .r-main { padding: 16px 16px 80px; }
+        .r-main { padding: 16px 16px 96px; }
         .r-main:has(.r-rai-page) { background: none; }
         .r-today-panel { display: none !important; }
         .r-client-modal { top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; transform: none !important; max-width: 100% !important; max-height: 100% !important; border-radius: 0 !important; }
@@ -2085,7 +2085,7 @@ export default function App({ user }) {
           {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => {
             const active = page === n.id;
             return (
-              <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: active ? "9px 12px 9px 9px" : "9px 12px", borderRadius: 8, marginBottom: 2, background: active ? C.primarySoft : "transparent", color: active ? C.primary : C.text, fontWeight: active ? 600 : 500, boxShadow: active ? "inset 3px 0 0 " + C.primary : "none", cursor: "pointer", position: "relative" }}>
+              <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, marginBottom: 2, background: active ? C.primarySoft : "transparent", color: active ? C.primary : C.text, fontWeight: active ? 600 : 500, boxShadow: active ? C.shadowSm : "none", cursor: "pointer" }}>
                 <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={n.icon} size={16} color={active ? C.primary : C.ink500} /></span><span style={{ fontSize: 14, flex: 1 }}>{n.label}</span>
                 {hasDot(n.id) && <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.warning, boxShadow: "0 0 0 2.5px " + C.surfaceWarm, flexShrink: 0 }} />}
               </div>
@@ -2097,39 +2097,67 @@ export default function App({ user }) {
             </div>
           )}
         </div>
-        {/* Portfolio pulse — ambient signal block */}
-        <div style={{ padding: "10px 14px", margin: "0 10px 8px", background: "rgba(255,255,255,0.4)", borderRadius: 10 }}>
-          <div style={{ fontSize: 9.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>Portfolio</div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <span style={{ fontSize: 12, color: C.text, fontWeight: 600 }}>{clients.length} client{clients.length === 1 ? "" : "s"}</span>
-            {(() => {
-              const driftingCount = clients.filter(c => {
-                const d = clientDrift[c.name];
-                if (d) return d === "Shifted" || d === "Declining" || d === "Something shifted";
-                return (c.ret || 0) > 0 && (c.ret || 0) < 65;
-              }).length;
-              return driftingCount > 0 ? (
-                <span style={{ fontSize: 11, color: C.warning, fontWeight: 500 }}>{driftingCount} drifting</span>
-              ) : (
-                <span style={{ fontSize: 11, color: C.retGood, fontWeight: 500 }}>all steady</span>
-              );
-            })()}
-          </div>
-          {clients.length > 0 && (() => {
-            const avg = clients.reduce((a, c) => a + (c.ret || 0), 0) / clients.length;
-            // Gentle synthetic trend line anchored on portfolio average so the line breathes
-            const pts = Array.from({ length: 13 }, (_, i) => {
-              const wobble = Math.sin(i * 0.9) * 2 + (i - 6) * 0.3;
-              const y = Math.max(2, Math.min(14, 14 - ((avg / 100) * 11) + wobble));
-              return `${(i / 12) * 180},${y.toFixed(1)}`;
-            }).join(" ");
-            return (
-              <svg width="100%" height="16" viewBox="0 0 180 16" preserveAspectRatio="none">
-                <polyline points={pts} fill="none" stroke={C.primary} strokeWidth="1.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-              </svg>
-            );
-          })()}
-        </div>
+        {/* Portfolio widget — full health summary */}
+        {(() => {
+          const total = clients.length;
+          if (total === 0) return null;
+          const avgHealth = Math.round(clients.reduce((a, c) => a + (c.ret || 0), 0) / total);
+          const buckets = clients.reduce((acc, c) => {
+            const r = c.ret || 0;
+            if (r >= 80) acc.thriving++;
+            else if (r >= 65) acc.healthy++;
+            else if (r >= 45) acc.watch++;
+            else if (r >= 25) acc.atRisk++;
+            else acc.critical++;
+            return acc;
+          }, { thriving: 0, healthy: 0, watch: 0, atRisk: 0, critical: 0 });
+          const circ = 2 * Math.PI * 26; // 163.36
+          const legend = [
+            { n: buckets.thriving, label: "Thriving", color: C.retElite },
+            { n: buckets.healthy,  label: "Healthy",  color: C.retGood  },
+            { n: buckets.watch,    label: "Watch",    color: C.retOk    },
+            { n: buckets.atRisk,   label: "At risk",  color: C.retWarn  },
+            { n: buckets.critical, label: "Critical", color: C.retCrit  },
+          ];
+          return (
+            <div style={{ padding: 14, margin: "0 10px 8px", background: "rgba(255,255,255,0.55)", borderRadius: 12, border: "1px solid " + C.borderSoft }}>
+              <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 700, letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 12 }}>Portfolio</div>
+              <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+                <div style={{ width: 60, height: 60, position: "relative", flexShrink: 0 }}>
+                  <svg width="60" height="60" viewBox="0 0 60 60">
+                    <circle cx="30" cy="30" r="26" fill="none" stroke={C.borderSoft} strokeWidth="4" />
+                    <circle cx="30" cy="30" r="26" fill="none" stroke={C.primary} strokeWidth="4"
+                      strokeDasharray={`${(avgHealth / 100) * circ} ${circ}`}
+                      strokeLinecap="round"
+                      transform="rotate(-90 30 30)" />
+                  </svg>
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800, color: C.text, fontVariantNumeric: "tabular-nums" }}>{avgHealth}</div>
+                </div>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3, fontSize: 11 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: C.textSec }}>Clients</span><span style={{ color: C.text, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{total}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: C.textSec }}>MRR</span><span style={{ color: C.text, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>${(totalRev / 1000).toFixed(1)}k</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: C.textSec }}>Avg health</span><span style={{ color: C.primary, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{avgHealth}</span></div>
+                </div>
+              </div>
+              {/* Segmented bar */}
+              <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", marginBottom: 10, background: C.borderSoft }}>
+                {legend.filter(l => l.n > 0).map((l, i) => (
+                  <div key={i} style={{ flex: l.n, background: l.color }} />
+                ))}
+              </div>
+              {/* Legend */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11 }}>
+                {legend.map((l, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: l.color, flexShrink: 0 }} />
+                    <span style={{ color: C.text, fontWeight: 600, minWidth: 14, fontVariantNumeric: "tabular-nums" }}>{l.n}</span>
+                    <span style={{ color: C.textSec }}>{l.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
         <div style={{ padding: "4px 10px 8px" }}>
           <div onClick={() => setTier(tier === "core" ? "enterprise" : "core")} className="nav-item" style={{ display: "none", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, color: C.textSec }}>
             <span style={{ fontSize: 12, fontWeight: 600 }}>{tier === "enterprise" ? "Enterprise" : "Core"}</span>
@@ -2140,7 +2168,7 @@ export default function App({ user }) {
           {(() => {
             const active = page === "settings";
             return (
-              <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: active ? "9px 12px 9px 9px" : "9px 12px", borderRadius: 8, color: active ? C.primary : C.text, background: active ? C.primarySoft : "transparent", fontWeight: active ? 600 : 500, boxShadow: active ? "inset 3px 0 0 " + C.primary : "none", cursor: "pointer", position: "relative" }}>
+              <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, color: active ? C.primary : C.text, background: active ? C.primarySoft : "transparent", fontWeight: active ? 600 : 500, boxShadow: active ? C.shadowSm : "none", cursor: "pointer" }}>
                 <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="settings" size={16} color={active ? C.primary : C.ink500} /></span><span style={{ fontSize: 14, flex: 1 }}>Settings</span>
               </div>
             );
@@ -5931,14 +5959,15 @@ export default function App({ user }) {
 
 
       {/* MOBILE BOTTOM NAV */}
-      <div className="r-mob-bot" style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: C.card, borderTop: "1px solid " + C.borderLight, justifyContent: "space-around", padding: "8px 0 12px", zIndex: 40 }}>
+      <div className="r-mob-bot" style={{ position: "fixed", bottom: 12, left: 12, right: 12, background: C.surfaceWarm, borderRadius: 18, boxShadow: "0 2px 6px rgba(10,10,10,0.04), 0 4px 14px rgba(10,10,10,0.07)", justifyContent: "space-around", padding: "10px 6px 12px", zIndex: 40 }}>
         {(tier === "enterprise" ? mobileNavEnterprise : mobileNavCore).map(n => {
           const dot = hasDot(n.id);
+          const active = page === n.id || (n.id === "more" && showMore);
           return (
-            <div key={n.id} onClick={() => n.id === "more" ? setShowMore(!showMore) : goTo(n.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: "pointer", padding: "4px 10px", position: "relative" }}>
-              <Icon name={n.icon} size={22} color={(page === n.id || (n.id === "more" && showMore)) ? C.primary : C.textMuted} />
-              <span style={{ fontSize: 10, fontWeight: 700, color: (page === n.id || (n.id === "more" && showMore)) ? C.primary : C.textMuted }}>{n.label}</span>
-              {dot && <div style={{ position: "absolute", top: 2, right: 6, width: 7, height: 7, borderRadius: "50%", background: C.danger }} />}
+            <div key={n.id} onClick={() => n.id === "more" ? setShowMore(!showMore) : goTo(n.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer", padding: "5px 10px", borderRadius: 10, background: active ? C.primarySoft : "transparent", position: "relative" }}>
+              <Icon name={n.icon} size={20} color={active ? C.primary : C.ink500} />
+              <span style={{ fontSize: 9.5, fontWeight: active ? 700 : 600, color: active ? C.primary : C.ink500 }}>{n.label}</span>
+              {dot && <div style={{ position: "absolute", top: 2, right: 6, width: 7, height: 7, borderRadius: "50%", background: C.warning, boxShadow: "0 0 0 2.5px " + (active ? C.primarySoft : C.surfaceWarm) }} />}
             </div>
           );
         })}
@@ -5946,7 +5975,7 @@ export default function App({ user }) {
       {showMore && (
         <>
           <div onClick={() => setShowMore(false)} style={{ position: "fixed", inset: 0, zIndex: 45 }} />
-          <div style={{ position: "fixed", bottom: 64, right: 12, background: C.card, borderRadius: "12px 12px 12px 12px", border: "1px solid " + C.border, boxShadow: "0 -4px 24px rgba(0,0,0,0.08)", zIndex: 46, overflow: "hidden", minWidth: 180, animation: "fadeIn 0.15s ease" }}>
+          <div style={{ position: "fixed", bottom: 82, right: 20, background: C.card, borderRadius: "12px 12px 12px 12px", border: "1px solid " + C.border, boxShadow: "0 -4px 24px rgba(0,0,0,0.08)", zIndex: 46, overflow: "hidden", minWidth: 180, animation: "fadeIn 0.15s ease" }}>
             {(tier === "enterprise" ? moreItemsEnterprise : moreItemsCore).map((m, i, arr) => (
               <div key={m.id} onClick={() => goTo(m.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", cursor: "pointer", borderBottom: "1px solid " + C.borderLight, background: page === m.id ? C.primarySoft : "transparent" }}>
                 <span style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name={m.icon} size={18} color={page === m.id ? C.primary : C.textMuted} /></span><span style={{ fontSize: 13, fontWeight: page === m.id ? 700 : 500, color: page === m.id ? C.primary : C.text, flex: 1 }}>{m.label}</span>
