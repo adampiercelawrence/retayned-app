@@ -2260,14 +2260,6 @@ export default function App({ user }) {
                   </div>
                 )}
 
-                <div className="rt-presets" style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 16px 12px", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", marginRight: 4 }}>Try</span>
-                  {["Check in with", "Send proposal to", "Log call with", "Follow up on"].map(p => (
-                    <button key={p} onClick={() => applyPreset(p)} style={{ padding: "4px 10px", background: C.primarySoft, border: "1px solid " + C.borderLight, borderRadius: 999, fontSize: 11.5, color: C.textSec, whiteSpace: "nowrap", cursor: "pointer", fontFamily: "inherit" }}>
-                      {p}<span style={{ color: C.textMuted }}>…</span>
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* MAIN GRID: task list + focus pane */}
@@ -2358,27 +2350,24 @@ export default function App({ user }) {
                               {t.text}
                             </div>
                             <div className="rt-row-meta" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2, fontSize: 11.5, color: C.textMuted }}>
-                              {client && <>
-                                <span style={{ fontWeight: 500, color: C.textSec }}>{client.name}</span>
-                                <span style={{ opacity: 0.35 }}>·</span>
-                              </>}
+                              {client && <span style={{ fontWeight: 500, color: C.textSec }}>{client.name}</span>}
                               {kind === "rai" && (
-                                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: C.btn, fontWeight: 500 }}>
-                                  <Icon name="sparkles" size={10} />
-                                  <span>Assigned by Rai</span>
-                                </span>
-                              )}
-                              {kind === "mine" && (
-                                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: C.primary, fontWeight: 500 }}>
-                                  <Icon name="plus" size={10} />
-                                  <span>Assigned by you</span>
-                                </span>
+                                <>
+                                  {client && <span style={{ opacity: 0.35 }}>·</span>}
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: C.btn, fontWeight: 500 }}>
+                                    <Icon name="sparkles" size={10} />
+                                    <span>Assigned by Rai</span>
+                                  </span>
+                                </>
                               )}
                               {kind === "system" && (
-                                <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
-                                  <Icon name="trendUp" size={10} />
-                                  <span>{typeLabel(t)}</span>
-                                </span>
+                                <>
+                                  {client && <span style={{ opacity: 0.35 }}>·</span>}
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                    <Icon name="trendUp" size={10} />
+                                    <span>{typeLabel(t)}</span>
+                                  </span>
+                                </>
                               )}
                               {t.recurring && (
                                 <>
