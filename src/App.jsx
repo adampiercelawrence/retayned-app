@@ -3666,6 +3666,27 @@ export default function App({ user }) {
           const now = new Date();
           const monthLabel = now.toLocaleString("en-US", { month: "long", year: "numeric" });
 
+          // ─── Drift Wall stubs ────────────────────────────────────────────
+          const _hash = (s) => (s || "").split("").reduce((a, ch) => a + ch.charCodeAt(0), 0);
+          const _dwDelta = (name) => ((_hash(name) % 11) - 5); // -5..+5
+          const _dwCadenceTarget = (name) => (_hash(name) % 3 === 0) ? 14 : 7;
+          const _dwCadenceActual = (c) => {
+            const lc = (c.lastContact || "").toLowerCase();
+            if (lc.includes("today")) return 1;
+            const m = lc.match(/(\d+)\s*d/);
+            if (m) return parseInt(m[1], 10);
+            return (_hash(c.name) % 20) + 5;
+          };
+          // Cadence drift days: negative = on or ahead, positive = slower than target
+          const _dwCadenceDrift = (c) => _dwCadenceActual(c) - _dwCadenceTarget(c.name);
+
+          // Plot: X = cadence drift days (clamped -10..+20), Y = score delta (-5..+5)
+          const driftPoints = clients.map(c => {
+            const delta = _dwDelta(c.name);
+            const drift = _dwCadenceDrift(c);
+            return { c, delta, drift };
+          });
+
           return (
             <div style={{ width: "100%" }}>
               {/* STATUS BAND */}
@@ -3836,6 +3857,79 @@ export default function App({ user }) {
                       );
                     })}
                   </div>
+
+                  {/* ─── Drift Wall — 2D quadrant ─── */}
+                  {driftPoints.length > 0 && (() => {
+                    const W = 600, H = 380;
+                    const padL = 50, padR = 20, padT = 36, padB = 44;
+                    const innerW = W - padL - padR;
+                    const innerH = H - padT - padB;
+                    const xMin = -10, xMax = 20; // cadence drift days
+                    const yMin = -6, yMax = 6;   // score delta
+                    const xToPx = (x) => padL + ((Math.max(xMin, Math.min(xMax, x)) - xMin) / (xMax - xMin)) * innerW;
+                    const yToPx = (y) => padT + innerH - ((Math.max(yMin, Math.min(yMax, y)) - yMin) / (yMax - yMin)) * innerH;
+                    const zeroX = xToPx(0);
+                    const zeroY = yToPx(0);
+                    // Quadrant tints (subtle)
+                    const tints = {
+                      tl: C.retGood + "11",   // score↑ cadence held (healthy)
+                      tr: C.retOk + "16",     // score↑ cadence slip (investigate)
+                      bl: C.retOk + "16",     // score↓ cadence held (worrying)
+                      br: C.retCrit + "15",   // score↓ cadence slip (danger)
+                    };
+                    return (
+                      <div style={{ marginTop: 24, background: C.card, borderRadius: 12, border: "1px solid " + C.border, boxShadow: C.shadowSm, padding: "18px 20px" }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
+                          <div>
+                            <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: 0.4 }}>Drift wall — this month</div>
+                            <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>Every client, plotted by how they moved</div>
+                          </div>
+                          <div style={{ display: "flex", gap: 10, fontSize: 10.5, color: C.textMuted, flexWrap: "wrap" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 4, background: C.retElite }} />Thriving</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 4, background: C.retGood }} />Healthy</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 4, background: C.retOk }} />Watch</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 4, background: C.retWarn }} />At risk</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 4, background: C.retCrit }} />Critical</span>
+                          </div>
+                        </div>
+                        <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
+                          {/* Quadrant tints */}
+                          <rect x={padL}   y={padT}   width={zeroX - padL}   height={zeroY - padT}   fill={tints.tl} />
+                          <rect x={zeroX}  y={padT}   width={W - padR - zeroX} height={zeroY - padT}   fill={tints.tr} />
+                          <rect x={padL}   y={zeroY}  width={zeroX - padL}   height={H - padB - zeroY} fill={tints.bl} />
+                          <rect x={zeroX}  y={zeroY}  width={W - padR - zeroX} height={H - padB - zeroY} fill={tints.br} />
+                          {/* Frame */}
+                          <rect x={padL} y={padT} width={innerW} height={innerH} fill="none" stroke={C.borderLight} strokeWidth="1" />
+                          {/* Zero axes — dashed */}
+                          <line x1={zeroX} y1={padT} x2={zeroX} y2={padT + innerH} stroke={C.border} strokeWidth="1" strokeDasharray="3 3" />
+                          <line x1={padL} y1={zeroY} x2={padL + innerW} y2={zeroY} stroke={C.border} strokeWidth="1" strokeDasharray="3 3" />
+                          {/* Quadrant labels */}
+                          <text x={padL + 10}               y={padT + 16} fontSize="9.5" fontWeight="700" fill={C.retElite} letterSpacing="0.4">SCORE ↑ · CADENCE HELD</text>
+                          <text x={zeroX + 10}              y={padT + 16} fontSize="9.5" fontWeight="700" fill={C.retOk} letterSpacing="0.4">SCORE ↑ · CADENCE SLIP</text>
+                          <text x={padL + 10}               y={padT + innerH - 8} fontSize="9.5" fontWeight="700" fill={C.retOk} letterSpacing="0.4">SCORE ↓ · CADENCE HELD</text>
+                          <text x={zeroX + 10}              y={padT + innerH - 8} fontSize="9.5" fontWeight="700" fill={C.retCrit} letterSpacing="0.4">SCORE ↓ · CADENCE SLIP</text>
+                          {/* Axis tick labels */}
+                          <text x={padL - 8} y={padT + 4}           fontSize="9" fill={C.textMuted} textAnchor="end">+{yMax}</text>
+                          <text x={padL - 8} y={padT + innerH + 4}  fontSize="9" fill={C.textMuted} textAnchor="end">{yMin}</text>
+                          <text x={padL}                y={H - padB + 16} fontSize="9.5" fill={C.textMuted}>on-target cadence</text>
+                          <text x={padL + innerW}       y={H - padB + 16} fontSize="9.5" fill={C.textMuted} textAnchor="end">+{xMax} days slower</text>
+                          {/* Client dots */}
+                          {driftPoints.map(({ c, delta, drift }) => {
+                            const cx = xToPx(drift);
+                            const cy = yToPx(delta);
+                            const color = retColor(c.ret || 50);
+                            const initials = c.name.split(/\s|&/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase();
+                            return (
+                              <g key={c.id}>
+                                <circle cx={cx} cy={cy} r={15} fill={color} opacity="0.92" />
+                                <text x={cx} y={cy + 3.5} fontSize="9" fontWeight="700" fill="#fff" textAnchor="middle" style={{ pointerEvents: "none", fontFamily: "inherit" }}>{initials}</text>
+                              </g>
+                            );
+                          })}
+                        </svg>
+                      </div>
+                    );
+                  })()}
 
                   {/* Done today */}
                   {justCompleted.length > 0 && (
@@ -4094,6 +4188,115 @@ export default function App({ user }) {
 
                 {/* MAIN COLUMN */}
                 <div style={{ minWidth: 0 }}>
+                  {/* ─── Referral Network — radial hub-and-spoke ─── */}
+                  {refs.length > 0 && (() => {
+                    const W = 600, H = 360;
+                    const cx = W / 2, cy = H / 2;
+                    // Group referrers and their referrals
+                    const referrerMap = {};
+                    refs.forEach(r => {
+                      if (!referrerMap[r.from]) referrerMap[r.from] = [];
+                      referrerMap[r.from].push(r);
+                    });
+                    const referrers = Object.keys(referrerMap).slice(0, 8);
+                    const r1 = 110; // inner ring radius (referrers)
+                    const r2 = 155; // outer ring radius (referred)
+                    const nRefs = referrers.length;
+
+                    const nodes = referrers.map((name, i) => {
+                      const angle = (i / Math.max(1, nRefs)) * Math.PI * 2 - Math.PI / 2;
+                      const x = cx + r1 * Math.cos(angle);
+                      const y = cy + r1 * Math.sin(angle);
+                      const client = clients.find(c => c.name === name);
+                      const count = referrerMap[name].length;
+                      return { name, x, y, angle, count, ret: client?.ret || 70 };
+                    });
+
+                    // Referred leaves — each referral becomes a leaf node around its parent
+                    const leaves = [];
+                    nodes.forEach(parent => {
+                      const children = referrerMap[parent.name];
+                      children.forEach((r, ci) => {
+                        // Spread children around the parent at angle ± spread
+                        const spread = 0.35;
+                        const childAngle = parent.angle + (children.length > 1 ? (ci - (children.length - 1) / 2) * spread / Math.max(1, children.length - 1) * 2 : 0);
+                        const lx = cx + r2 * Math.cos(childAngle);
+                        const ly = cy + r2 * Math.sin(childAngle);
+                        const isActive = r.status === "converted" || (r.converted && r.status !== "closed");
+                        leaves.push({ ...r, parent, lx, ly, isActive });
+                      });
+                    });
+
+                    return (
+                      <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "18px 20px", marginBottom: 14 }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 10, flexWrap: "wrap" }}>
+                          <div>
+                            <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: 0.4 }}>Referral network</div>
+                            <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>Who your clients sent your way</div>
+                          </div>
+                          <div style={{ display: "flex", gap: 10, fontSize: 10.5, color: C.textMuted, flexWrap: "wrap" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 4, background: C.retGood }} />Active</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 4, background: C.retWarn }} />Closed</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 10, height: 1, background: C.border }} />= referral</span>
+                          </div>
+                        </div>
+                        <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
+                          {/* Orbit rings (subtle) */}
+                          <circle cx={cx} cy={cy} r={r1} fill="none" stroke={C.borderLight} strokeWidth="1" strokeDasharray="2 4" />
+                          <circle cx={cx} cy={cy} r={r2} fill="none" stroke={C.borderLight} strokeWidth="1" strokeDasharray="2 4" />
+
+                          {/* Spokes: hub -> referrer (quiet) */}
+                          {nodes.map(n => (
+                            <line key={"spoke-" + n.name} x1={cx} y1={cy} x2={n.x} y2={n.y} stroke={C.border} strokeWidth="1" opacity="0.45" />
+                          ))}
+
+                          {/* Leaves: referrer -> referred, colored by status */}
+                          {leaves.map((l, li) => (
+                            <line key={"leaf-" + li} x1={l.parent.x} y1={l.parent.y} x2={l.lx} y2={l.ly} stroke={l.isActive ? C.retGood : C.retWarn} strokeWidth="1.4" opacity="0.75" />
+                          ))}
+
+                          {/* Leaf nodes */}
+                          {leaves.map((l, li) => (
+                            <g key={"leafnode-" + li}>
+                              <circle cx={l.lx} cy={l.ly} r={7} fill={l.isActive ? C.retGood : C.retWarn} opacity="0.92" />
+                            </g>
+                          ))}
+
+                          {/* Leaf labels (names under dots) */}
+                          {leaves.map((l, li) => (
+                            <text key={"leaflbl-" + li} x={l.lx} y={l.ly + 18} fontSize="9.5" fill={C.textSec} textAnchor="middle" style={{ fontFamily: "inherit" }}>
+                              {l.to.length > 14 ? l.to.slice(0, 13) + "…" : l.to}
+                            </text>
+                          ))}
+
+                          {/* Referrer nodes */}
+                          {nodes.map(n => {
+                            const initials = n.name.split(/\s|&/).filter(Boolean).slice(0, 2).map(s => s[0]).join("").toUpperCase();
+                            return (
+                              <g key={"node-" + n.name}>
+                                <circle cx={n.x} cy={n.y} r={18} fill={retColor(n.ret)} opacity="0.95" />
+                                <text x={n.x} y={n.y + 4} fontSize="10.5" fontWeight="700" fill="#fff" textAnchor="middle" style={{ pointerEvents: "none", fontFamily: "inherit" }}>{initials}</text>
+                                {/* Referrer name + count */}
+                                <text x={n.x} y={n.y - 24} fontSize="10" fontWeight="600" fill={C.text} textAnchor="middle" style={{ fontFamily: "inherit" }}>{n.name.length > 16 ? n.name.slice(0, 15) + "…" : n.name}</text>
+                                {n.count > 1 && (
+                                  <g>
+                                    <circle cx={n.x + 15} cy={n.y - 14} r={8} fill={C.btn} />
+                                    <text x={n.x + 15} y={n.y - 11} fontSize="9" fontWeight="700" fill="#fff" textAnchor="middle" style={{ pointerEvents: "none", fontFamily: "inherit" }}>{n.count}</text>
+                                  </g>
+                                )}
+                              </g>
+                            );
+                          })}
+
+                          {/* Center hub — YOU */}
+                          <circle cx={cx} cy={cy} r={32} fill={C.primaryDeep || C.primary} />
+                          <text x={cx} y={cy - 2} fontSize="11" fontWeight="700" fill="#fff" textAnchor="middle" style={{ pointerEvents: "none", fontFamily: "inherit", letterSpacing: 0.4 }}>YOU</text>
+                          <text x={cx} y={cy + 11} fontSize="8.5" fill="rgba(255,255,255,0.65)" textAnchor="middle" style={{ pointerEvents: "none", fontFamily: "inherit" }}>Retaynd</text>
+                        </svg>
+                      </div>
+                    );
+                  })()}
+
                   {/* Search */}
                   {refs.length > 15 && (
                     <div style={{ marginBottom: 12 }}>
@@ -4500,6 +4703,30 @@ export default function App({ user }) {
                                     {summary && (
                                       <p style={{ fontSize: 12, color: C.textSec, lineHeight: 1.45, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: "italic" }}>{summary}</p>
                                     )}
+                                  </div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0, marginTop: 2 }}>
+                                    {(() => {
+                                      const btnStyle = (enabled) => ({
+                                        width: 28, height: 28, borderRadius: 6, background: "transparent", border: "none",
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                        cursor: enabled ? "pointer" : "default", opacity: enabled ? 0.85 : 0.35, fontFamily: "inherit",
+                                      });
+                                      const hasPhone = !!r.phone;
+                                      const hasEmail = !!r.email;
+                                      return (
+                                        <>
+                                          <button title={hasPhone ? "Call " + r.phone : "No phone on file"} onClick={(e) => { e.stopPropagation(); if (hasPhone) window.open("tel:" + r.phone); }} style={btnStyle(hasPhone)}>
+                                            <Icon name="phone" size={14} color={hasPhone ? C.textSec : C.textMuted} />
+                                          </button>
+                                          <button title={hasEmail ? "Email " + r.email : "No email on file"} onClick={(e) => { e.stopPropagation(); if (hasEmail) window.open("mailto:" + r.email); }} style={btnStyle(hasEmail)}>
+                                            <Icon name="mail" size={14} color={hasEmail ? C.textSec : C.textMuted} />
+                                          </button>
+                                          <button title="Open details" onClick={(e) => { e.stopPropagation(); setSelectedRolodex(r); setRolodexRemoveConfirm(false); setRolodexEditing(false); }} style={btnStyle(true)}>
+                                            <Icon name="chevron" size={14} color={C.textSec} />
+                                          </button>
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
                               );
