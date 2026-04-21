@@ -2904,7 +2904,6 @@ export default function App({ user }) {
           const variant = clientsView || "table";
           const sortOptions = [
             { id: "priority",   label: "Priority" },
-            { id: "attention",  label: "Attention" },
             { id: "revenue",    label: "Revenue" },
             { id: "trend",      label: "Trend" },
             { id: "cadence",    label: "Cadence" },
@@ -4512,35 +4511,93 @@ export default function App({ user }) {
         const sc = selectedClient;
         const dims = sc.profileScores || {};
         const dimLabels = { trust: ["Trust", "Micromanages everything", "Full delegation"], loyalty: ["Loyalty", "Actively shopping", "Locked in, not looking"], expectations: ["Expectations", "Unrealistic, impossible", "Reasonable, aligned"], grace: ["Grace", "Zero tolerance", "Gives benefit of the doubt"], commFrequency: ["Communication Frequency", "Radio silence", "Nonstop"], stressResponse: ["Stress Response", "Goes quiet internally", "Immediately escalates"], budgetCommitment: ["Budget Commitment", "Always under pressure", "Non-issue"], relationshipDepth: ["Relationship Depth", "Strictly transactional", "Genuine connection"], reportingNeed: ["Reporting Need", "Don't bother me", "Wants every detail"], replaceability: ["Replaceability", "Plug and play", "Deeply embedded"], commTone: ["Communication Tone", "Cold, passive-aggressive", "Warm, direct"], decisionMaking: ["Decision Making", "No authority, just a relay", "Full authority"] };
+
+        // Hero+ helpers
+        const _hash = (s) => (s || "").split("").reduce((a, ch) => a + ch.charCodeAt(0), 0);
+        const _delta = sc.name ? ((_hash(sc.name) % 11) - 5) : 0;
+        const _OWNERS = [
+          { name: "Ana K.",    color: "#2C9A76" },
+          { name: "Dev R.",    color: "#D17A1B" },
+          { name: "Jordan P.", color: "#6D2BD9" },
+          { name: "Sam L.",    color: "#1F7A5C" },
+        ];
+        const _owner = _OWNERS[_hash(sc.name || "") % _OWNERS.length];
+        const _driftRaw = clientDrift[sc.name] || (sc.ret ? (sc.ret >= 80 ? "Thriving" : sc.ret >= 65 ? "Stable" : sc.ret >= 45 ? "Shifted" : "Declining") : "Stable");
+        const _driftLabel = _driftRaw === "Something shifted" ? "Shifted" : _driftRaw;
+        const _driftMeta = {
+          Thriving:  { fg: C.retElite, bg: C.primaryGhost },
+          Stable:    { fg: C.retGood,  bg: C.primaryGhost },
+          Healthy:   { fg: C.retGood,  bg: C.primaryGhost },
+          Watch:     { fg: C.retOk,    bg: "#FAF8EC" },
+          Shifted:   { fg: C.retWarn,  bg: "#FBF1E2" },
+          "At Risk": { fg: C.retWarn,  bg: "#FBF1E2" },
+          Declining: { fg: C.retCrit,  bg: "#FBEAE3" },
+          Critical:  { fg: C.retCrit,  bg: "#FBEAE3" },
+        }[_driftLabel] || { fg: C.textSec, bg: C.bg };
+        const _bucket = sc.ret ? (sc.ret >= 80 ? "Thriving" : sc.ret >= 65 ? "Healthy" : sc.ret >= 45 ? "Watch" : sc.ret >= 30 ? "At Risk" : "Critical") : "New";
+
         return (
           <>
             <div onClick={() => setSelectedClient(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 90 }} />
             <div className="r-client-modal" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "100%", maxWidth: 520, maxHeight: "90vh", background: C.card, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", zIndex: 100, overflowY: "scroll", borderRadius: 16 }}>
-              <div style={{ padding: "14px 20px", borderBottom: "1px solid " + C.borderLight, display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: C.card, zIndex: 1 }}>
-                <h2 style={{ fontSize: 20, fontWeight: 800 }}>{sc.name}</h2>
-                <button onClick={() => setSelectedClient(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.textMuted }}>×</button>
+              {/* Top bar — eyebrow + close */}
+              <div style={{ padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: C.card, zIndex: 1, borderBottom: "1px solid " + C.borderLight }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase" }}>
+                  Client{sc.tag ? " · " + sc.tag : ""}
+                </span>
+                <button onClick={() => setSelectedClient(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.textMuted, lineHeight: 1, padding: 0, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
               </div>
 
-              {/* Score + tabs */}
-              <div style={{ textAlign: "center", padding: "16px 20px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                {sc.ret ? <ScoreRing score={sc.ret} size={64} strokeWidth={4.5} /> : <div style={{ fontSize: 32, fontWeight: 900, color: C.textMuted }}>New</div>}
-                <div style={{ fontSize: 14, color: C.textMuted, marginBottom: 4 }}>{sc.ret ? "Retention Score" : "First health check pending"}</div>
-                {sc.ret && <div style={{ fontSize: 13, fontWeight: 700, color: retColor(sc.ret), textTransform: "uppercase", letterSpacing: ".04em" }}>{sc.ret >= 80 ? "Thriving" : sc.ret >= 65 ? "Healthy" : sc.ret >= 45 ? "Watch" : sc.ret >= 30 ? "At Risk" : "Critical"}</div>}
-                {sc.ret && <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+              {/* Hero — name + drift pill + owner on left, big score on right */}
+              <div style={{ padding: "18px 20px 14px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, color: C.text, margin: 0, lineHeight: 1.1 }}>{sc.name}</h2>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                      {sc.ret ? (
+                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999, color: _driftMeta.fg, background: _driftMeta.bg, fontVariantNumeric: "tabular-nums" }}>
+                          {_delta >= 0 ? "↑" : "↓"} {Math.abs(_delta)} · {_driftLabel}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999, color: C.textSec, background: C.bg }}>First check pending</span>
+                      )}
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: C.textSec }}>
+                        <span style={{ width: 7, height: 7, borderRadius: 4, background: _owner.color }} />
+                        {_owner.name}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    {sc.ret ? (
+                      <>
+                        <div style={{ fontSize: 38, fontWeight: 700, color: retColor(sc.ret), letterSpacing: -1.4, lineHeight: 0.9, fontVariantNumeric: "tabular-nums" }}>{sc.ret}</div>
+                        <div style={{ fontSize: 9.5, fontWeight: 700, color: C.textMuted, letterSpacing: 1.2, marginTop: 5, textTransform: "uppercase" }}>{_bucket}</div>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 22, fontWeight: 700, color: C.textMuted, letterSpacing: -0.5 }}>New</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 2×2 stat grid */}
+              {sc.ret && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, padding: "0 20px 14px" }}>
                   {[
-                    { label: "Revenue", value: "$" + (sc.revenue / 1000).toFixed(1) + "k/mo" },
-                    { label: "Tenure", value: sc.months >= 12 ? (sc.months / 12).toFixed(1) + " yr" : sc.months + " mo" },
-                    { label: "LCV", value: "$" + Math.round(getAdjustedLTV(sc) / 1000) + "k" },
-                    { label: "Drift", value: (() => { const d = clientDrift[sc.name] || "Stable"; return d === "Something shifted" ? "Shifted" : d; })(), color: C.text },
+                    { k: "REVENUE",  v: "$" + (sc.revenue / 1000).toFixed(1) + "k/mo" },
+                    { k: "LIFETIME", v: "$" + Math.round(getAdjustedLTV(sc) / 1000) + "k" },
+                    { k: "TENURE",   v: sc.months >= 12 ? (sc.months / 12).toFixed(1) + " yr" : sc.months + " mo" },
+                    { k: "CADENCE",  v: sc.lastHC ? "Last " + sc.lastHC : "Pending" },
                   ].map((s, si) => (
-                    <div key={si} style={{ background: C.bg, borderRadius: 8, padding: "8px 14px" }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, letterSpacing: "0.03em", marginBottom: 1 }}>{s.label}</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: s.color || C.text }}>{s.value}</div>
+                    <div key={si} style={{ background: C.bg, border: "1px solid " + C.borderLight, borderRadius: 8, padding: "8px 10px" }}>
+                      <div style={{ fontSize: 9.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, marginBottom: 3 }}>{s.k}</div>
+                      <div style={{ fontSize: 12.5, color: C.text, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{s.v}</div>
                     </div>
                   ))}
-                </div>}
-              </div>
-              <div style={{ padding: "12px 20px 0" }}>
+                </div>
+              )}
+
+              <div style={{ padding: "0 20px 0" }}>
                 <div style={{ display: "flex", gap: 0, background: C.surface, borderRadius: 10, padding: 3 }}>
                   {["Overview", "Profile", "Billing", "Timeline"].map(t => (
                     <button key={t} onClick={() => setClientTab(t.toLowerCase())} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "none", background: clientTab === t.toLowerCase() ? C.card : "transparent", color: clientTab === t.toLowerCase() ? C.text : C.textMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease, color 0.15s ease" }}>{t}</button>
@@ -4555,10 +4612,6 @@ export default function App({ user }) {
                     {!editingOverview ? (
                       <>
                         {[{ l: "Contact", v: sc.contact }, { l: "Role", v: sc.role }, { l: "Industry", v: sc.tag }, { l: "Together", v: sc.months + " months" }, { l: "Last Task", v: sc.lastContact }, { l: "Monthly Revenue", v: "$" + sc.revenue.toLocaleString() }, { l: "Lifetime Value", v: "$" + Math.round(getAdjustedLTV(sc)).toLocaleString() }, { l: "Health Check", v: sc.lastHC ? "Last: " + sc.lastHC : "Pending" }, { l: "Referrals", v: sc.referrals },
-                          { l: "Late payments", v: sc.qualifyingFlags?.latePayments ? "Yes" : "No", flag: "latePayments" },
-                          { l: "Prev. terminated", v: sc.qualifyingFlags?.prevTerminated ? "Yes" : "No", flag: "prevTerminated" },
-                          { l: "Other vendors", v: sc.qualifyingFlags?.otherVendors ? "Yes" : "No", flag: "otherVendors" },
-                          { l: "From referral", v: sc.qualifyingFlags?.fromReferral ? "Yes" : "No", flag: "fromReferral" },
                         ].map((d, i) => (
                           <div key={i} onClick={d.flag ? async () => {
                               const newFlags = { ...(sc.qualifyingFlags || {}), [d.flag]: !sc.qualifyingFlags?.[d.flag] };
@@ -4582,6 +4635,40 @@ export default function App({ user }) {
                           </div>
                         ))}
                         <button onClick={() => { setEditingOverview(true); setOverviewEditData({ contact: sc.contact, role: sc.role, tag: sc.tag, months: sc.months, revenue: sc.revenue }); }} style={{ width: "100%", padding: "10px", background: "transparent", color: C.primary, border: "1px solid " + C.primary + "44", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 12 }}>Edit Details</button>
+                        {/* Flag chips — click to toggle */}
+                        <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginTop: 18, marginBottom: 6 }}>Flags</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {[
+                            { flag: "latePayments",   label: "Late payments",    delta: -4 },
+                            { flag: "prevTerminated", label: "Prev. terminated", delta: -8 },
+                            { flag: "otherVendors",   label: "Other vendors",    delta: -3 },
+                            { flag: "fromReferral",   label: "From referral",    delta: 2 },
+                          ].map(f => {
+                            const on = !!sc.qualifyingFlags?.[f.flag];
+                            const onColor = f.delta > 0 ? C.retGood : C.retWarn;
+                            return (
+                              <button key={f.flag} onClick={async () => {
+                                const newFlags = { ...(sc.qualifyingFlags || {}), [f.flag]: !on };
+                                const newRet = Math.max(1, Math.min(99, (sc.ret || 50) + (on ? -f.delta : f.delta)));
+                                setClients(prev => prev.map(c => c.id === sc.id ? { ...c, qualifyingFlags: newFlags, ret: newRet } : c));
+                                setSelectedClient({ ...sc, qualifyingFlags: newFlags, ret: newRet });
+                                clientsDb.update(sc.id, { qualifying_flags: newFlags, retention_score: newRet });
+                              }} style={{
+                                display: "inline-flex", alignItems: "center", gap: 6,
+                                padding: "5px 10px",
+                                background: on ? onColor + "14" : "transparent",
+                                border: "1px solid " + (on ? onColor + "55" : C.borderLight),
+                                borderRadius: 999,
+                                fontSize: 11.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer",
+                                color: on ? onColor : C.textMuted,
+                                transition: "all 120ms",
+                              }}>
+                                <span style={{ width: 5, height: 5, borderRadius: 3, background: on ? onColor : C.border }} />
+                                {f.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </>
                     ) : (
                       <>
