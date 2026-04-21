@@ -1813,7 +1813,7 @@ export default function App({ user }) {
   const hasDot = (id) => (id === "today" && todayDot) || (id === "health" && healthDot);
 
   return (
-    <div style={{ minHeight: "100vh", fontFamily: "'Manrope', system-ui, sans-serif", color: C.text, background: C.bg }}>
+    <div className="app-root" style={{ minHeight: "100vh", fontFamily: "'Manrope', system-ui, sans-serif", color: C.text, background: C.bg }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1863,14 +1863,22 @@ export default function App({ user }) {
         .r-rai-intro .r-rai-inputbar,
         .r-rai-chat .r-rai-inputbar { background: transparent !important; }
         @media (min-width: 768px) {
-          :root { --sidebar-w: 240px; }
+          :root { --sidebar-w: 240px; --page-gap: 14px; }
+          .app-root { background: ${C.surface} !important; }
           .r-desk { display: flex !important; }
           .r-mob-top { display: none !important; }
           .r-mob-bot { display: none !important; }
           .r-today-panel { display: block !important; }
           .r-client-modal { top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important; transform: translate(-50%, -50%) !important; max-width: 520px !important; max-height: 90vh !important; border-radius: 16px !important; }
-          .r-main { padding: 28px 48px; margin-left: var(--sidebar-w); }
-          .r-main:has(.r-rai-page) { background: none; padding-bottom: 28px !important; }
+          .r-main {
+            padding: 28px 48px;
+            margin: var(--page-gap) var(--page-gap) var(--page-gap) calc(var(--sidebar-w) + var(--page-gap) + var(--page-gap));
+            background: ${C.card};
+            border-radius: 14px;
+            box-shadow: 0 1px 2px rgba(10,10,10,0.03), 0 2px 8px rgba(10,10,10,0.05);
+            min-height: calc(100vh - var(--page-gap) * 2);
+          }
+          .r-main:has(.r-rai-page) { background: none; padding-bottom: 28px !important; box-shadow: none; }
           .r-log-label { display: inline !important; }
           .r-log-btn { padding: 0 14px !important; }
           .r-rai-inner { padding-top: 0 !important; }
@@ -2070,35 +2078,77 @@ export default function App({ user }) {
       )}
 
       {/* SIDEBAR */}
-      <div className="r-desk" style={{ width: 240, background: C.sidebar, flexDirection: "column", position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50, borderRight: "1px solid " + C.borderLight }}>
-        <div style={{ padding: "20px 18px 24px" }}><span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
-        <div style={{ flex: 1, padding: "0 10px" }}>
-          {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => (
-            <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, marginBottom: 2, background: page === n.id ? C.card : "transparent", color: page === n.id ? C.text : C.textSec, fontWeight: page === n.id ? 700 : 500, boxShadow: page === n.id ? C.shadowSm : "none", cursor: "pointer" }}>
-              <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={n.icon} size={16} color={page === n.id ? C.text : C.textSec} /></span><span style={{ fontSize: 14, flex: 1 }}>{n.label}</span>
-              {hasDot(n.id) && <Dot />}
-            </div>
-          ))}
+      <div className="r-desk" style={{ width: 240, background: C.surfaceWarm, flexDirection: "column", position: "fixed", top: 14, left: 14, bottom: 14, zIndex: 50, borderRadius: 14, boxShadow: "0 1px 2px rgba(10,10,10,0.03), 0 2px 8px rgba(10,10,10,0.05)" }}>
+        <div style={{ padding: "20px 18px 2px" }}><span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
+        <div style={{ padding: "0 18px 18px" }}><span style={{ fontSize: 11, color: C.textMuted, letterSpacing: 0.2, fontStyle: "italic", fontFamily: "Georgia, serif" }}>Your client book</span></div>
+        <div style={{ flex: 1, padding: "0 10px", overflowY: "auto" }}>
+          {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => {
+            const active = page === n.id;
+            return (
+              <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: active ? "9px 12px 9px 9px" : "9px 12px", borderRadius: 8, marginBottom: 2, background: active ? C.primarySoft : "transparent", color: active ? C.primary : C.text, fontWeight: active ? 600 : 500, boxShadow: active ? "inset 3px 0 0 " + C.primary : "none", cursor: "pointer", position: "relative" }}>
+                <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={n.icon} size={16} color={active ? C.primary : C.ink500} /></span><span style={{ fontSize: 14, flex: 1 }}>{n.label}</span>
+                {hasDot(n.id) && <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.warning, boxShadow: "0 0 0 2.5px " + C.surfaceWarm, flexShrink: 0 }} />}
+              </div>
+            );
+          })}
           {page === "coach" && (
             <div style={{ padding: "10px 2px 0" }}>
               <div onClick={() => setAiMessages([])} style={{ padding: "10px 12px", borderRadius: 8, background: C.btn, color: "#fff", fontSize: 13, fontWeight: 600, textAlign: "center", cursor: "pointer" }}>New Chat</div>
             </div>
           )}
         </div>
-        <div style={{ padding: "8px 10px", borderTop: "1px solid " + C.borderLight }}>
+        {/* Portfolio pulse — ambient signal block */}
+        <div style={{ padding: "10px 14px", margin: "0 10px 8px", background: "rgba(255,255,255,0.4)", borderRadius: 10 }}>
+          <div style={{ fontSize: 9.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>Portfolio</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <span style={{ fontSize: 12, color: C.text, fontWeight: 600 }}>{clients.length} client{clients.length === 1 ? "" : "s"}</span>
+            {(() => {
+              const driftingCount = clients.filter(c => {
+                const d = clientDrift[c.name];
+                if (d) return d === "Shifted" || d === "Declining" || d === "Something shifted";
+                return (c.ret || 0) > 0 && (c.ret || 0) < 65;
+              }).length;
+              return driftingCount > 0 ? (
+                <span style={{ fontSize: 11, color: C.warning, fontWeight: 500 }}>{driftingCount} drifting</span>
+              ) : (
+                <span style={{ fontSize: 11, color: C.retGood, fontWeight: 500 }}>all steady</span>
+              );
+            })()}
+          </div>
+          {clients.length > 0 && (() => {
+            const avg = clients.reduce((a, c) => a + (c.ret || 0), 0) / clients.length;
+            // Gentle synthetic trend line anchored on portfolio average so the line breathes
+            const pts = Array.from({ length: 13 }, (_, i) => {
+              const wobble = Math.sin(i * 0.9) * 2 + (i - 6) * 0.3;
+              const y = Math.max(2, Math.min(14, 14 - ((avg / 100) * 11) + wobble));
+              return `${(i / 12) * 180},${y.toFixed(1)}`;
+            }).join(" ");
+            return (
+              <svg width="100%" height="16" viewBox="0 0 180 16" preserveAspectRatio="none">
+                <polyline points={pts} fill="none" stroke={C.primary} strokeWidth="1.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+              </svg>
+            );
+          })()}
+        </div>
+        <div style={{ padding: "4px 10px 8px" }}>
           <div onClick={() => setTier(tier === "core" ? "enterprise" : "core")} className="nav-item" style={{ display: "none", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, color: C.textSec }}>
             <span style={{ fontSize: 12, fontWeight: 600 }}>{tier === "enterprise" ? "Enterprise" : "Core"}</span>
             <div style={{ width: 36, height: 20, borderRadius: 10, background: tier === "enterprise" ? C.btn : C.border, position: "relative", transition: "background 0.2s", cursor: "pointer" }}>
               <div style={{ width: 16, height: 16, borderRadius: 8, background: "#fff", position: "absolute", top: 2, left: tier === "enterprise" ? 18 : 2, transition: "left 0.2s" }} />
             </div>
           </div>
-          <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, color: page === "settings" ? C.text : C.textSec, background: page === "settings" ? C.card : "transparent", fontWeight: page === "settings" ? 700 : 500, boxShadow: page === "settings" ? C.shadowSm : "none", cursor: "pointer" }}>
-            <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="settings" size={16} color={page === "settings" ? C.text : C.textSec} /></span><span style={{ fontSize: 14 }}>Settings</span>
-          </div>
+          {(() => {
+            const active = page === "settings";
+            return (
+              <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: active ? "9px 12px 9px 9px" : "9px 12px", borderRadius: 8, color: active ? C.primary : C.text, background: active ? C.primarySoft : "transparent", fontWeight: active ? 600 : 500, boxShadow: active ? "inset 3px 0 0 " + C.primary : "none", cursor: "pointer", position: "relative" }}>
+                <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="settings" size={16} color={active ? C.primary : C.ink500} /></span><span style={{ fontSize: 14, flex: 1 }}>Settings</span>
+              </div>
+            );
+          })()}
         </div>
-        <div style={{ padding: "12px 18px 18px", borderTop: "1px solid " + C.borderLight }}>
+        <div style={{ padding: "10px 16px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff" }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
+            <div style={{ width: 30, height: 30, borderRadius: 15, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff" }}>{(() => { const n = user?.user_metadata?.full_name; if (n) return n.split(" ").map(x => x[0]).join("").slice(0,2).toUpperCase(); return (user?.email || "U")[0].toUpperCase(); })()}</div>
             <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: 13, fontWeight: 600, color: C.text, textTransform: "capitalize", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}</div><div style={{ fontSize: 11, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.user_metadata?.company || ""}</div></div>
           </div>
         </div>
