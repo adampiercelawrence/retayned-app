@@ -51,6 +51,11 @@ const Icon = ({ name, size = 18, color = "currentColor" }) => {
     mic: (<><rect x="9" y="2" width="6" height="12" rx="3" stroke={color} strokeWidth="1.8" fill="none"/><path d="M19 10v2a7 7 0 01-14 0v-2" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round"/><line x1="12" y1="19" x2="12" y2="23" stroke={color} strokeWidth="1.8" strokeLinecap="round"/></>),
     video: (<><polygon points="23 7 16 12 23 17 23 7" stroke={color} strokeWidth="1.8" fill="none" strokeLinejoin="round"/><rect x="1" y="5" width="15" height="14" rx="2" stroke={color} strokeWidth="1.8" fill="none"/></>),
     search: (<><circle cx="11" cy="11" r="8" stroke={color} strokeWidth="1.8" fill="none"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke={color} strokeWidth="1.8" strokeLinecap="round"/></>),
+    image: (<><rect x="3" y="3" width="18" height="18" rx="2" stroke={color} strokeWidth="1.8" fill="none"/><circle cx="8.5" cy="8.5" r="1.5" fill={color}/><polyline points="21 15 16 10 5 21" stroke={color} strokeWidth="1.8" fill="none" strokeLinejoin="round"/></>),
+    file: (<><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke={color} strokeWidth="1.8" fill="none" strokeLinejoin="round"/><polyline points="14 2 14 8 20 8" stroke={color} strokeWidth="1.8" fill="none" strokeLinejoin="round"/></>),
+    star: (<><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" stroke={color} strokeWidth="1.8" fill="none" strokeLinejoin="round"/></>),
+    starFill: (<><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill={color} stroke={color} strokeWidth="1.8" strokeLinejoin="round"/></>),
+    trash: (<><polyline points="3 6 5 6 21 6" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6M10 11v6M14 11v6M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>),
   };
 
 
@@ -899,7 +904,7 @@ export default function App({ user }) {
     if (!user) return;
     const uid = user.id;
     
-    const [clientRes, taskRes, refRes, rolodexRes, suggestionRes, hcRes, tpRes, hcCountsRes] = await Promise.all([
+    const [clientRes, taskRes, refRes, rolodexRes, suggestionRes, hcRes, tpRes, hcCountsRes, convoListRes] = await Promise.all([
       clientsDb.list(uid),
       tasksDb.listToday(uid),
       referralsDb.list(uid),
@@ -910,6 +915,9 @@ export default function App({ user }) {
       (typeof hcDb.countCompletedByClient === "function")
         ? hcDb.countCompletedByClient(uid)
         : Promise.resolve({ data: {}, error: null }),
+      (typeof convoDb.list === "function")
+        ? convoDb.list(uid, 250)
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
     // Cadence data — loaded separately with fallback so a missing db function
@@ -1056,6 +1064,10 @@ export default function App({ user }) {
           daysUntil: daysUntil,
         };
       }));
+    }
+
+    if (convoListRes?.data) {
+      setRaiConvoList(convoListRes.data);
     }
 
     setDataLoaded(true);
@@ -1320,6 +1332,13 @@ export default function App({ user }) {
   const [aiClientSearch, setAiClientSearch] = useState("");
   const [aiMessages, setAiMessages] = useState([]);
   const [aiTyping, setAiTyping] = useState(false);
+  // Attachments staged for next send. Shape: { id, name, type (image|document), media_type, data (base64), size }
+  const [aiAttachments, setAiAttachments] = useState([]);
+  // Current conversation id — null until first message persists. Tracks which
+  // rai_conversations row is being appended to; set when user picks a past chat.
+  const [aiConvoId, setAiConvoId] = useState(null);
+  // Sidebar list of past conversations (populated by loadData).
+  const [raiConvoList, setRaiConvoList] = useState([]);
   const aiEndRef = useRef(null);
   const aiUserRef = useRef(null);
   useEffect(() => {
@@ -1339,9 +1358,62 @@ export default function App({ user }) {
       });
     }
   }, [aiInput]);
+  // Read a File as base64 (strips the data:... prefix, keeps only raw base64).
+  // Returns null on error so the caller can continue without attaching.
+  const readFileAsBase64 = (file) => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") return resolve(null);
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+
+  // Pick files and stage them for the next send. Accepts images (PNG/JPG/WEBP/GIF)
+  // and PDF documents. Text files are rejected here — the user should paste their
+  // content instead for better results.
+  const handleFilePick = async (files) => {
+    const accepted = [];
+    for (const f of files) {
+      if (f.size > 10 * 1024 * 1024) {
+        // 10MB limit — matches Anthropic's practical cap for base64 content
+        alert(`"${f.name}" is too large (over 10MB). Skipping.`);
+        continue;
+      }
+      const isImage = /^image\/(png|jpe?g|webp|gif)$/i.test(f.type);
+      const isPdf = f.type === "application/pdf";
+      if (!isImage && !isPdf) {
+        alert(`"${f.name}" isn't a supported file type. PDFs and images only.`);
+        continue;
+      }
+      const data = await readFileAsBase64(f);
+      if (!data) continue;
+      accepted.push({
+        id: Math.random().toString(36).slice(2),
+        name: f.name,
+        type: isImage ? "image" : "document",
+        media_type: f.type,
+        data,
+        size: f.size,
+      });
+    }
+    if (accepted.length) setAiAttachments(prev => [...prev, ...accepted]);
+  };
+
   const sendAi = async (text) => {
-    const q = text || aiInput; if (!q.trim()) return;
-    setAiMessages(prev => [...prev, { role: "user", text: q }]); setAiInput(""); setAiTyping(true);
+    const q = text || aiInput;
+    // Allow sending with attachments only (no text typed) — Anthropic accepts that.
+    if (!q.trim() && aiAttachments.length === 0) return;
+    // Snapshot attachments at call time so they render on the user bubble even if
+    // the user starts picking more while the stream is in flight.
+    const attachmentsForSend = aiAttachments;
+    setAiAttachments([]);
+    setAiMessages(prev => [...prev, { role: "user", text: q, attachments: attachmentsForSend }]);
+    setAiInput("");
+    setAiTyping(true);
 
     try {
       // Conversation history — last 10 messages in Anthropic format
@@ -1367,6 +1439,14 @@ export default function App({ user }) {
           history,
           focused_client_id: null,
           stream: true,
+          // Attachments travel separately from message text; the Edge Function
+          // merges them into the current user message's content array.
+          attachments: attachmentsForSend.map(a => ({
+            type: a.type,
+            media_type: a.media_type,
+            data: a.data,
+            name: a.name,
+          })),
         }),
       });
 
@@ -1437,6 +1517,66 @@ export default function App({ user }) {
             next[next.length - 1] = { role: "ai", text: "I'm having trouble thinking right now. Try again in a moment." };
             return next;
           });
+          return;
+        }
+
+        // ═══ Persist conversation ═══
+        // After a successful exchange, save the full transcript to rai_conversations.
+        // - If we have no convo id yet, create a new row and set it as active.
+        // - Otherwise append by overwriting the full messages array (atomic, avoids
+        //   merge races with other tabs).
+        // - Auto-generate a title from the user's first message (truncated) when
+        //   the title is still null, i.e. on the first exchange of a new chat.
+        try {
+          const fullMessages = [
+            ...aiMessages,
+            { role: "user", text: q, attachments: attachmentsForSend },
+            { role: "ai", text: accumulated },
+          ];
+          // Lazy-load convoDb calls to avoid regressing in environments where
+          // create/updateTitle aren't yet exported (older deploys).
+          if (!aiConvoId && convoDb.create) {
+            const firstUserMsg = fullMessages.find(m => m.role === "user")?.text || "New chat";
+            const autoTitle = firstUserMsg.slice(0, 60).trim() + (firstUserMsg.length > 60 ? "…" : "");
+            const { data: created } = await convoDb.create(user.id, { title: autoTitle });
+            if (created) {
+              setAiConvoId(created.id);
+              // Overwrite messages on the new row (create started it with []).
+              await supabase
+                .from("rai_conversations")
+                .update({ messages: fullMessages })
+                .eq("id", created.id);
+              // Refresh the sidebar list with this new chat at the top.
+              setRaiConvoList(prev => [
+                { id: created.id, title: autoTitle, is_starred: false, updated_at: new Date().toISOString(), client_id: null, client: null },
+                ...prev,
+              ]);
+            }
+          } else if (aiConvoId) {
+            await supabase
+              .from("rai_conversations")
+              .update({ messages: fullMessages, updated_at: new Date().toISOString() })
+              .eq("id", aiConvoId);
+            // Bump this chat to top of the sidebar list (mutation in place).
+            setRaiConvoList(prev => {
+              const idx = prev.findIndex(c => c.id === aiConvoId);
+              if (idx < 0) return prev;
+              const updated = { ...prev[idx], updated_at: new Date().toISOString() };
+              const next = [...prev];
+              next.splice(idx, 1);
+              // Starred chats stay at top; non-starred move to top of unstarred.
+              if (updated.is_starred) {
+                next.unshift(updated);
+              } else {
+                const firstUnstarred = next.findIndex(c => !c.is_starred);
+                if (firstUnstarred < 0) next.push(updated);
+                else next.splice(firstUnstarred, 0, updated);
+              }
+              return next;
+            });
+          }
+        } catch (persistErr) {
+          console.warn("Conversation persistence failed (non-fatal):", persistErr);
         }
         return;
       }
@@ -1451,6 +1591,79 @@ export default function App({ user }) {
     }
     setAiTyping(false);
   };
+
+  // ─── Rai conversation handlers (sidebar) ──────────────────────────────
+  // Start a fresh chat — clears messages + convo id so the next send creates
+  // a new row. Doesn't hit the DB (nothing to save yet).
+  const startNewRaiChat = () => {
+    setAiMessages([]);
+    setAiInput("");
+    setAiAttachments([]);
+    setAiConvoId(null);
+  };
+
+  // Load a past conversation into the chat pane. Fetches the full row (list
+  // endpoint returns lightweight fields only, so we need get() for messages).
+  const openRaiChat = async (convoId) => {
+    if (!convoDb.get) return;
+    const { data } = await convoDb.get(convoId);
+    if (!data) return;
+    // Messages persisted as {role, text, attachments, timestamp}. The chat UI
+    // reads {role, text, attachments}, so normalize defensively.
+    const messages = (data.messages || []).map(m => ({
+      role: m.role === "assistant" ? "ai" : m.role,
+      text: m.text || "",
+      attachments: m.attachments || [],
+    }));
+    setAiMessages(messages);
+    setAiConvoId(convoId);
+    setAiInput("");
+    setAiAttachments([]);
+  };
+
+  // Toggle star. Optimistic update — flip local state first, then persist.
+  // If the DB write fails, revert. Keeps the sidebar snappy.
+  const toggleRaiChatStar = async (convoId, currentStarred) => {
+    const nextStarred = !currentStarred;
+    setRaiConvoList(prev => {
+      const idx = prev.findIndex(c => c.id === convoId);
+      if (idx < 0) return prev;
+      const updated = { ...prev[idx], is_starred: nextStarred };
+      const without = prev.filter(c => c.id !== convoId);
+      // Re-insert: starred chats go to the top of starred group; unstarred
+      // slide into the unstarred group by updated_at.
+      if (nextStarred) {
+        return [updated, ...without];
+      } else {
+        const firstUnstarred = without.findIndex(c => !c.is_starred);
+        if (firstUnstarred < 0) return [...without, updated];
+        return [...without.slice(0, firstUnstarred), updated, ...without.slice(firstUnstarred)];
+      }
+    });
+    if (convoDb.toggleStar) {
+      const { error } = await convoDb.toggleStar(convoId, nextStarred);
+      if (error) {
+        // Revert optimistic update
+        setRaiConvoList(prev => prev.map(c => c.id === convoId ? { ...c, is_starred: currentStarred } : c));
+      }
+    }
+  };
+
+  // Delete chat. Confirms first — losing a conversation is unrecoverable.
+  const deleteRaiChat = async (convoId) => {
+    if (!confirm("Delete this chat? This can't be undone.")) return;
+    // Optimistic remove from list
+    setRaiConvoList(prev => prev.filter(c => c.id !== convoId));
+    // If user is currently viewing the chat they deleted, reset to empty
+    if (aiConvoId === convoId) {
+      setAiMessages([]);
+      setAiConvoId(null);
+    }
+    if (convoDb.delete) {
+      await convoDb.delete(convoId);
+    }
+  };
+  // ──────────────────────────────────────────────────────────────────────
 
   // ═══ PANEL COMPONENTS ═══
   const PanelCard = ({ children, style }) => <div style={{ background: "#FAFAF8", borderRadius: 14, border: "1px solid #E8ECE6", padding: "14px", marginBottom: 24, ...style }}>{children}</div>;
@@ -1579,7 +1792,7 @@ export default function App({ user }) {
           </div>
           {aiMessages.length > 0 && (
             <button
-              onClick={() => { setAiMessages([]); setAiInput(""); }}
+              onClick={startNewRaiChat}
               title="New chat"
               style={{
                 height: 30, padding: "0 10px", borderRadius: 7,
@@ -1949,10 +2162,14 @@ export default function App({ user }) {
             box-shadow: 0 1px 2px rgba(10,10,10,0.03), 0 2px 8px rgba(10,10,10,0.05);
             min-height: calc(100vh - var(--page-gap) * 2);
           }
-          .r-main:has(.r-rai-page) { background: none; padding-bottom: 28px !important; box-shadow: none; }
+          /* Coach page keeps the card chrome (rounded corners, shadow) like every
+             other page. overflow: hidden clips the purple gradient to the rounded
+             corners instead of bleeding to viewport edges. padding:0 lets the
+             gradient fill edge-to-edge within the card. */
+          .r-main:has(.r-rai-page) { padding: 0 !important; overflow: hidden; }
           .r-log-label { display: inline !important; }
           .r-log-btn { padding: 0 14px !important; }
-          .r-rai-inner { padding-top: 0 !important; }
+          .r-rai-inner { padding-top: 32px !important; }
           .r-rai-inputbar { padding: 12px 24px 28px !important; }
           .r-chat-msg-user { scroll-margin-top: 24px !important; }
         }
@@ -1963,6 +2180,9 @@ export default function App({ user }) {
         }
         .rt-row:hover { transform: translateY(-1px); }
         .rt-row:hover .rt-dismiss { opacity: 1 !important; }
+        /* Rai sidebar — reveal star/delete on row hover */
+        .r-convo-row:hover { background: rgba(91,33,182,0.06); }
+        .r-convo-row:hover .r-convo-action { opacity: 1 !important; }
         .rt-row-selected { background: ${C.surfaceSelected}; }
         /* Today v4 — Grid layout, 3 breakpoints */
         /* Default: narrow desktop (901-1439px) — 2 cols, status + composer span full width, tasks + focus below */
@@ -2007,12 +2227,21 @@ export default function App({ user }) {
         @media (min-width: 1440px) {
           .rt-today-v4 {
             grid-template-columns: minmax(0, 1fr) 360px 360px;
+            grid-template-rows: auto auto 1fr;
             grid-template-areas:
               "band band ."
               "composer composer rai"
               "tasks focus rai";
           }
-          .rt-rai-col { display: flex !important; }
+          .rt-rai-col {
+            display: flex !important;
+            /* Critical: decouple Rai height from grid row math. min-height: 0 +
+               max-height lets the sticky panel grow with its own scroller instead
+               of inflating the composer row when content is long. */
+            min-height: 0 !important;
+            max-height: calc(100vh - 40px);
+            overflow: hidden;
+          }
         }
         /* Clients v2 grid — 2 cols narrow desktop, 3 cols wide (>=1440) */
         .rc-grid { grid-template-columns: 240px minmax(0, 1fr); }
@@ -2159,9 +2388,14 @@ export default function App({ user }) {
       )}
 
       {/* SIDEBAR */}
-      <div className="r-desk" style={{ width: 240, background: C.surfaceWarm, flexDirection: "column", position: "fixed", top: 14, left: 14, bottom: 14, zIndex: 50, borderRadius: 14, boxShadow: "0 1px 2px rgba(10,10,10,0.03), 0 2px 8px rgba(10,10,10,0.05)" }}>
-        <div style={{ padding: "20px 18px 18px" }}><span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span></div>
-        <div style={{ flex: 1, padding: "0 10px", overflowY: "auto" }}>
+      <div className="r-desk" style={{ width: 240, background: C.surfaceWarm, flexDirection: "column", position: "fixed", top: 14, left: 14, bottom: 14, zIndex: 50, borderRadius: 14, boxShadow: "0 1px 2px rgba(10,10,10,0.03), 0 2px 8px rgba(10,10,10,0.05)", display: "flex" }}>
+        {/* Logo — fixed at top */}
+        <div style={{ padding: "20px 18px 18px", flexShrink: 0 }}>
+          <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span>
+        </div>
+
+        {/* Nav items — fixed, always visible */}
+        <div style={{ padding: "0 10px", flexShrink: 0 }}>
           {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => {
             const active = page === n.id;
             return (
@@ -2171,12 +2405,67 @@ export default function App({ user }) {
               </div>
             );
           })}
-          {page === "coach" && (
-            <div style={{ padding: "10px 2px 0" }}>
-              <div onClick={() => setAiMessages([])} style={{ padding: "10px 12px", borderRadius: 8, background: C.btn, color: "#fff", fontSize: 13, fontWeight: 600, textAlign: "center", cursor: "pointer" }}>New Chat</div>
-            </div>
-          )}
         </div>
+
+        {/* Coach-only: New Chat button + scrollable past-chats list. Takes all
+            remaining vertical space so the list scrolls internally without
+            affecting nav items or the Portfolio widget at the bottom. */}
+        {page === "coach" ? (
+          <div style={{ padding: "12px 10px 0", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+            <button onClick={startNewRaiChat} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: C.btn, color: "#fff", fontSize: 13, fontWeight: 600, textAlign: "center", cursor: "pointer", border: "none", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, boxShadow: "0 1px 2px rgba(91,33,182,0.15), 0 2px 6px rgba(91,33,182,0.22)", flexShrink: 0 }}>
+              <Icon name="plus" size={13} color="#fff" />
+              New Chat
+            </button>
+            {raiConvoList.length > 0 && (() => {
+              const starred = raiConvoList.filter(c => c.is_starred);
+              const recent = raiConvoList.filter(c => !c.is_starred);
+              const section = (label, items) => (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, letterSpacing: 0.5, textTransform: "uppercase", padding: "14px 10px 6px" }}>{label}</div>
+                  {items.map(c => {
+                    const isActive = c.id === aiConvoId;
+                    const title = c.title || c.client?.name || "Untitled chat";
+                    return (
+                      <div
+                        key={c.id}
+                        className="r-convo-row"
+                        onClick={() => openRaiChat(c.id)}
+                        style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 8px 7px 10px", borderRadius: 7, cursor: "pointer", background: isActive ? C.primarySoft : "transparent", color: isActive ? C.primary : C.text, fontSize: 12.5, fontWeight: isActive ? 600 : 500, position: "relative", transition: "background 0.12s" }}
+                      >
+                        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
+                        <button
+                          className="r-convo-action"
+                          onClick={e => { e.stopPropagation(); toggleRaiChatStar(c.id, c.is_starred); }}
+                          style={{ background: "none", border: "none", padding: 3, cursor: "pointer", color: c.is_starred ? "#E6B800" : C.textMuted, display: "flex", opacity: c.is_starred ? 1 : 0, transition: "opacity 0.12s" }}
+                          title={c.is_starred ? "Unstar" : "Star"}
+                        >
+                          <Icon name={c.is_starred ? "starFill" : "star"} size={12} />
+                        </button>
+                        <button
+                          className="r-convo-action"
+                          onClick={e => { e.stopPropagation(); deleteRaiChat(c.id); }}
+                          style={{ background: "none", border: "none", padding: 3, cursor: "pointer", color: C.textMuted, display: "flex", opacity: 0, transition: "opacity 0.12s" }}
+                          title="Delete"
+                        >
+                          <Icon name="trash" size={12} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </>
+              );
+              return (
+                <div style={{ marginTop: 4, overflowY: "auto", flex: 1, minHeight: 0, paddingBottom: 10 }}>
+                  {starred.length > 0 && section("Starred", starred)}
+                  {recent.length > 0 && section("Recent", recent)}
+                </div>
+              );
+            })()}
+          </div>
+        ) : (
+          /* Non-coach pages: empty spacer pushes Portfolio widget to bottom */
+          <div style={{ flex: 1, minHeight: 0 }} />
+        )}
         {/* Portfolio widget — G: bar + counts only, scale demoted to eyebrow */}
         {(() => {
           const total = clients.length;
@@ -5111,6 +5400,19 @@ export default function App({ user }) {
                         What's on your mind today?
                       </p>
                       <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 18, padding: "20px 22px 14px", textAlign: "left", boxShadow: "0 1px 2px rgba(10,10,10,0.03), 0 6px 20px rgba(91,33,182,0.08)" }}>
+                        {aiAttachments.length > 0 && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                            {aiAttachments.map(a => (
+                              <span key={a.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 8px 5px 10px", background: C.surfaceWarm, border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.text, maxWidth: 240 }}>
+                                <Icon name={a.type === "image" ? "image" : "file"} size={12} color={C.textSec} />
+                                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</span>
+                                <button onClick={() => setAiAttachments(prev => prev.filter(x => x.id !== a.id))} style={{ background: "none", border: "none", padding: 2, cursor: "pointer", color: C.textMuted, display: "flex" }} aria-label={"Remove " + a.name}>
+                                  <Icon name="x" size={10} />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <textarea
                           value={aiInput}
                           onChange={e => { setAiInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 240) + "px"; }}
@@ -5119,8 +5421,12 @@ export default function App({ user }) {
                           rows={3}
                           style={{ width: "100%", minHeight: 72, padding: "2px 0", border: "none", fontSize: 16, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.55, color: C.text, overflowY: "auto" }}
                         />
-                        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 8 }}>
-                          <button onClick={() => sendAi()} disabled={!aiInput.trim()} style={{ width: 36, height: 36, borderRadius: 10, border: "none", background: aiInput.trim() ? C.btn : C.borderLight, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: aiInput.trim() ? "pointer" : "default", transition: "background 0.15s" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                          <label title="Attach a file (PDF or image, max 10MB)" style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid " + C.border, background: C.card, color: C.textSec, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s" }}>
+                            <input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" onChange={e => { handleFilePick(Array.from(e.target.files || [])); e.target.value = ""; }} style={{ display: "none" }} />
+                            <Icon name="plus" size={16} />
+                          </label>
+                          <button onClick={() => sendAi()} disabled={!aiInput.trim() && aiAttachments.length === 0} style={{ width: 36, height: 36, borderRadius: 10, border: "none", background: (aiInput.trim() || aiAttachments.length > 0) ? C.btn : C.borderLight, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: (aiInput.trim() || aiAttachments.length > 0) ? "pointer" : "default", transition: "background 0.15s" }}>
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
                           </button>
                         </div>
@@ -5186,9 +5492,26 @@ export default function App({ user }) {
               <div className="r-rai-inputbar" style={{ background: C.bg, padding: "12px 24px 16px" }}>
                 <div style={{ maxWidth: 720, margin: "0 auto" }}>
                   <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 14, padding: "14px 16px 10px" }}>
+                    {aiAttachments.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                        {aiAttachments.map(a => (
+                          <span key={a.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 8px 5px 10px", background: C.surfaceWarm, border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.text, maxWidth: 240 }}>
+                            <Icon name={a.type === "image" ? "image" : "file"} size={12} color={C.textSec} />
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</span>
+                            <button onClick={() => setAiAttachments(prev => prev.filter(x => x.id !== a.id))} style={{ background: "none", border: "none", padding: 2, cursor: "pointer", color: C.textMuted, display: "flex" }} aria-label={"Remove " + a.name}>
+                              <Icon name="x" size={10} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <textarea value={aiInput} onChange={e => { setAiInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px"; }} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Reply to Rai…" rows={1} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 17, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.5, color: C.text, overflowY: "auto" }} />
-                    <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 4 }}>
-                      <button onClick={() => sendAi()} disabled={!aiInput.trim()} style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: aiInput.trim() ? C.btn : C.borderLight, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: aiInput.trim() ? "pointer" : "default", transition: "background 0.15s" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                      <label title="Attach a file (PDF or image, max 10MB)" style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid " + C.border, background: C.card, color: C.textSec, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                        <input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" onChange={e => { handleFilePick(Array.from(e.target.files || [])); e.target.value = ""; }} style={{ display: "none" }} />
+                        <Icon name="plus" size={14} />
+                      </label>
+                      <button onClick={() => sendAi()} disabled={!aiInput.trim() && aiAttachments.length === 0} style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: (aiInput.trim() || aiAttachments.length > 0) ? C.btn : C.borderLight, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: (aiInput.trim() || aiAttachments.length > 0) ? "pointer" : "default", transition: "background 0.15s" }}>
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
                       </button>
                     </div>
