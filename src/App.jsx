@@ -845,6 +845,7 @@ export default function App({ user }) {
   const [tpChannel, setTpChannel] = useState(null);
   const [tpSearch, setTpSearch] = useState("");
   const [tpLogged, setTpLogged] = useState([]);
+  const [allTouchpoints, setAllTouchpoints] = useState([]);
   const [confetti, setConfetti] = useState(false);
   // ─── Today v4 state ──
   const [todayFocusId, setTodayFocusId] = useState(null);
@@ -862,7 +863,7 @@ export default function App({ user }) {
     if (!user) return;
     const uid = user.id;
     
-    const [clientRes, taskRes, refRes, rolodexRes, suggestionRes, hcRes, tpRes] = await Promise.all([
+    const [clientRes, taskRes, refRes, rolodexRes, suggestionRes, hcRes, tpRes, tpAllRes] = await Promise.all([
       clientsDb.list(uid),
       tasksDb.listToday(uid),
       referralsDb.list(uid),
@@ -870,7 +871,10 @@ export default function App({ user }) {
       suggestionsDb.listPending(uid),
       hcDb.listPending(uid),
       touchpointsDb.listToday(uid),
+      touchpointsDb.list(uid, 90),
     ]);
+
+    if (tpAllRes.data) setAllTouchpoints(tpAllRes.data);
 
     if (tpRes.data) setTpLogged(tpRes.data.map(t => ({
       id: t.id,
@@ -896,8 +900,9 @@ export default function App({ user }) {
     if (taskRes.data) {
       // Auto-cleanup at the most recent 2 AM local time:
       //   - Recurring tasks completed before cutoff → reset is_done (they reappear fresh)
-      //   - Non-recurring user (non-AI) tasks completed before cutoff → hard delete
-      //   - AI tasks → left alone (managed by Rai's Daily Sweep)
+      //   - Non-recurring tasks → always preserved in DB; the user is the only one who
+      //     deletes (via the X button). Completed ones drop out of the UI automatically
+      //     via listToday's completed_at.gte.today filter.
       const now = new Date();
       const today2am = new Date(now);
       today2am.setHours(2, 0, 0, 0);
@@ -907,32 +912,26 @@ export default function App({ user }) {
         t.is_recurring && t.is_done &&
         t.completed_at && new Date(t.completed_at) < cutoff
       );
-      const toDelete = taskRes.data.filter(t =>
-        !t.is_recurring && !t.is_ai_generated && t.is_done &&
-        t.completed_at && new Date(t.completed_at) < cutoff
-      );
 
       // Fire off DB updates in background (don't block UI)
       toReset.forEach(t => { tasksDb.toggle(t.id, false); });
-      toDelete.forEach(t => { tasksDb.delete(t.id); });
 
-      setTasks(taskRes.data
-        .filter(t => !toDelete.find(d => d.id === t.id))
-        .map(t => {
-          const reset = toReset.find(r => r.id === t.id);
-          return {
-            id: t.id,
-            text: t.text,
-            client: t.client_name || "",
-            done: reset ? false : t.is_done,
-            completed_at: reset ? null : t.completed_at,
-            ai: t.is_ai_generated,
-            alert: t.is_alert,
-            recurring: t.is_recurring,
-            sort_order: t.sort_order,
-            raiPriority: t.is_alert || false,
-          };
-        }));
+      setTasks(taskRes.data.map(t => {
+        const reset = toReset.find(r => r.id === t.id);
+        return {
+          id: t.id,
+          text: t.text,
+          client: t.client_name || "",
+          done: reset ? false : t.is_done,
+          completed_at: reset ? null : t.completed_at,
+          ai: t.is_ai_generated,
+          alert: t.is_alert,
+          recurring: t.is_recurring,
+          sort_order: t.sort_order,
+          raiPriority: t.is_rai_priority || false,
+          created_at: t.created_at ? new Date(t.created_at).getTime() : 0,
+        };
+      }));
     }
 
     if (refRes.data) setRefs(refRes.data.map(r => ({
@@ -2218,9 +2217,12 @@ export default function App({ user }) {
           // Visible tasks = non-dismissed. Open = not done. Completed = done.
           const visibleTasks = tasks.filter(t => !dismissedIds[t.id]);
           const openTasks = visibleTasks.filter(t => !t.done).sort((a, b) => {
-            const psA = getProfileSortScore(a.client);
-            const psB = getProfileSortScore(b.client);
-            return psB - psA; // highest Profile Score first
+            const psA = getProfileSortScore(a.client, a.raiPriority);
+            const psB = getProfileSortScore(b.client, b.raiPriority);
+            if (psA !== psB) return psB - psA;          // highest Profile Score first
+            if (a.alert !== b.alert) return a.alert ? -1 : 1;           // alerts above non-alerts
+            if (a.recurring !== b.recurring) return a.recurring ? -1 : 1; // recurring above one-offs
+            return (b.created_at || 0) - (a.created_at || 0);           // newer above older (stable tiebreak)
           });
           const completedTasks = visibleTasks.filter(t => t.done);
           const focusTask = openTasks.find(t => t.id === focusId) || openTasks[0] || null;
@@ -2281,7 +2283,29 @@ export default function App({ user }) {
             if (days < 365) return `${Math.floor(days / 30)}mo ago`;
             return `${Math.floor(days / 365)}y ago`;
           };
-          // Real Context builder — reads last completed task + next health check / renewal
+          // Real Context builder — reads last completed task + next health check / renewal + cadence
+          const calcCadence = (clientName) => {
+            // Cadence = days between contact events (touchpoints). Compare days-since-last
+            // against average interval from the last 10 touchpoints. Verdict:
+            //   <2 pts  →  "Building rhythm"   (not enough history yet)
+            //   ≤1.15× →  "On rhythm"          (within the normal window)
+            //   ≤1.5×  →  "Slipping"           (slightly overdue)
+            //   >1.5×  →  "Overdue"            (materially overdue)
+            const points = allTouchpoints
+              .filter(t => t.client_name === clientName)
+              .sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at));
+            if (points.length < 2) return "Building rhythm";
+            const recent = points.slice(0, 10);
+            const intervals = [];
+            for (let i = 0; i < recent.length - 1; i++) {
+              intervals.push((new Date(recent[i].occurred_at) - new Date(recent[i+1].occurred_at)) / 86400000);
+            }
+            const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+            const daysSinceLast = (Date.now() - new Date(points[0].occurred_at).getTime()) / 86400000;
+            if (daysSinceLast > avgInterval * 1.5)  return "Overdue";
+            if (daysSinceLast > avgInterval * 1.15) return "Slipping";
+            return "On rhythm";
+          };
           const buildContext = (client) => {
             if (!client) return null;
             // Last task: most recently completed task for this client
@@ -2290,25 +2314,28 @@ export default function App({ user }) {
               .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
             const lastDone = completed[0];
             const lastTask = lastDone ? `${lastDone.text} · ${relTime(lastDone.completed_at)}` : "No completed tasks yet";
-            // Upcoming: sooner of pending health check or renewal
+            // Upcoming: sooner of pending health check or renewal (real renewal_date if set)
             const pendingHc = hcQueue.find(h => h.client === client.name);
-            const renewalHash = (client.name || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-            const renewalDays = (renewalHash % 180) + 5;
-            let upcoming = `Renewal in ${renewalDays}d`;
+            const renewalDays = client.renewal_date
+              ? Math.ceil((new Date(client.renewal_date).getTime() - Date.now()) / 86400000)
+              : null;
+            let upcoming = null;
+            if (renewalDays !== null && renewalDays >= 0) upcoming = `Renewal in ${renewalDays}d`;
+            else if (renewalDays !== null && renewalDays < 0) upcoming = `Renewal overdue ${Math.abs(renewalDays)}d`;
             if (pendingHc) {
               if (pendingHc.overdue > 0) {
                 upcoming = `Health check overdue ${pendingHc.overdue}d`;
               } else if (pendingHc.due_date) {
                 const daysUntilHc = Math.ceil((new Date(pendingHc.due_date).getTime() - Date.now()) / 86400000);
-                if (daysUntilHc < renewalDays) {
+                if (renewalDays === null || daysUntilHc < renewalDays) {
                   upcoming = daysUntilHc <= 0 ? "Health check today" : `Health check in ${daysUntilHc}d`;
                 }
               }
             }
             return {
-              cadence: "On rhythm",
+              cadence: calcCadence(client.name),
               lastTask,
-              upcoming,
+              upcoming: upcoming || "Nothing scheduled",
             };
           };
 
@@ -2423,7 +2450,7 @@ export default function App({ user }) {
               client_id: clientObj?.id || null,
               is_recurring: newTaskRecurring,
             });
-            const task = { id: created?.id || "u" + Date.now(), text, client: clientName || null, done: false, ai: false, recurring: newTaskRecurring };
+            const task = { id: created?.id || "u" + Date.now(), text, client: clientName || null, done: false, ai: false, recurring: newTaskRecurring, raiPriority: false, alert: false, created_at: Date.now() };
             setTasks(prev => [task, ...prev]);
             setNewTask("");
             setComposerClient("");
@@ -5372,7 +5399,7 @@ export default function App({ user }) {
                             )}
                           </div>
                         ))}
-                        <button onClick={() => { setEditingOverview(true); setOverviewEditData({ contact: sc.contact, role: sc.role, tag: sc.tag, months: sc.months, revenue: sc.revenue }); }} style={{ width: "100%", padding: "10px", background: "transparent", color: C.primary, border: "1px solid " + C.primary + "44", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 12 }}>Edit Details</button>
+                        <button onClick={() => { setEditingOverview(true); setOverviewEditData({ contact: sc.contact, role: sc.role, tag: sc.tag, months: sc.months, revenue: sc.revenue, renewal_date: sc.renewal_date || "" }); }} style={{ width: "100%", padding: "10px", background: "transparent", color: C.primary, border: "1px solid " + C.primary + "44", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 12 }}>Edit Details</button>
                         {/* Flag chips — click to toggle */}
                         <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginTop: 18, marginBottom: 6 }}>Flags</div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -5426,15 +5453,19 @@ export default function App({ user }) {
                             <label style={{ fontSize: 14, fontWeight: 600, color: C.textMuted, display: "block", marginBottom: 4 }}>Estimated monthly revenue ($)</label>
                             <input type="number" value={overviewEditData.revenue || 0} onChange={e => setOverviewEditData({ ...overviewEditData, revenue: parseInt(e.target.value) || 0 })} style={{ width: "100%", padding: "12px 16px", border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg }} />
                           </div>
+                          <div>
+                            <label style={{ fontSize: 14, fontWeight: 600, color: C.textMuted, display: "block", marginBottom: 4 }}>Renewal date <span style={{ color: C.textMuted, fontWeight: 400 }}>· optional</span></label>
+                            <input type="date" value={overviewEditData.renewal_date ? String(overviewEditData.renewal_date).split("T")[0] : ""} onChange={e => setOverviewEditData({ ...overviewEditData, renewal_date: e.target.value || null })} style={{ width: "100%", padding: "12px 16px", border: "1.5px solid " + C.border, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", background: C.bg, colorScheme: "light" }} />
+                          </div>
                         </div>
                         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                           <button onClick={() => setEditingOverview(false)} style={{ padding: "10px 16px", background: C.surface, color: C.textSec, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                           <button onClick={async () => {
-                            const updated = { ...sc, contact: overviewEditData.contact, role: overviewEditData.role, tag: overviewEditData.tag, months: overviewEditData.months, revenue: overviewEditData.revenue };
+                            const updated = { ...sc, contact: overviewEditData.contact, role: overviewEditData.role, tag: overviewEditData.tag, months: overviewEditData.months, revenue: overviewEditData.revenue, renewal_date: overviewEditData.renewal_date || null };
                             setClients(prev => prev.map(c => c.id === sc.id ? updated : c));
                             setSelectedClient(updated);
                             setEditingOverview(false);
-                            clientsDb.update(sc.id, { contact: overviewEditData.contact, role: overviewEditData.role, tag: overviewEditData.tag, months: overviewEditData.months, revenue: overviewEditData.revenue });
+                            clientsDb.update(sc.id, { contact: overviewEditData.contact, role: overviewEditData.role, tag: overviewEditData.tag, months: overviewEditData.months, revenue: overviewEditData.revenue, renewal_date: overviewEditData.renewal_date || null });
                           }} style={{ flex: 1, padding: "10px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Save</button>
                         </div>
                       </>
