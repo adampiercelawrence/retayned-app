@@ -2095,7 +2095,7 @@ export default function App({ user }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { background: ${C.bg}; }
+        html, body { background: ${C.bg}; overscroll-behavior: none; }
         input, textarea, select { font-size: 16px !important; }
         @media (min-width: 768px) { input, textarea, select { font-size: 14px !important; } }
         ::selection { background: #33543E; color: #fff; }
