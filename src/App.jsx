@@ -527,6 +527,29 @@ const Dot = () => <div style={{ width: 7, height: 7, borderRadius: "50%", backgr
 export default function App({ user }) {
   const [tier, setTier] = useState("core");  // "core" | "enterprise"
   const [page, setPage] = useState("today");
+  // Scroll to top on page change — without this, SPA navigation keeps prior scroll position
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.querySelectorAll(".r-main, .r-rai-scroll").forEach(el => { el.scrollTop = 0; });
+  }, [page]);
+  // iOS Safari viewport fix — when the address bar collapses/expands, 100vh doesn't update,
+  // leaving fixed-positioned elements (like the bottom nav) anchored to the wrong bottom.
+  // visualViewport API tracks the actual visible viewport. We write its height to a CSS var
+  // that components can use instead of 100vh. Falls back gracefully on non-supporting browsers.
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    const update = () => {
+      document.documentElement.style.setProperty("--app-h", `${vv.height}px`);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
   const [showMore, setShowMore] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
   const [clientTab, setClientTab] = useState("overview");
@@ -577,17 +600,17 @@ export default function App({ user }) {
   const [profileScores, setProfileScores] = useState({});
 
   const profileDimensions = [
-    { key: "trust", name: "Trust", desc: "Does this client trust you to do your job?", left: "Micromanages everything", right: "Full delegation", weight: 0.15, values: [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00] },
+    { key: "trust", name: "Trust", desc: "Does this client trust you to do your job?", left: "Heavy oversight", right: "Full delegation", weight: 0.15, values: [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00] },
     { key: "loyalty", name: "Loyalty", desc: "Is this client looking at other options?", left: "Actively shopping", right: "Locked in, not looking", weight: 0.15, values: [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00] },
-    { key: "expectations", name: "Expectations", desc: "Are the client's expectations for your work realistic?", left: "Unrealistic, impossible", right: "Reasonable, aligned", weight: 0.15, values: [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00] },
+    { key: "expectations", name: "Expectations", desc: "Are the client's expectations for your work realistic?", left: "Highly ambitious", right: "Reasonable, aligned", weight: 0.15, values: [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00] },
     { key: "grace", name: "Grace", desc: "When something goes wrong, how does this client react?", left: "Zero tolerance", right: "Gives benefit of the doubt", weight: 0.15, values: [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00] },
     { key: "commFrequency", name: "Communication Frequency", desc: "How often does the client reach out to you?", left: "Radio silence, you always initiate", right: "Nonstop, multiple times a day", weight: 0.05, values: [0.20, 0.40, 0.60, 0.80, 0.90, 1.00, 0.90, 0.80, 0.60, 0.40, 0.20] },
     { key: "stressResponse", name: "Stress Response", desc: "When results are bad or something goes wrong, how do you find out?", left: "You don't — they go quiet and deal with it internally", right: "Immediately — they call, escalate, make it known", weight: 0.05, values: [0.05, 0.20, 0.50, 0.85, 1.00, 1.00, 1.00, 0.85, 0.65, 0.40, 0.20] },
     { key: "budgetCommitment", name: "Budget Commitment", desc: "How likely is budget to become a reason this client leaves?", left: "Very likely, always under budget pressure", right: "Never, budget is a non-issue", weight: 0.05, values: [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00] },
     { key: "relationshipDepth", name: "Relationship Depth", desc: "Beyond business, is there a real relationship here?", left: "Strictly transactional", right: "Genuine connection", weight: 0.05, values: [0.20, 0.30, 0.40, 0.60, 0.80, 0.85, 0.90, 0.95, 1.00, 0.95, 0.90] },
-    { key: "reportingNeed", name: "Reporting Need", desc: "How much reporting does this client need from you?", left: "Don't bother me", right: "Wants every detail", weight: 0.05, values: [0.50, 0.80, 0.85, 0.90, 0.95, 1.00, 0.95, 0.90, 0.80, 0.50, 0.20] },
+    { key: "reportingNeed", name: "Reporting Need", desc: "How much reporting does this client need from you?", left: "Hands-off, minimal updates", right: "Wants every detail", weight: 0.05, values: [0.50, 0.80, 0.85, 0.90, 0.95, 1.00, 0.95, 0.90, 0.80, 0.50, 0.20] },
     { key: "replaceability", name: "Replaceability", desc: "How easy would it be for this client to replace you?", left: "Plug and play, anyone could do it", right: "Deeply embedded, hard to replace", weight: 0.05, values: [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00] },
-    { key: "commTone", name: "Communication Tone", desc: "How does this client communicate with you?", left: "Cold, passive-aggressive", right: "Warm, direct", weight: 0.05, values: [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00] },
+    { key: "commTone", name: "Communication Tone", desc: "How does this client communicate with you?", left: "Reserved, guarded", right: "Warm, direct", weight: 0.05, values: [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00] },
     { key: "decisionMaking", name: "Decision Making", desc: "How much authority does your primary contact have?", left: "No authority, just a relay", right: "Full authority, makes the call", weight: 0.05, values: [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00] },
   ];
 
@@ -791,35 +814,24 @@ export default function App({ user }) {
     };
     setClients([...clients, client].sort((a, b) => (b.ret || 0) - (a.ret || 0)));
 
-    // ─── Auto-create initial Health Check with staggered due date ─────────
-    // Prevents pileups when users add many clients at once. Spreads across 14 days.
-    // If your hcDb.create signature differs or your column isn't "due_at",
-    // adjust the key names below to match lib/db.js.
+    // ─── Auto-create initial Health Check with random 10-40 day offset ────
+    // Random uniform distribution across 31 days (10 through 40 inclusive).
+    // Prevents pileups when users bulk-add clients and maximizes Start Early
+    // value during the trial period.
     try {
-      // Count clients created in the last 14 days (including this one)
-      const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
-      const recentCount = clients.filter(c => {
-        // clients with no created_at fall back to "today" (safe default)
-        const ts = c.created_at ? new Date(c.created_at).getTime() : Date.now();
-        return ts >= fourteenDaysAgo;
-      }).length;
-      // +1 because this new client is being added too, and we want %14 cycle 1-14, not 0-13
-      const offsetDays = (recentCount % 14) + 1;
+      const offsetDays = 10 + Math.floor(Math.random() * 31); // 10..40 inclusive
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + offsetDays);
-      dueDate.setHours(9, 0, 0, 0); // 9am local on the due day
+      const dueDateStr = dueDate.toISOString().split('T')[0];
 
       const clientId = created?.id || client.id;
       if (hcDb.create) {
         await hcDb.create(user.id, {
           client_id: clientId,
-          client_name: newClient.name,
-          due_at: dueDate.toISOString(),
+          due_date: dueDateStr,
         });
       } else if (hcDb.scheduleNext) {
-        // Fallback: use scheduleNext if a create method isn't exported.
-        // Note: scheduleNext may not honor a custom due_at — in that case the
-        // HC will be due immediately (same-day pileup) until lib/db.js is updated.
+        // Fallback — 30-day default if hcDb.create isn't exported yet.
         await hcDb.scheduleNext(user.id, clientId);
       }
     } catch (e) {
@@ -863,7 +875,7 @@ export default function App({ user }) {
     if (!user) return;
     const uid = user.id;
     
-    const [clientRes, taskRes, refRes, rolodexRes, suggestionRes, hcRes, tpRes] = await Promise.all([
+    const [clientRes, taskRes, refRes, rolodexRes, suggestionRes, hcRes, tpRes, hcCountsRes] = await Promise.all([
       clientsDb.list(uid),
       tasksDb.listToday(uid),
       referralsDb.list(uid),
@@ -871,6 +883,9 @@ export default function App({ user }) {
       suggestionsDb.listPending(uid),
       hcDb.listPending(uid),
       touchpointsDb.listToday(uid),
+      (typeof hcDb.countCompletedByClient === "function")
+        ? hcDb.countCompletedByClient(uid)
+        : Promise.resolve({ data: {}, error: null }),
     ]);
 
     // Cadence data — loaded separately with fallback so a missing db function
@@ -991,6 +1006,7 @@ export default function App({ user }) {
 
     // Map health checks to queue format
     if (hcRes.data) {
+      const completedCounts = hcCountsRes?.data || {};
       setHcQueue(hcRes.data.map(h => {
         const client = h.client;
         const dueDate = h.due_date ? new Date(h.due_date) : null;
@@ -998,6 +1014,11 @@ export default function App({ user }) {
         today.setHours(0,0,0,0);
         const overdue = dueDate ? Math.max(0, Math.floor((today - dueDate) / (1000*60*60*24))) : 0;
         const isToday = dueDate && dueDate.toDateString() === today.toDateString();
+        const completedForClient = completedCounts[h.client_id] || 0;
+        const isFirstHC = completedForClient === 0;
+        // Runnable when: overdue, due today, OR this is the client's first HC (Start Early affordance)
+        const runnable = overdue > 0 || isToday || isFirstHC;
+        const daysUntil = dueDate ? Math.max(0, Math.ceil((dueDate - today) / (1000*60*60*24))) : 0;
         return {
           id: h.id,
           client_id: h.client_id,
@@ -1006,6 +1027,9 @@ export default function App({ user }) {
           due: isToday ? "Today" : dueDate ? dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—",
           due_date: dueDate ? dueDate.toISOString() : null,
           overdue: overdue,
+          isFirstHC: isFirstHC,
+          runnable: runnable,
+          daysUntil: daysUntil,
         };
       }));
     }
@@ -1880,6 +1904,10 @@ export default function App({ user }) {
         /* Make the inputbar inherit the gradient background so it doesn't show a seam */
         .r-rai-intro .r-rai-inputbar,
         .r-rai-chat .r-rai-inputbar { background: transparent !important; }
+        /* Mobile: don't vertically center the intro — start content near the top */
+        @media (max-width: 767px) {
+          .r-rai-intro .r-rai-inner { justify-content: flex-start !important; padding-top: 48px !important; }
+        }
         @media (min-width: 768px) {
           :root { --sidebar-w: 240px; --page-gap: 14px; }
           html, body { background: ${C.surface} !important; }
@@ -1941,8 +1969,9 @@ export default function App({ user }) {
           .rt-band-sub-pct { display: none !important; }
           .rt-band-sub-bar { display: none !important; }
           .rt-band-sub { width: 100% !important; }
-          .rt-composer-controls { width: 100%; justify-content: space-between; }
-          .rt-composer-controls > button:last-child { margin-left: auto; }
+          .rt-composer-controls { width: 100%; }
+          .rt-composer-pill { padding: 6px 8px !important; gap: 4px !important; }
+          .rt-composer-pill span { font-size: 11.5px !important; }
           .rt-row-meta span:nth-child(n+4) { display: none !important; }
           .rt-row-score { display: none !important; }
           /* Mobile: no selected-row fill (no Focus Pane to open) + tag collapses to icon */
@@ -2193,7 +2222,7 @@ export default function App({ user }) {
       </div>
 
       {/* MOBILE TOP */}
-      <div className="r-mob-top" style={{ justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: C.card, borderBottom: "1px solid " + C.borderLight, position: "sticky", top: 0, zIndex: 40 }}>
+      <div className="r-mob-top" style={{ justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: C.card, borderBottom: "1px solid " + C.borderLight }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
           <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span>
         </div>
@@ -2343,11 +2372,9 @@ export default function App({ user }) {
           // ─── HANDLERS ────────────────────────────────────────────────────
           const greeting = (() => {
             const h = new Date().getHours();
-            if (h < 5) return "Working late";
-            if (h < 12) return "Morning";
-            if (h < 17) return "Afternoon";
-            if (h < 21) return "Evening";
-            return "Late night";
+            if (h >= 5 && h < 12) return "Morning";
+            if (h >= 12 && h < 17) return "Afternoon";
+            return "Evening";
           })();
 
           const firstName = user?.user_metadata?.full_name?.split(" ")[0]
@@ -2532,36 +2559,35 @@ export default function App({ user }) {
                       style={{ flex: 1, minWidth: 100, border: "none", outline: "none", background: "transparent", fontSize: 14.5, padding: "4px 0", fontFamily: "inherit", color: C.text }}
                     />
                   </div>
-                  <div className="rt-composer-controls" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <button onClick={() => setComposerMenuOpen(!composerMenuOpen)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: C.card, cursor: "pointer", fontFamily: "inherit" }}>
+                  <div className="rt-composer-controls" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap" }}>
+                    <button onClick={() => setComposerMenuOpen(!composerMenuOpen)} className="rt-composer-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: C.card, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
                       <Icon name="clients" size={12} /><span>Client</span>
                     </button>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 10px 6px 12px", border: "1px solid " + C.border, borderRadius: 8, background: C.card }}>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={newTaskRecurring}
+                      onClick={() => setNewTaskRecurring(!newTaskRecurring)}
+                      className="rt-composer-pill"
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                        padding: "6px 10px",
+                        border: "1px solid " + (newTaskRecurring ? C.btn : C.border),
+                        borderRadius: 8,
+                        fontSize: 12,
+                        color: newTaskRecurring ? C.btn : C.textSec,
+                        background: newTaskRecurring ? C.btnLight + "26" : C.card,
+                        cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
+                        transition: "all 150ms",
+                      }}
+                    >
                       <Icon name="clock" size={12} color={newTaskRecurring ? C.btn : C.textMuted} />
-                      <span style={{ fontSize: 12, color: newTaskRecurring ? C.text : C.textSec, fontWeight: 500 }}>Recurring</span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={newTaskRecurring}
-                        onClick={() => setNewTaskRecurring(!newTaskRecurring)}
-                        style={{
-                          width: 30, height: 18, borderRadius: 9,
-                          background: newTaskRecurring ? C.btn : C.border,
-                          position: "relative", transition: "background 180ms",
-                          border: "none", cursor: "pointer", padding: 0, flexShrink: 0,
-                        }}
-                      >
-                        <span style={{
-                          position: "absolute", top: 2, left: newTaskRecurring ? 14 : 2,
-                          width: 14, height: 14, borderRadius: 7, background: "#fff",
-                          transition: "left 180ms", boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
-                        }} />
-                      </button>
-                    </div>
-                    <button onClick={() => { setShowTouchpoint(!showTouchpoint); setTpClient(null); setTpChannel(null); }} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: C.card, cursor: "pointer", fontFamily: "inherit" }} title="Log a touchpoint">
+                      <span style={{ fontWeight: newTaskRecurring ? 600 : 500 }}>Recurring</span>
+                    </button>
+                    <button onClick={() => { setShowTouchpoint(!showTouchpoint); setTpClient(null); setTpChannel(null); }} className="rt-composer-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: C.card, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }} title="Log a touchpoint">
                       <Icon name="phone" size={12} /><span>Log</span>
                     </button>
-                    <button onClick={submitComposer} disabled={!newTask.trim()} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px 7px 14px", background: C.btn, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: newTask.trim() ? "pointer" : "default", opacity: newTask.trim() ? 1 : 0.4, fontFamily: "inherit" }}>
+                    <button onClick={submitComposer} disabled={!newTask.trim()} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px 7px 14px", background: C.btn, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: newTask.trim() ? "pointer" : "default", opacity: newTask.trim() ? 1 : 0.4, fontFamily: "inherit", marginLeft: "auto", flexShrink: 0 }}>
                       Add
                       <span style={{ background: "rgba(255,255,255,0.2)", padding: "1px 5px", borderRadius: 3, fontSize: 10.5, fontFamily: "monospace", fontWeight: 600 }}>↵</span>
                     </button>
@@ -3157,7 +3183,7 @@ export default function App({ user }) {
           return (
             <div style={{ width: "100%" }}>
               {/* STATUS BAND */}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Your portfolio</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Clients</h1>
@@ -3166,7 +3192,7 @@ export default function App({ user }) {
                     <span style={{ color: C.border }}>·</span>
                     <span><b style={{ color: C.text, fontWeight: 700 }}>${(totalMRR/1000).toFixed(1)}k</b> /mo</span>
                     <span style={{ color: C.border }}>·</span>
-                    <span>avg health <b style={{ color: retColor(avgScore), fontWeight: 700 }}>{avgScore}</b></span>
+                    <span><b style={{ color: retColor(avgScore), fontWeight: 700 }}>{avgScore}</b> avg</span>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -3925,9 +3951,17 @@ export default function App({ user }) {
             }
           };
 
-          const activeQueue = hcQueue.filter(h => (h.overdue > 0 || h.due === "Today") && !hcDone[h.client]).sort((a, b) => b.overdue - a.overdue);
-          const justCompleted = hcQueue.filter(h => (h.overdue > 0 || h.due === "Today") && hcDone[h.client]);
-          const upcomingQueue = hcQueue.filter(h => h.overdue === 0 && h.due !== "Today");
+          // Active = runnable NOW: overdue, due today, OR a first HC (Start Early-eligible)
+          const activeQueue = hcQueue.filter(h => h.runnable && !hcDone[h.client]).sort((a, b) => {
+            // Overdue first, then due today, then first-HCs (Start Early) sorted by soonest due
+            if (a.overdue !== b.overdue) return b.overdue - a.overdue;
+            if (a.due === "Today" && b.due !== "Today") return -1;
+            if (b.due === "Today" && a.due !== "Today") return 1;
+            return a.daysUntil - b.daysUntil;
+          });
+          const justCompleted = hcQueue.filter(h => h.runnable && hcDone[h.client]);
+          // Upcoming-locked: HC #2+ that aren't yet due. Visible but not tappable until due date.
+          const upcomingQueue = hcQueue.filter(h => !h.runnable).sort((a, b) => a.daysUntil - b.daysUntil);
 
           const totalClients = clients.length;
           const checkedThisMonth = hcQueue.filter(h => hcDone[h.client]).length;
@@ -4010,8 +4044,9 @@ export default function App({ user }) {
                       {activeQueue.map((h, i) => {
                         const isOpen = hcOpen === h.client;
                         const overdueDays = h.overdue;
-                        const subLabel = overdueDays > 0 ? `${overdueDays}d overdue` : "Due today";
-                        const subColor = overdueDays > 0 ? C.retWarn : C.retOk;
+                        const isStartEarly = h.isFirstHC && overdueDays === 0 && h.due !== "Today";
+                        const subLabel = overdueDays > 0 ? `${overdueDays}d overdue` : h.due === "Today" ? "Due today" : `Start early · in ${h.daysUntil}d`;
+                        const subColor = overdueDays > 0 ? C.retWarn : isStartEarly ? C.btn : C.retOk;
                         return (
                           <div key={i} onClick={() => setHcOpen(isOpen ? null : h.client)} style={{
                             padding: "10px 12px", borderRadius: 8, cursor: "pointer",
@@ -4063,12 +4098,12 @@ export default function App({ user }) {
                                 <span style={{ fontSize: 12, fontWeight: 700, color: retColor(h.ret), fontVariantNumeric: "tabular-nums" }}>{h.ret}</span>
                                 {client?.tag && <span style={{ fontSize: 11, color: C.textMuted }}>· {client.tag}</span>}
                               </div>
-                              <div style={{ fontSize: 12, color: h.overdue > 0 ? C.retWarn : C.retOk, marginTop: 2, fontWeight: 500 }}>
-                                {h.overdue > 0 ? `Overdue by ${h.overdue}d` : "Due today"}
+                              <div style={{ fontSize: 12, color: h.overdue > 0 ? C.retWarn : (h.isFirstHC && h.due !== "Today") ? C.btn : C.retOk, marginTop: 2, fontWeight: 500 }}>
+                                {h.overdue > 0 ? `Overdue by ${h.overdue}d` : h.due === "Today" ? "Due today" : `Start early · due in ${h.daysUntil}d`}
                               </div>
                             </div>
                             {!isOpen && (
-                              <button className="r-btn" style={{ padding: "8px 16px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Start</button>
+                              <button className="r-btn" style={{ padding: "8px 16px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{h.isFirstHC && h.due !== "Today" && h.overdue === 0 ? "Start early" : "Start"}</button>
                             )}
                           </div>
 
@@ -4232,7 +4267,7 @@ export default function App({ user }) {
                           {upcomingQueue.map((h, i) => (
                             <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderBottom: i < upcomingQueue.length - 1 ? "1px solid " + C.borderLight : "none", opacity: 0.6 }}>
                               <span style={{ fontSize: 13, color: C.textSec }}>{h.client}</span>
-                              <span style={{ fontSize: 12, color: C.textMuted }}>{h.due}</span>
+                              <span style={{ fontSize: 12, color: C.textMuted, fontVariantNumeric: "tabular-nums" }}>In {h.daysUntil}d · {h.due}</span>
                             </div>
                           ))}
                         </div>
@@ -5027,21 +5062,79 @@ export default function App({ user }) {
         {page === "coach" && (
           <div className={"r-rai-page " + (aiMessages.length === 0 ? "r-rai-intro" : "r-rai-chat")} style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 56px)" }}>
             <div className="r-rai-scroll" style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch", display: "flex", flexDirection: "column" }}>
-              <div className="r-rai-inner" style={{ width: "100%", maxWidth: 720, margin: "0 auto", padding: "24px 24px 0", flex: aiMessages.length === 0 ? 1 : "0 0 auto", display: aiMessages.length === 0 ? "flex" : "block", flexDirection: "column", justifyContent: aiMessages.length === 0 ? "center" : "flex-start", paddingBottom: aiMessages.length === 0 ? 80 : 0 }}>
-                {aiMessages.length === 0 ? (
-                  <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
-                    <p style={{ fontSize: 22, fontWeight: 500, color: C.text, lineHeight: 1.4, marginBottom: 32, letterSpacing: "-0.01em" }}>What's on your mind today?</p>
-                    <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 14, padding: "14px 16px 10px", textAlign: "left" }}>
-                      <textarea value={aiInput} onChange={e => { setAiInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px"; }} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }} placeholder="Ask about a client, draft a message, get advice…" rows={2} style={{ width: "100%", padding: "4px 0", border: "none", fontSize: 17, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.5, color: C.text, overflowY: "auto" }} />
-                      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 4 }}>
-                        <button onClick={() => sendAi()} disabled={!aiInput.trim()} style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: aiInput.trim() ? C.btn : C.borderLight, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: aiInput.trim() ? "pointer" : "default", transition: "background 0.15s" }}>
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
-                        </button>
+              <div className="r-rai-inner" style={{ width: "100%", maxWidth: aiMessages.length === 0 ? 760 : 720, margin: "0 auto", padding: "24px 24px 0", flex: aiMessages.length === 0 ? 1 : "0 0 auto", display: aiMessages.length === 0 ? "flex" : "block", flexDirection: "column", justifyContent: aiMessages.length === 0 ? "center" : "flex-start", paddingBottom: aiMessages.length === 0 ? 80 : 0 }}>
+                {aiMessages.length === 0 ? (() => {
+                  const greeting = (() => {
+                    const h = new Date().getHours();
+                    if (h >= 5 && h < 12) return "Morning";
+                    if (h >= 12 && h < 17) return "Afternoon";
+                    return "Evening";
+                  })();
+                  const firstName = user?.user_metadata?.full_name?.split(" ")[0]
+                    || (user?.email ? user.email.split("@")[0].charAt(0).toUpperCase() + user.email.split("@")[0].slice(1) : "");
+                  const starters = [
+                    "Who needs me today?",
+                    "Summarize this week",
+                    "Find risk patterns",
+                    "Draft a renewal note",
+                  ];
+                  return (
+                    <div style={{ width: "100%", margin: "0 auto", textAlign: "center" }}>
+                      <h1 style={{ fontSize: 34, fontWeight: 600, color: C.text, lineHeight: 1.15, letterSpacing: "-0.02em", margin: 0, fontFamily: "'Outfit', system-ui, sans-serif" }}>
+                        {greeting}{firstName ? ", " + firstName : ""}.
+                      </h1>
+                      <p style={{ fontSize: 19, fontWeight: 400, color: C.textSec, lineHeight: 1.5, marginTop: 10, marginBottom: 36, letterSpacing: "-0.01em" }}>
+                        What's on your mind today?
+                      </p>
+                      <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 18, padding: "20px 22px 14px", textAlign: "left", boxShadow: "0 1px 2px rgba(10,10,10,0.03), 0 6px 20px rgba(91,33,182,0.08)" }}>
+                        <textarea
+                          value={aiInput}
+                          onChange={e => { setAiInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 240) + "px"; }}
+                          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }}
+                          placeholder="Ask about a client, draft a message, get advice…"
+                          rows={3}
+                          style={{ width: "100%", minHeight: 72, padding: "2px 0", border: "none", fontSize: 16, fontFamily: "inherit", background: "transparent", outline: "none", resize: "none", lineHeight: 1.55, color: C.text, overflowY: "auto" }}
+                        />
+                        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 8 }}>
+                          <button onClick={() => sendAi()} disabled={!aiInput.trim()} style={{ width: 36, height: 36, borderRadius: 10, border: "none", background: aiInput.trim() ? C.btn : C.borderLight, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: aiInput.trim() ? "pointer" : "default", transition: "background 0.15s" }}>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill="#fff"/></svg>
+                          </button>
+                        </div>
                       </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 20 }}>
+                        {starters.map(s => (
+                          <button
+                            key={s}
+                            onClick={() => {
+                              setAiInput(s);
+                              setTimeout(() => {
+                                const ta = document.querySelector('textarea[placeholder="Ask about a client, draft a message, get advice…"]');
+                                if (ta) { ta.focus(); ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 240) + "px"; }
+                              }, 0);
+                            }}
+                            style={{
+                              padding: "7px 14px",
+                              background: C.card,
+                              border: "1px solid " + C.border,
+                              borderRadius: 999,
+                              fontSize: 13,
+                              fontWeight: 500,
+                              color: C.textSec,
+                              cursor: "pointer",
+                              fontFamily: "inherit",
+                              transition: "all 0.15s",
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = C.surfaceWarm; e.currentTarget.style.color = C.text; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = C.card; e.currentTarget.style.color = C.textSec; }}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                      <p style={{ fontSize: 11.5, color: C.textMuted, textAlign: "center", marginTop: 24 }}>Rai can make mistakes. Double-check anything you act on.</p>
                     </div>
-                    <p style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginTop: 10 }}>Rai can make mistakes. Double-check anything you act on.</p>
-                  </div>
-                ) : (
+                  );
+                })() : (
                   <div style={{ paddingBottom: 200 }}>
                     {aiMessages.map((m, i) => {
                       const isLastUser = m.role === "user" && i === aiMessages.length - 1;
@@ -5266,7 +5359,7 @@ export default function App({ user }) {
       {selectedClient && (() => {
         const sc = selectedClient;
         const dims = sc.profileScores || {};
-        const dimLabels = { trust: ["Trust", "Micromanages everything", "Full delegation"], loyalty: ["Loyalty", "Actively shopping", "Locked in, not looking"], expectations: ["Expectations", "Unrealistic, impossible", "Reasonable, aligned"], grace: ["Grace", "Zero tolerance", "Gives benefit of the doubt"], commFrequency: ["Communication Frequency", "Radio silence", "Nonstop"], stressResponse: ["Stress Response", "Goes quiet internally", "Immediately escalates"], budgetCommitment: ["Budget Commitment", "Always under pressure", "Non-issue"], relationshipDepth: ["Relationship Depth", "Strictly transactional", "Genuine connection"], reportingNeed: ["Reporting Need", "Don't bother me", "Wants every detail"], replaceability: ["Replaceability", "Plug and play", "Deeply embedded"], commTone: ["Communication Tone", "Cold, passive-aggressive", "Warm, direct"], decisionMaking: ["Decision Making", "No authority, just a relay", "Full authority"] };
+        const dimLabels = { trust: ["Trust", "Heavy oversight", "Full delegation"], loyalty: ["Loyalty", "Actively shopping", "Locked in, not looking"], expectations: ["Expectations", "Highly ambitious", "Reasonable, aligned"], grace: ["Grace", "Zero tolerance", "Gives benefit of the doubt"], commFrequency: ["Communication Frequency", "Radio silence", "Nonstop"], stressResponse: ["Stress Response", "Goes quiet internally", "Immediately escalates"], budgetCommitment: ["Budget Commitment", "Always under pressure", "Non-issue"], relationshipDepth: ["Relationship Depth", "Strictly transactional", "Genuine connection"], reportingNeed: ["Reporting Need", "Hands-off, minimal updates", "Wants every detail"], replaceability: ["Replaceability", "Plug and play", "Deeply embedded"], commTone: ["Communication Tone", "Reserved, guarded", "Warm, direct"], decisionMaking: ["Decision Making", "No authority, just a relay", "Full authority"] };
 
         // Hero+ helpers
         const _hash = (s) => (s || "").split("").reduce((a, ch) => a + ch.charCodeAt(0), 0);
@@ -5410,18 +5503,49 @@ export default function App({ user }) {
                   <div>
                     {!editingOverview ? (
                       <>
-                        {[
-                          { l: "Contact",      v: sc.contact || "—" },
-                          { l: "Role",         v: sc.role || "—" },
-                          { l: "Health Check", v: sc.lastHC ? "Last: " + sc.lastHC : "Pending" },
-                          { l: "Referrals",    v: sc.referrals || 0 },
-                          { l: "Renewal",      v: sc.renewal_date ? new Date(sc.renewal_date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Not set", muted: !sc.renewal_date },
-                        ].map((d, i) => (
-                          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid " + C.borderLight }}>
-                            <span style={{ fontSize: 14, color: C.textSec }}>{d.l}</span>
-                            <span style={{ fontSize: 14, fontWeight: 600, color: d.muted ? C.textMuted : C.text }}>{d.v}</span>
-                          </div>
-                        ))}
+                        {(() => {
+                          const pendingHc = hcQueue.find(h => h.client === sc.name);
+                          const hcValue = (() => {
+                            if (!pendingHc) return sc.lastHC ? "Last: " + sc.lastHC : "Pending";
+                            if (pendingHc.overdue > 0) return `Overdue by ${pendingHc.overdue}d`;
+                            if (pendingHc.due === "Today") return "Due today";
+                            return `In ${pendingHc.daysUntil}d`;
+                          })();
+                          const canStartEarly = pendingHc && pendingHc.isFirstHC && pendingHc.overdue === 0 && pendingHc.due !== "Today";
+                          return (
+                            <>
+                              {[
+                                { l: "Contact",      v: sc.contact || "—" },
+                                { l: "Role",         v: sc.role || "—" },
+                              ].map((d, i) => (
+                                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid " + C.borderLight }}>
+                                  <span style={{ fontSize: 14, color: C.textSec }}>{d.l}</span>
+                                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{d.v}</span>
+                                </div>
+                              ))}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid " + C.borderLight, gap: 10 }}>
+                                <span style={{ fontSize: 14, color: C.textSec }}>Health Check</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{hcValue}</span>
+                                  {canStartEarly && (
+                                    <button onClick={() => { setPage("health"); setHcOpen(sc.name); setSelectedClient(null); }} style={{ background: "none", border: "none", padding: 0, fontSize: 12, fontWeight: 600, color: C.btn, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>
+                                      Start early
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              {[
+                                { l: "Referrals",    v: sc.referrals || 0 },
+                                { l: "Renewal",      v: sc.renewal_date ? new Date(sc.renewal_date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Not set", muted: !sc.renewal_date },
+                              ].map((d, i) => (
+                                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid " + C.borderLight }}>
+                                  <span style={{ fontSize: 14, color: C.textSec }}>{d.l}</span>
+                                  <span style={{ fontSize: 14, fontWeight: 600, color: d.muted ? C.textMuted : C.text }}>{d.v}</span>
+                                </div>
+                              ))}
+                            </>
+                          );
+                        })()}
                         <button onClick={() => { setEditingOverview(true); setOverviewEditData({ contact: sc.contact, role: sc.role, tag: sc.tag, months: sc.months, revenue: sc.revenue, renewal_date: sc.renewal_date || "" }); }} style={{ width: "100%", padding: "11px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 14, boxShadow: "0 1px 2px rgba(91,33,182,0.15), 0 2px 6px rgba(91,33,182,0.22)" }}>Edit Details</button>
                       </>
                     ) : (
@@ -6004,7 +6128,7 @@ export default function App({ user }) {
 
 
       {/* MOBILE BOTTOM NAV */}
-      <div className="r-mob-bot" style={{ position: "fixed", bottom: 12, left: 12, right: 12, background: C.surfaceWarm, borderRadius: 18, boxShadow: "0 2px 6px rgba(10,10,10,0.04), 0 4px 14px rgba(10,10,10,0.07)", justifyContent: "space-around", padding: "10px 6px 12px", zIndex: 40 }}>
+      <div className="r-mob-bot" style={{ position: "fixed", top: "calc(var(--app-h, 100vh) - 82px)", left: 12, right: 12, background: C.surfaceWarm, borderRadius: 18, boxShadow: "0 2px 6px rgba(10,10,10,0.04), 0 4px 14px rgba(10,10,10,0.07)", justifyContent: "space-around", padding: "10px 6px 12px", zIndex: 40 }}>
         {(tier === "enterprise" ? mobileNavEnterprise : mobileNavCore).map(n => {
           const dot = hasDot(n.id);
           const active = page === n.id || (n.id === "more" && showMore);
@@ -6020,7 +6144,7 @@ export default function App({ user }) {
       {showMore && (
         <>
           <div onClick={() => setShowMore(false)} style={{ position: "fixed", inset: 0, zIndex: 45 }} />
-          <div style={{ position: "fixed", bottom: 82, right: 20, background: C.card, borderRadius: "12px 12px 12px 12px", border: "1px solid " + C.border, boxShadow: "0 -4px 24px rgba(0,0,0,0.08)", zIndex: 46, overflow: "hidden", minWidth: 180, animation: "fadeIn 0.15s ease" }}>
+          <div style={{ position: "fixed", top: "calc(var(--app-h, 100vh) - 94px)", right: 20, transform: "translateY(-100%)", background: C.card, borderRadius: "12px 12px 12px 12px", border: "1px solid " + C.border, boxShadow: "0 -4px 24px rgba(0,0,0,0.08)", zIndex: 46, overflow: "hidden", minWidth: 180, animation: "fadeIn 0.15s ease" }}>
             {(tier === "enterprise" ? moreItemsEnterprise : moreItemsCore).map((m, i, arr) => (
               <div key={m.id} onClick={() => goTo(m.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", cursor: "pointer", borderBottom: "1px solid " + C.borderLight, background: page === m.id ? C.primarySoft : "transparent" }}>
                 <span style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name={m.icon} size={18} color={page === m.id ? C.primary : C.textMuted} /></span><span style={{ fontSize: 13, fontWeight: page === m.id ? 700 : 500, color: page === m.id ? C.primary : C.text, flex: 1 }}>{m.label}</span>
