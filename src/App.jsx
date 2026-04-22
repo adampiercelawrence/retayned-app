@@ -532,9 +532,11 @@ const Dot = () => <div style={{ width: 7, height: 7, borderRadius: "50%", backgr
 export default function App({ user }) {
   const [tier, setTier] = useState("core");  // "core" | "enterprise"
   const [page, setPage] = useState("today");
-  // Scroll to top on page change — without this, SPA navigation keeps prior scroll position
+  // Scroll to top on page change. .r-main is now a fixed-positioned scroll
+  // container (not the document), so we reset its scrollTop plus the Rai
+  // chat's internal scroller. The document itself no longer scrolls, so no
+  // window.scrollTo needed.
   useEffect(() => {
-    window.scrollTo(0, 0);
     document.querySelectorAll(".r-main, .r-rai-scroll").forEach(el => { el.scrollTop = 0; });
   }, [page]);
   // iOS Safari viewport fix — when the address bar collapses/expands, 100vh doesn't update,
@@ -2156,12 +2158,17 @@ export default function App({ user }) {
           .r-client-modal { top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important; transform: translate(-50%, -50%) !important; max-width: 520px !important; max-height: 90vh !important; border-radius: 16px !important; }
           .r-main {
             padding: 28px 48px;
-            margin: var(--page-gap) var(--page-gap) var(--page-gap) calc(var(--sidebar-w) + var(--page-gap) + var(--page-gap));
+            position: fixed;
+            top: var(--page-gap);
+            right: var(--page-gap);
+            bottom: var(--page-gap);
+            left: calc(var(--sidebar-w) + var(--page-gap) + var(--page-gap));
             background: ${C.card};
             border-radius: 14px;
             box-shadow: 0 1px 2px rgba(10,10,10,0.03), 0 2px 8px rgba(10,10,10,0.05);
-            height: calc(100vh - var(--page-gap) * 2);
             overflow-y: auto;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
           }
           /* Coach page keeps the card chrome (rounded corners, shadow) like every
              other page. overflow: hidden clips the purple gradient to the rounded
