@@ -825,14 +825,38 @@ export default function App({ user }) {
       const dueDateStr = dueDate.toISOString().split('T')[0];
 
       const clientId = created?.id || client.id;
+      let hcResult = null;
       if (hcDb.create) {
-        await hcDb.create(user.id, {
+        hcResult = await hcDb.create(user.id, {
           client_id: clientId,
           due_date: dueDateStr,
         });
       } else if (hcDb.scheduleNext) {
         // Fallback — 30-day default if hcDb.create isn't exported yet.
-        await hcDb.scheduleNext(user.id, clientId);
+        hcResult = await hcDb.scheduleNext(user.id, clientId);
+      }
+
+      // Append the new HC to local hcQueue so Health page reflects reality
+      // without a full reload. By definition this is the client's first HC
+      // (runnable via Start Early), so stamp isFirstHC: true.
+      const newHcRow = hcResult?.data;
+      if (newHcRow) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const hcDueDate = newHcRow.due_date ? new Date(newHcRow.due_date) : dueDate;
+        const daysUntil = Math.max(0, Math.ceil((hcDueDate - today) / (1000*60*60*24)));
+        setHcQueue(prev => [...prev, {
+          id: newHcRow.id,
+          client_id: clientId,
+          client: newClient.name,
+          ret: client.ret || 0,
+          due: hcDueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          due_date: hcDueDate.toISOString(),
+          overdue: 0,
+          isFirstHC: true,
+          runnable: true,
+          daysUntil: daysUntil,
+        }]);
       }
     } catch (e) {
       console.warn("Health check auto-schedule failed (non-fatal):", e);
@@ -5621,10 +5645,12 @@ export default function App({ user }) {
                       <div>
                         {Object.keys(dims).length > 0 ? (
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {Object.entries(dims).map(([key, val]) => {
-                              const labels = dimLabels[key] || [key, "Low", "High"];
+                            {profileDimensions.map(d => {
+                              const val = dims[d.key];
+                              if (val === undefined || val === null) return null;
+                              const labels = dimLabels[d.key] || [d.name, "Low", "High"];
                               return (
-                                <div key={key} style={{ background: C.bg, borderRadius: 8, padding: "10px 12px" }}>
+                                <div key={d.key} style={{ background: C.bg, borderRadius: 8, padding: "10px 12px" }}>
                                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                                     <span style={{ fontSize: 14, fontWeight: 600 }}>{labels[0]}</span>
                                     <span style={{ fontSize: 14, fontWeight: 700, color: C.primary }}>{val}</span>
