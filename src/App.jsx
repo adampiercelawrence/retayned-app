@@ -5281,19 +5281,20 @@ export default function App({ user }) {
           <>
             <div onClick={() => setSelectedClient(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 90 }} />
             <div className="r-client-modal" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "100%", maxWidth: 520, maxHeight: "90vh", background: C.card, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", zIndex: 100, overflowY: "scroll", borderRadius: 16 }}>
-              {/* Top bar — eyebrow + close */}
-              <div style={{ padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: C.card, zIndex: 1, borderBottom: "1px solid " + C.borderLight }}>
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase" }}>
-                  Client{sc.tag ? " · " + sc.tag : ""}
-                </span>
+              {/* Top bar — close only (industry now lives in hero eyebrow) */}
+              <div style={{ padding: "12px 20px", display: "flex", justifyContent: "flex-end", position: "sticky", top: 0, background: C.card, zIndex: 1, borderBottom: "1px solid " + C.borderLight }}>
                 <button onClick={() => setSelectedClient(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.textMuted, lineHeight: 1, padding: 0, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
               </div>
 
-              {/* Hero — name + drift pill + owner on left, big score on right */}
-              <div style={{ padding: "18px 20px 14px" }}>
+              {/* Hero — gradient band: eyebrow meta · name · delta · score */}
+              <div style={{ padding: "20px 20px 14px", background: "linear-gradient(180deg, " + C.bg + " 0%, " + C.card + " 100%)" }}>
+                {/* Eyebrow: industry · tenure */}
+                <div style={{ fontSize: 11, color: C.textMuted, fontWeight: 600, marginBottom: 6 }}>
+                  {sc.tag || "Client"}{sc.months ? " · with you " + (sc.months >= 12 ? (sc.months / 12).toFixed(1) + " years" : sc.months + " months") : ""}
+                </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, color: C.text, margin: 0, lineHeight: 1.1 }}>{sc.name}</h2>
+                    <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.5, color: C.text, margin: 0, lineHeight: 1.15 }}>{sc.name}</h2>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
                       {sc.ret ? (
                         <span style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999, color: _driftMeta.fg, background: _driftMeta.bg, fontVariantNumeric: "tabular-nums" }}>
@@ -5307,65 +5308,66 @@ export default function App({ user }) {
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     {sc.ret ? (
                       <>
-                        <div style={{ fontSize: 38, fontWeight: 700, color: retColor(sc.ret), letterSpacing: -1.4, lineHeight: 0.9, fontVariantNumeric: "tabular-nums" }}>{sc.ret}</div>
-                        <div style={{ fontSize: 9.5, fontWeight: 700, color: C.textMuted, letterSpacing: 1.2, marginTop: 5, textTransform: "uppercase" }}>{_bucket}</div>
+                        <div style={{ fontSize: 44, fontWeight: 800, color: retColor(sc.ret), letterSpacing: -1.6, lineHeight: 0.9, fontVariantNumeric: "tabular-nums" }}>{sc.ret}</div>
+                        <div style={{ fontSize: 9.5, fontWeight: 700, color: C.textMuted, letterSpacing: 1.2, marginTop: 6, textTransform: "uppercase" }}>{_bucket}</div>
                       </>
                     ) : (
                       <div style={{ fontSize: 22, fontWeight: 700, color: C.textMuted, letterSpacing: -0.5 }}>New</div>
                     )}
                   </div>
                 </div>
+
+                {/* 12-week trend — lives inside the gradient hero */}
+                {sc.ret && (() => {
+                  const w = 480, h = 56, pad = 2;
+                  const min = Math.min(..._trend);
+                  const max = Math.max(..._trend);
+                  const range = Math.max(1, max - min);
+                  const innerW = w - pad * 2;
+                  const innerH = h - pad * 2;
+                  const coords = _trend.map((v, i) => [
+                    pad + (i / (_trend.length - 1)) * innerW,
+                    pad + innerH - ((v - min) / range) * innerH,
+                  ]);
+                  const linePath = coords.map((c, i) => (i === 0 ? "M" : "L") + c[0].toFixed(1) + "," + c[1].toFixed(1)).join(" ");
+                  const areaPath = `${linePath} L${coords[coords.length - 1][0].toFixed(1)},${pad + innerH} L${coords[0][0].toFixed(1)},${pad + innerH} Z`;
+                  return (
+                    <div style={{ marginTop: 16 }}>
+                      <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ display: "block" }}>
+                        <path d={areaPath} fill={_trendColor} fillOpacity="0.12" />
+                        <path d={linePath} fill="none" stroke={_trendColor} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                      </svg>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 10, color: C.textMuted, letterSpacing: 0.1 }}>
+                        <span>12 weeks ago</span>
+                        <span>this week</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* 2×2 stat grid */}
+              {/* Stat strip — MRR · LTV · Tenure */}
               {sc.ret && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, padding: "0 20px 14px" }}>
-                  {[
-                    { k: "REVENUE",  v: "$" + (sc.revenue / 1000).toFixed(1) + "k/mo" },
-                    { k: "LIFETIME", v: "$" + Math.round(getAdjustedLTV(sc) / 1000) + "k" },
-                    { k: "TENURE",   v: sc.months >= 12 ? (sc.months / 12).toFixed(1) + " yr" : sc.months + " mo" },
-                    { k: "CADENCE",  v: sc.lastHC ? "Last " + sc.lastHC : "Pending" },
-                  ].map((s, si) => (
-                    <div key={si} style={{ background: C.bg, border: "1px solid " + C.borderLight, borderRadius: 8, padding: "8px 10px" }}>
-                      <div style={{ fontSize: 9.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, marginBottom: 3 }}>{s.k}</div>
-                      <div style={{ fontSize: 12.5, color: C.text, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{s.v}</div>
-                    </div>
-                  ))}
+                <div style={{ display: "flex", padding: "14px 20px", background: C.bg, borderTop: "1px solid " + C.borderLight, borderBottom: "1px solid " + C.borderLight }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>MRR</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>${(sc.revenue / 1000).toFixed(1)}k</div>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>LTV</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>${Math.round(getAdjustedLTV(sc) / 1000)}k</div>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>Tenure</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{sc.months >= 12 ? (sc.months / 12).toFixed(1) + " yr" : sc.months + " mo"}</div>
+                  </div>
                 </div>
               )}
 
-              {/* 12-week trend graph */}
-              {sc.ret && (() => {
-                const w = 480, h = 72, pad = 2;
-                const min = Math.min(..._trend);
-                const max = Math.max(..._trend);
-                const range = Math.max(1, max - min);
-                const innerW = w - pad * 2;
-                const innerH = h - pad * 2;
-                const coords = _trend.map((v, i) => [
-                  pad + (i / (_trend.length - 1)) * innerW,
-                  pad + innerH - ((v - min) / range) * innerH,
-                ]);
-                const linePath = coords.map((c, i) => (i === 0 ? "M" : "L") + c[0].toFixed(1) + "," + c[1].toFixed(1)).join(" ");
-                const areaPath = `${linePath} L${coords[coords.length - 1][0].toFixed(1)},${pad + innerH} L${coords[0][0].toFixed(1)},${pad + innerH} Z`;
-                return (
-                  <div style={{ padding: "0 20px 14px" }}>
-                    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ display: "block" }}>
-                      <path d={areaPath} fill={_trendColor} fillOpacity="0.12" />
-                      <path d={linePath} fill="none" stroke={_trendColor} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-                    </svg>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 10.5, color: C.textMuted, letterSpacing: 0.1 }}>
-                      <span>12 weeks ago</span>
-                      <span>this week</span>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              <div style={{ padding: "0 20px 0" }}>
+              <div style={{ padding: "16px 20px 0" }}>
                 <div style={{ display: "flex", gap: 0, background: C.surface, borderRadius: 10, padding: 3 }}>
-                  {["Overview", "Profile", "Billing", "Timeline"].map(t => (
-                    <button key={t} onClick={() => setClientTab(t.toLowerCase())} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "none", background: clientTab === t.toLowerCase() ? C.card : "transparent", color: clientTab === t.toLowerCase() ? C.text : C.textMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease, color 0.15s ease" }}>{t}</button>
+                  {["Overview", "Profile", "Billing", "Flags"].map(t => (
+                    <button key={t} onClick={() => setClientTab(t.toLowerCase())} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "none", background: clientTab === t.toLowerCase() ? C.card : "transparent", color: clientTab === t.toLowerCase() ? C.text : C.textMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", boxShadow: clientTab === t.toLowerCase() ? C.shadowSm : "none", transition: "background 0.15s ease, color 0.15s ease" }}>{t}</button>
                   ))}
                 </div>
               </div>
@@ -5376,64 +5378,19 @@ export default function App({ user }) {
                   <div>
                     {!editingOverview ? (
                       <>
-                        {[{ l: "Contact", v: sc.contact }, { l: "Industry", v: sc.tag }, { l: "Together", v: sc.months + " months" }, { l: "Monthly Revenue", v: "$" + sc.revenue.toLocaleString() }, { l: "Lifetime Value", v: "$" + Math.round(getAdjustedLTV(sc)).toLocaleString() }, { l: "Health Check", v: sc.lastHC ? "Last: " + sc.lastHC : "Pending" }, { l: "Referrals", v: sc.referrals },
+                        {[
+                          { l: "Contact",      v: sc.contact || "—" },
+                          { l: "Role",         v: sc.role || "—" },
+                          { l: "Health Check", v: sc.lastHC ? "Last: " + sc.lastHC : "Pending" },
+                          { l: "Referrals",    v: sc.referrals || 0 },
+                          { l: "Renewal",      v: sc.renewal_date ? new Date(sc.renewal_date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Not set", muted: !sc.renewal_date },
                         ].map((d, i) => (
-                          <div key={i} onClick={d.flag ? async () => {
-                              const newFlags = { ...(sc.qualifyingFlags || {}), [d.flag]: !sc.qualifyingFlags?.[d.flag] };
-                              const wasOn = !!sc.qualifyingFlags?.[d.flag];
-                              const deltas = { latePayments: -4, prevTerminated: -8, otherVendors: -3, fromReferral: 2 };
-                              const delta = deltas[d.flag] || 0;
-                              const newRet = Math.max(1, Math.min(99, (sc.ret || 50) + (wasOn ? -delta : delta)));
-                              setClients(prev => prev.map(c => c.id === sc.id ? { ...c, qualifyingFlags: newFlags, ret: newRet } : c));
-                              setSelectedClient({ ...sc, qualifyingFlags: newFlags, ret: newRet });
-                              clientsDb.update(sc.id, { qualifying_flags: newFlags, retention_score: newRet });
-                            } : undefined}
-                            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid " + C.borderLight, cursor: d.flag ? "pointer" : "default" }}>
-                            <span style={{ fontSize: 14, color: C.textMuted }}>{d.l}</span>
-                            {d.flag ? (
-                              <div style={{ width: 40, height: 22, borderRadius: 11, background: sc.qualifyingFlags?.[d.flag] ? C.primary : C.border, padding: 2, transition: "background 0.2s", display: "flex", alignItems: "center" }}>
-                                <div style={{ width: 18, height: 18, borderRadius: 9, background: "#fff", transform: sc.qualifyingFlags?.[d.flag] ? "translateX(18px)" : "translateX(0)", transition: "transform 0.2s" }} />
-                              </div>
-                            ) : (
-                              <span style={{ fontSize: 14, fontWeight: 600, color: d.c || C.text }}>{d.v}</span>
-                            )}
+                          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid " + C.borderLight }}>
+                            <span style={{ fontSize: 14, color: C.textSec }}>{d.l}</span>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: d.muted ? C.textMuted : C.text }}>{d.v}</span>
                           </div>
                         ))}
-                        <button onClick={() => { setEditingOverview(true); setOverviewEditData({ contact: sc.contact, role: sc.role, tag: sc.tag, months: sc.months, revenue: sc.revenue, renewal_date: sc.renewal_date || "" }); }} style={{ width: "100%", padding: "10px", background: "transparent", color: C.primary, border: "1px solid " + C.primary + "44", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 12 }}>Edit Details</button>
-                        {/* Flag chips — click to toggle */}
-                        <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginTop: 18, marginBottom: 6 }}>Flags</div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                          {[
-                            { flag: "latePayments",   label: "Late payments",    delta: -4 },
-                            { flag: "prevTerminated", label: "Prev. terminated", delta: -8 },
-                            { flag: "otherVendors",   label: "Other vendors",    delta: -3 },
-                            { flag: "fromReferral",   label: "From referral",    delta: 2 },
-                          ].map(f => {
-                            const on = !!sc.qualifyingFlags?.[f.flag];
-                            const onColor = f.delta > 0 ? C.retGood : C.retWarn;
-                            return (
-                              <button key={f.flag} onClick={async () => {
-                                const newFlags = { ...(sc.qualifyingFlags || {}), [f.flag]: !on };
-                                const newRet = Math.max(1, Math.min(99, (sc.ret || 50) + (on ? -f.delta : f.delta)));
-                                setClients(prev => prev.map(c => c.id === sc.id ? { ...c, qualifyingFlags: newFlags, ret: newRet } : c));
-                                setSelectedClient({ ...sc, qualifyingFlags: newFlags, ret: newRet });
-                                clientsDb.update(sc.id, { qualifying_flags: newFlags, retention_score: newRet });
-                              }} style={{
-                                display: "inline-flex", alignItems: "center", gap: 6,
-                                padding: "5px 10px",
-                                background: on ? onColor + "14" : "transparent",
-                                border: "1px solid " + (on ? onColor + "55" : C.borderLight),
-                                borderRadius: 999,
-                                fontSize: 11.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer",
-                                color: on ? onColor : C.textMuted,
-                                transition: "all 120ms",
-                              }}>
-                                <span style={{ width: 5, height: 5, borderRadius: 3, background: on ? onColor : C.border }} />
-                                {f.label}
-                              </button>
-                            );
-                          })}
-                        </div>
+                        <button onClick={() => { setEditingOverview(true); setOverviewEditData({ contact: sc.contact, role: sc.role, tag: sc.tag, months: sc.months, revenue: sc.revenue, renewal_date: sc.renewal_date || "" }); }} style={{ width: "100%", padding: "11px", background: C.btn, color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 14, boxShadow: "0 1px 2px rgba(91,33,182,0.15), 0 2px 6px rgba(91,33,182,0.22)" }}>Edit Details</button>
                       </>
                     ) : (
                       <>
@@ -5470,13 +5427,14 @@ export default function App({ user }) {
                         </div>
                       </>
                     )}
-                {/* Remove client */}
-                <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 6 }}>
+                {/* Destructive actions — text-link strip (rare events, light visual weight) */}
+                <div style={{ marginTop: 18 }}>
                   {!rolodexConfirm && !removeConfirm ? (
-                    <>
-                      <button onClick={() => { setRolodexConfirm(true); setRemoveConfirm(false); }} style={{ width: "100%", padding: "10px", background: "transparent", color: C.primary, border: "1px solid " + C.primary + "44", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Move to Rolodex</button>
-                      <button onClick={() => { setRemoveConfirm(true); setRolodexConfirm(false); }} style={{ width: "100%", padding: "10px", background: "transparent", color: C.danger, border: "1px solid " + C.danger + "44", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Remove Permanently</button>
-                    </>
+                    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, fontSize: 12 }}>
+                      <button onClick={() => { setRolodexConfirm(true); setRemoveConfirm(false); }} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 4 }}>Move to Rolodex</button>
+                      <span style={{ color: C.border }}>·</span>
+                      <button onClick={() => { setRemoveConfirm(true); setRolodexConfirm(false); }} style={{ background: "none", border: "none", color: C.danger, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 4 }}>Remove</button>
+                    </div>
                   ) : rolodexConfirm ? (
                     <div style={{ background: C.primarySoft, borderRadius: 12, padding: "16px", border: "1px solid " + C.primary + "33" }}>
                       <p style={{ fontSize: 14, color: C.text, lineHeight: 1.55, marginBottom: 14 }}>This client will be moved to your Rolodex for future tracking. Relationships change — this keeps the door open.</p>
@@ -5707,24 +5665,37 @@ export default function App({ user }) {
                   );
                 })()}
 
-                {/* Timeline */}
-                {clientTab === "timeline" && (
+                {/* Flags — pill toggles with descriptions. Score impact hidden — scoring is magic. */}
+                {clientTab === "flags" && (
                   <div>
+                    <div style={{ fontSize: 12.5, color: C.textSec, lineHeight: 1.5, marginBottom: 14 }}>
+                      These characteristics shape your health score behind the scenes. Keep them current as your client relationship changes.
+                    </div>
                     {[
-                      { date: "Mar 27", label: "Daily check-in logged", type: "note" },
-                      { date: "Mar 24", label: "Weekly report submitted", type: "report" },
-                      { date: "Mar 20", label: sc.lastHC ? "Health check completed" : "Client onboarded", type: "health" },
-                      { date: "Mar 15", label: "Performance report delivered", type: "report" },
-                      { date: "Mar 10", label: "Bi-weekly call — good energy", type: "note" },
-                    ].map((e, i) => (
-                      <div key={i} style={{ display: "flex", gap: 10, marginBottom: 12, alignItems: "flex-start" }}>
-                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: e.type === "health" ? C.success : e.type === "report" ? C.btn : C.primaryLight, marginTop: 5, flexShrink: 0 }} />
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 600 }}>{e.label}</div>
-                          <div style={{ fontSize: 12, color: C.textMuted }}>{e.date}</div>
+                      { flag: "latePayments",   label: "Late payments",       desc: "Has missed or delayed invoices", delta: -4 },
+                      { flag: "prevTerminated", label: "Previously terminated", desc: "Has churned and returned",      delta: -8 },
+                      { flag: "otherVendors",   label: "Works with competitors", desc: "Uses other vendors in parallel", delta: -3 },
+                      { flag: "fromReferral",   label: "From referral",       desc: "Introduced by an existing client", delta: 2  },
+                    ].map(f => {
+                      const on = !!sc.qualifyingFlags?.[f.flag];
+                      return (
+                        <div key={f.flag} onClick={async () => {
+                          const newFlags = { ...(sc.qualifyingFlags || {}), [f.flag]: !on };
+                          const newRet = Math.max(1, Math.min(99, (sc.ret || 50) + (on ? -f.delta : f.delta)));
+                          setClients(prev => prev.map(c => c.id === sc.id ? { ...c, qualifyingFlags: newFlags, ret: newRet } : c));
+                          setSelectedClient({ ...sc, qualifyingFlags: newFlags, ret: newRet });
+                          clientsDb.update(sc.id, { qualifying_flags: newFlags, retention_score: newRet });
+                        }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 0", borderBottom: "1px solid " + C.borderLight, cursor: "pointer" }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{f.label}</div>
+                            <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{f.desc}</div>
+                          </div>
+                          <div style={{ width: 40, height: 22, borderRadius: 11, background: on ? C.primary : C.border, padding: 2, transition: "background 0.2s", display: "flex", alignItems: "center", flexShrink: 0 }}>
+                            <div style={{ width: 18, height: 18, borderRadius: 9, background: "#fff", transform: on ? "translateX(18px)" : "translateX(0)", transition: "transform 0.2s" }} />
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 
