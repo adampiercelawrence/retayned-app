@@ -622,6 +622,20 @@ export const touchpoints = {
     return { data: data || [], error };
   },
 
+  // All touchpoints for this user within the last N days (drives cadence calculation)
+  list: async (userId, days = 90) => {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const { data, error } = await supabase
+      .from('touchpoints')
+      .select('*, client:clients(name)')
+      .eq('user_id', userId)
+      .gte('occurred_at', since.toISOString())
+      .order('occurred_at', { ascending: false });
+    const flat = (data || []).map(t => ({ ...t, client_name: t.client?.name }));
+    return { data: flat, error };
+  },
+
   create: async (userId, { client_id, client_name, channel }) => {
     const { data, error } = await supabase
       .from('touchpoints')
