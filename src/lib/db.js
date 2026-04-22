@@ -541,6 +541,77 @@ export const raiConversations = {
     return { data: newConvo, error };
   },
 
+  // Create a brand-new conversation explicitly (for "New Chat" button).
+  // Returns the new row so the UI can start appending messages to it.
+  create: async (userId, { clientId = null, title = null } = {}) => {
+    const { data, error } = await supabase
+      .from('rai_conversations')
+      .insert({
+        user_id: userId,
+        client_id: clientId,
+        messages: [],
+        title,
+        is_starred: false,
+      })
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  // Fetch a single conversation by id (for resume-from-sidebar).
+  get: async (convoId) => {
+    const { data, error } = await supabase
+      .from('rai_conversations')
+      .select('*')
+      .eq('id', convoId)
+      .single();
+    return { data, error };
+  },
+
+  // List conversations for the sidebar. Starred first, then newest.
+  // Returns lightweight fields only (not the full messages JSON) for speed.
+  list: async (userId, limit = 50) => {
+    const { data, error } = await supabase
+      .from('rai_conversations')
+      .select('id, title, is_starred, updated_at, client_id, client:clients(name)')
+      .eq('user_id', userId)
+      .order('is_starred', { ascending: false })
+      .order('updated_at', { ascending: false })
+      .limit(limit);
+    return { data: data || [], error };
+  },
+
+  // Rename a conversation (auto-generated title after first exchange, or manual rename).
+  updateTitle: async (convoId, title) => {
+    const { data, error } = await supabase
+      .from('rai_conversations')
+      .update({ title })
+      .eq('id', convoId)
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  // Pin/unpin a conversation for the sidebar.
+  toggleStar: async (convoId, isStarred) => {
+    const { data, error } = await supabase
+      .from('rai_conversations')
+      .update({ is_starred: isStarred })
+      .eq('id', convoId)
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  // Hard-delete a conversation.
+  delete: async (convoId) => {
+    const { error } = await supabase
+      .from('rai_conversations')
+      .delete()
+      .eq('id', convoId);
+    return { error };
+  },
+
   // Append a message to conversation
   addMessage: async (convoId, role, text) => {
     // Get current messages
