@@ -123,6 +123,18 @@ export const clients = {
     return { data, error };
   },
 
+  // Hard delete — permanently removes client and cascades to all related
+  // tables (tasks, touchpoints, health_checks, rai_suggestions,
+  // rai_conversations, rai_knowledge) via ON DELETE CASCADE.
+  // This is the GDPR/CCPA "right to erasure" path. Not reversible.
+  hardDelete: async (clientId) => {
+    const { error } = await supabase
+      .from('clients')
+      .delete()
+      .eq('id', clientId);
+    return { error };
+  },
+
   // Update retention score + profile scores after profile evaluation
   updateScores: async (clientId, retentionScore, profileScores) => {
     const { data, error } = await supabase
