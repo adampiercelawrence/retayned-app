@@ -1968,6 +1968,15 @@ export default function App({ user }) {
           .rc-rai-col { display: none !important; }
           .rc-rail { position: static !important; }
         }
+        @media (max-width: 768px) {
+          .rc-rail { display: none !important; }
+          .rc-view-toggle { display: none !important; }
+          .rc-desktop-view { display: none !important; }
+          .rc-mobile-list { display: block !important; }
+        }
+        @media (min-width: 769px) {
+          .rc-mobile-list { display: none !important; }
+        }
         @media (min-width: 1440px) {
           .rc-grid { grid-template-columns: 240px minmax(0, 1fr) 360px; }
           .rc-rai-col { display: block !important; }
@@ -2115,11 +2124,10 @@ export default function App({ user }) {
             </div>
           )}
         </div>
-        {/* Portfolio widget — gradient bar · editorial */}
+        {/* Portfolio widget — G: bar + counts only, scale demoted to eyebrow */}
         {(() => {
           const total = clients.length;
           if (total === 0) return null;
-          const avgHealth = Math.round(clients.reduce((a, c) => a + (c.ret || 0), 0) / total);
           const buckets = clients.reduce((acc, c) => {
             const r = c.ret || 0;
             if (r >= 80) acc.thriving++;
@@ -2137,41 +2145,25 @@ export default function App({ user }) {
             { n: buckets.critical, label: "Critical", color: C.retCrit  },
           ].filter(s => s.n > 0);
           return (
-            <div style={{ padding: 16, margin: "0 10px 8px", background: "rgba(255,255,255,0.55)", borderRadius: 12, border: "1px solid " + C.borderSoft }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16 }}>
-                <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 700, letterSpacing: 0.7, textTransform: "uppercase" }}>Portfolio</div>
-                <div style={{ fontSize: 9.5, color: C.textMuted, fontStyle: "italic", fontFamily: "Georgia, serif" }}>This week</div>
-              </div>
-              {/* Hero avg-health number */}
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 14 }}>
-                <div style={{ fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: "-0.03em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{avgHealth}</div>
-                <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>Avg health</div>
+            <div style={{ padding: "14px 16px", margin: "0 10px 8px", background: "rgba(255,255,255,0.55)", borderRadius: 12, border: "1px solid " + C.borderSoft }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+                <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 700, letterSpacing: 0.7, textTransform: "uppercase" }}>Portfolio · {total}</div>
+                <div style={{ fontSize: 9.5, color: C.textMuted, fontStyle: "italic", fontFamily: "Georgia, serif", fontVariantNumeric: "tabular-nums" }}>${(totalRev / 1000).toFixed(1)}k MRR</div>
               </div>
               {/* Stacked bar — only non-zero buckets */}
-              <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", gap: 2, marginBottom: 10 }}>
+              <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", gap: 2, marginBottom: 8 }}>
                 {segs.map((s, i) => (
                   <div key={i} style={{ flex: s.n, background: s.color, borderRadius: i === 0 ? "4px 0 0 4px" : i === segs.length - 1 ? "0 4px 4px 0" : 0 }} />
                 ))}
               </div>
-              {/* Inline segment labels */}
-              <div style={{ display: "flex", gap: 2, marginBottom: 14, fontSize: 10.5 }}>
+              {/* Inline segment labels — count + label on a single line per segment */}
+              <div style={{ display: "flex", gap: 2, fontSize: 10.5 }}>
                 {segs.map((s, i) => (
-                  <div key={i} style={{ flex: s.n, paddingTop: 2 }}>
-                    <div style={{ color: s.color, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{s.n}</div>
-                    <div style={{ color: C.textSec }}>{s.label}</div>
+                  <div key={i} style={{ flex: s.n }}>
+                    <span style={{ color: s.color, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{s.n}</span>
+                    <span style={{ color: C.textSec }}> {s.label}</span>
                   </div>
                 ))}
-              </div>
-              {/* Scale stats — clients + MRR */}
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, paddingTop: 14, borderTop: "1px solid " + C.borderSoft }}>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{total}</div>
-                  <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase", marginTop: 2 }}>Clients</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>${(totalRev / 1000).toFixed(1)}k</div>
-                  <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase", marginTop: 2 }}>MRR</div>
-                </div>
               </div>
             </div>
           );
@@ -3175,10 +3167,6 @@ export default function App({ user }) {
                     <span><b style={{ color: C.text, fontWeight: 700 }}>${(totalMRR/1000).toFixed(1)}k</b> /mo</span>
                     <span style={{ color: C.border }}>·</span>
                     <span>avg health <b style={{ color: retColor(avgScore), fontWeight: 700 }}>{avgScore}</b></span>
-                    <span style={{ color: C.border }}>·</span>
-                    <span style={{ color: trendPct >= 0 ? C.retGood : C.retWarn, fontWeight: 600 }}>
-                      {trendPct >= 0 ? "+" : ""}{trendPct.toFixed(1)}% 12wk
-                    </span>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -3589,7 +3577,7 @@ export default function App({ user }) {
                           }}>{s.label}</button>
                         ))}
                       </div>
-                      <div style={{ display: "inline-flex", gap: 2, padding: 2, background: C.bg, border: "1px solid " + C.border, borderRadius: 8 }}>
+                      <div className="rc-view-toggle" style={{ display: "inline-flex", gap: 2, padding: 2, background: C.bg, border: "1px solid " + C.border, borderRadius: 8 }}>
                         {viewOptions.map(v => (
                           <button key={v.id} onClick={() => setClientsView(v.id)} title={v.label} style={{
                             display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit",
@@ -3615,8 +3603,40 @@ export default function App({ user }) {
 
                   {/* COMPARE SURFACE — 3 variants */}
 
+                  {/* Mobile card list — always rendered, CSS reveals only <=768px */}
+                  <div className="rc-mobile-list" style={{ display: "none", flexDirection: "column", gap: 8 }}>
+                    {filteredClients.map(c => {
+                      const delta = stubDelta(c.name);
+                      const scoreColor = retColor(c.ret || 0);
+                      const months = c.months || 0;
+                      const tenureDisplay = months < 12 ? `${months}mo` : `${(months / 12).toFixed(1)}yr`;
+                      return (
+                        <div key={c.id} onClick={() => { setSelectedClient(c); setRolodexConfirm(false); setRemoveConfirm(false); }} style={{ position: "relative", background: C.card, border: "1px solid " + C.borderLight, borderRadius: 12, boxShadow: C.shadowSm, padding: "12px 14px", cursor: "pointer", overflow: "hidden" }}>
+                          <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: 3, background: scoreColor }} />
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <ScoreRing2 client={c} size={32} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: -0.1 }}>{c.name}</div>
+                              <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {(c.tag || "Client")} · ${((c.revenue || 0) / 1000).toFixed(1)}k/mo · {tenureDisplay}
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0, gap: 2 }}>
+                              <div style={{ fontSize: 16, fontWeight: 700, color: scoreColor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{c.ret || 0}</div>
+                              {delta !== 0 && (
+                                <div style={{ fontSize: 10.5, fontWeight: 600, color: delta > 0 ? C.retGood : C.retWarn, fontVariantNumeric: "tabular-nums" }}>
+                                  {delta > 0 ? "↑" : "↓"} {Math.abs(delta)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
                   {variant === "table" && (
-                    <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, overflow: "hidden" }}>
+                    <div className="rc-table-desktop" style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, overflow: "hidden" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid " + C.borderLight, background: C.bg }}>
                         <div style={{ width: 32, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }} />
                         <div style={{ flex: 1.4, fontSize: 10.5, fontWeight: 700, color: C.textMuted, letterSpacing: 0.4, textTransform: "uppercase" }}>Client</div>
@@ -3694,7 +3714,7 @@ export default function App({ user }) {
                   )}
 
                   {variant === "columns" && (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "flex-start" }}>
+                    <div className="rc-desktop-view" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "flex-start" }}>
                       {[
                         { id: "thriving", label: "Thriving",  color: C.retElite, bg: "#E5EDE7" },
                         { id: "healthy",  label: "Healthy",   color: C.retGood,  bg: "#EFF5F1" },
@@ -3762,7 +3782,7 @@ export default function App({ user }) {
                   )}
 
                   {variant === "heatmap" && (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+                    <div className="rc-desktop-view" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
                       {filteredClients.map(c => {
                         const trend = stubTrend(c);
                         const trendStart = trend[0], trendEnd = trend[trend.length - 1];
@@ -5296,7 +5316,7 @@ export default function App({ user }) {
               </div>
 
               {/* Hero — gradient band: eyebrow meta · name · delta · score */}
-              <div style={{ padding: "20px 20px 14px", background: "linear-gradient(180deg, " + C.bg + " 0%, " + C.card + " 100%)" }}>
+              <div style={{ padding: "20px 20px 14px", background: "linear-gradient(180deg, " + C.surfaceWarm + " 0%, " + C.card + " 100%)" }}>
                 {/* Eyebrow: industry · tenure */}
                 <div style={{ fontSize: 11, color: C.textMuted, fontWeight: 600, marginBottom: 6 }}>
                   {sc.tag || "Client"}{sc.months ? " · with you " + (sc.months >= 12 ? (sc.months / 12).toFixed(1) + " years" : sc.months + " months") : ""}
@@ -5357,7 +5377,7 @@ export default function App({ user }) {
 
               {/* Stat strip — MRR · LTV · Tenure */}
               {sc.ret && (
-                <div style={{ display: "flex", padding: "14px 20px", background: C.bg, borderTop: "1px solid " + C.borderLight, borderBottom: "1px solid " + C.borderLight }}>
+                <div style={{ display: "flex", padding: "14px 20px", background: C.surfaceWarm, borderTop: "1px solid " + C.borderLight, borderBottom: "1px solid " + C.borderLight }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>MRR</div>
                     <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>${(sc.revenue / 1000).toFixed(1)}k</div>
