@@ -863,7 +863,7 @@ export default function App({ user }) {
     if (!user) return;
     const uid = user.id;
     
-    const [clientRes, taskRes, refRes, rolodexRes, suggestionRes, hcRes, tpRes, tpAllRes] = await Promise.all([
+    const [clientRes, taskRes, refRes, rolodexRes, suggestionRes, hcRes, tpRes] = await Promise.all([
       clientsDb.list(uid),
       tasksDb.listToday(uid),
       referralsDb.list(uid),
@@ -871,10 +871,18 @@ export default function App({ user }) {
       suggestionsDb.listPending(uid),
       hcDb.listPending(uid),
       touchpointsDb.listToday(uid),
-      touchpointsDb.list(uid, 90),
     ]);
 
-    if (tpAllRes.data) setAllTouchpoints(tpAllRes.data);
+    // Cadence data — loaded separately with fallback so a missing db function
+    // degrades cadence only, doesn't nuke the whole page
+    try {
+      if (typeof touchpointsDb.list === "function") {
+        const tpAllRes = await touchpointsDb.list(uid, 90);
+        if (tpAllRes?.data) setAllTouchpoints(tpAllRes.data);
+      }
+    } catch (e) {
+      console.warn("Cadence data failed to load:", e);
+    }
 
     if (tpRes.data) setTpLogged(tpRes.data.map(t => ({
       id: t.id,
@@ -2283,14 +2291,14 @@ export default function App({ user }) {
             if (days < 365) return `${Math.floor(days / 30)}mo ago`;
             return `${Math.floor(days / 365)}y ago`;
           };
-          // Real Context builder — reads last completed task + next health check / renewal + cadence
+          // Real cadence calculation from touchpoint history
           const calcCadence = (clientName) => {
-            // Cadence = days between contact events (touchpoints). Compare days-since-last
+            // Cadence = days between contact events. Compare days-since-last
             // against average interval from the last 10 touchpoints. Verdict:
             //   <2 pts  →  "Building rhythm"   (not enough history yet)
-            //   ≤1.15× →  "On rhythm"          (within the normal window)
-            //   ≤1.5×  →  "Slipping"           (slightly overdue)
-            //   >1.5×  →  "Overdue"            (materially overdue)
+            //   ≤1.15× →  "On rhythm"
+            //   ≤1.5×  →  "Slipping"
+            //   >1.5×  →  "Overdue"
             const points = allTouchpoints
               .filter(t => t.client_name === clientName)
               .sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at));
@@ -2306,6 +2314,7 @@ export default function App({ user }) {
             if (daysSinceLast > avgInterval * 1.15) return "Slipping";
             return "On rhythm";
           };
+          // Real Context builder — reads last completed task + next health check / renewal
           const buildContext = (client) => {
             if (!client) return null;
             // Last task: most recently completed task for this client
