@@ -1976,6 +1976,7 @@ export default function App({ user }) {
           .rc-desktop-view { display: none !important; }
           .rc-mobile-list { display: block !important; }
           .rc-mobile-insights { display: block !important; }
+          .rc-header-stats { display: none !important; }
         }
         @media (min-width: 769px) {
           .rc-mobile-list { display: none !important; }
@@ -3165,7 +3166,7 @@ export default function App({ user }) {
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Your portfolio</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Clients</h1>
-                  <div style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <div className="rc-header-stats" style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span><b style={{ color: C.text, fontWeight: 700 }}>{activeClients.length}</b> active</span>
                     <span style={{ color: C.border }}>·</span>
                     <span><b style={{ color: C.text, fontWeight: 700 }}>${(totalMRR/1000).toFixed(1)}k</b> /mo</span>
