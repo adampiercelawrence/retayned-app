@@ -563,7 +563,6 @@ export default function App({ user }) {
   const [clientsView, setClientsView] = useState(() => {
     try { return localStorage.getItem("clients-view") || "table"; } catch (e) { return "table"; }
   });
-  const [mobileInsightsOpen, setMobileInsightsOpen] = useState(false);
   // Persist view choice
   useEffect(() => {
     try { localStorage.setItem("clients-view", clientsView); } catch (e) {}
@@ -1971,16 +1970,12 @@ export default function App({ user }) {
         }
         @media (max-width: 768px) {
           .rc-rail { display: none !important; }
-          .rc-rail.rail-mobile-open { display: flex !important; position: static !important; margin-bottom: 12px; }
           .rc-view-toggle { display: none !important; }
           .rc-desktop-view { display: none !important; }
           .rc-mobile-list { display: block !important; }
-          .rc-mobile-insights { display: block !important; }
-          .rc-header-stats { display: none !important; }
         }
         @media (min-width: 769px) {
           .rc-mobile-list { display: none !important; }
-          .rc-mobile-insights { display: none !important; }
         }
         @media (min-width: 1440px) {
           .rc-grid { grid-template-columns: 240px minmax(0, 1fr) 360px; }
@@ -3166,7 +3161,7 @@ export default function App({ user }) {
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Your portfolio</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Clients</h1>
-                  <div className="rc-header-stats" style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span><b style={{ color: C.text, fontWeight: 700 }}>{activeClients.length}</b> active</span>
                     <span style={{ color: C.border }}>·</span>
                     <span><b style={{ color: C.text, fontWeight: 700 }}>${(totalMRR/1000).toFixed(1)}k</b> /mo</span>
@@ -3185,36 +3180,11 @@ export default function App({ user }) {
                 </div>
               </div>
 
-              {/* Mobile insights — summary strip with collapsible More drawer */}
-              <div className="rc-mobile-insights" style={{ display: "none", marginBottom: 14 }}>
-                <div onClick={() => setMobileInsightsOpen(!mobileInsightsOpen)} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "12px 14px", cursor: "pointer" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 12, color: C.textSec, flexWrap: "wrap" }}>
-                      <span><b style={{ color: C.text, fontWeight: 700 }}>{activeClients.length}</b> active</span>
-                      <span style={{ color: C.border }}>·</span>
-                      <span><b style={{ color: C.text, fontWeight: 700 }}>${(totalMRR/1000).toFixed(1)}k</b>/mo</span>
-                      <span style={{ color: C.border }}>·</span>
-                      <span>health <b style={{ color: retColor(avgScore), fontWeight: 700 }}>{avgScore}</b></span>
-                    </div>
-                    <span style={{ fontSize: 11.5, fontWeight: 600, color: C.btn, flexShrink: 0, marginLeft: 8 }}>
-                      {mobileInsightsOpen ? "Less ↑" : "More ↓"}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", gap: 2 }}>
-                    {byStage.thriving > 0 && <div style={{ flex: byStage.thriving, background: C.retElite, borderRadius: "3px 0 0 3px" }} />}
-                    {byStage.healthy > 0  && <div style={{ flex: byStage.healthy,  background: C.retGood }} />}
-                    {byStage.watch > 0    && <div style={{ flex: byStage.watch,    background: C.retOk }} />}
-                    {byStage.atRisk > 0   && <div style={{ flex: byStage.atRisk,   background: C.retWarn }} />}
-                    {byStage.critical > 0 && <div style={{ flex: byStage.critical, background: C.retCrit, borderRadius: "0 3px 3px 0" }} />}
-                  </div>
-                </div>
-              </div>
-
               {/* MAIN GRID: rail + main + rai (rai shows on >=1440px) */}
               <div className="rc-grid" style={{ display: "grid", gap: 20, alignItems: "start" }}>
 
                 {/* LEFT RAIL — Portfolio, Book history, Recent movement (3 separate cards) */}
-                <div className={"rc-rail" + (mobileInsightsOpen ? " rail-mobile-open" : "")} style={{ position: "sticky", top: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div className="rc-rail" style={{ position: "sticky", top: 20, display: "flex", flexDirection: "column", gap: 12 }}>
                   {/* Card 1: Portfolio */}
                   <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
                     <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 10 }}>Portfolio</div>
