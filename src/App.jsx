@@ -2160,13 +2160,20 @@ export default function App({ user }) {
             background: ${C.card};
             border-radius: 14px;
             box-shadow: 0 1px 2px rgba(10,10,10,0.03), 0 2px 8px rgba(10,10,10,0.05);
-            min-height: calc(100vh - var(--page-gap) * 2);
+            height: calc(100vh - var(--page-gap) * 2);
+            overflow-y: auto;
           }
           /* Coach page keeps the card chrome (rounded corners, shadow) like every
              other page. overflow: hidden clips the purple gradient to the rounded
-             corners instead of bleeding to viewport edges. padding:0 lets the
-             gradient fill edge-to-edge within the card. */
-          .r-main:has(.r-rai-page) { padding: 0 !important; overflow: hidden; }
+             corners. height (not min-height) locks the card exactly to the viewport
+             so its top + bottom align with the sidebar — no gap above, no empty
+             beige below. */
+          .r-main:has(.r-rai-page) {
+            padding: 0 !important;
+            overflow: hidden;
+            height: calc(100vh - var(--page-gap) * 2);
+            min-height: 0 !important;
+          }
           .r-log-label { display: inline !important; }
           .r-log-btn { padding: 0 14px !important; }
           .r-rai-inner { padding-top: 32px !important; }
@@ -5373,8 +5380,8 @@ export default function App({ user }) {
         })()}
         {/* ═══ COACH / TALK TO RAI — Claude-style chat ═══ */}
         {page === "coach" && (
-          <div className={"r-rai-page " + (aiMessages.length === 0 ? "r-rai-intro" : "r-rai-chat")} style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 56px)" }}>
-            <div className="r-rai-scroll" style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch", display: "flex", flexDirection: "column" }}>
+          <div className={"r-rai-page " + (aiMessages.length === 0 ? "r-rai-intro" : "r-rai-chat")} style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+            <div className="r-rai-scroll" style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch", display: "flex", flexDirection: "column", minHeight: 0 }}>
               <div className="r-rai-inner" style={{ width: "100%", maxWidth: aiMessages.length === 0 ? 760 : 720, margin: "0 auto", padding: "24px 24px 0", flex: aiMessages.length === 0 ? 1 : "0 0 auto", display: aiMessages.length === 0 ? "flex" : "block", flexDirection: "column", justifyContent: aiMessages.length === 0 ? "center" : "flex-start", paddingBottom: aiMessages.length === 0 ? 80 : 0 }}>
                 {aiMessages.length === 0 ? (() => {
                   const greeting = (() => {
