@@ -263,6 +263,23 @@ export const healthChecks = {
     return { data: data || [], error };
   },
 
+  // Return a map of { client_id: count_of_completed_hcs } for this user.
+  // Used by the Health page to know if a pending HC is a client's first —
+  // first HCs get a "Start Early" affordance; HC #2+ are locked until due.
+  countCompletedByClient: async (userId) => {
+    const { data, error } = await supabase
+      .from('health_checks')
+      .select('client_id')
+      .eq('user_id', userId)
+      .not('completed_at', 'is', null);
+    if (error) return { data: {}, error };
+    const counts = {};
+    (data || []).forEach(row => {
+      counts[row.client_id] = (counts[row.client_id] || 0) + 1;
+    });
+    return { data: counts, error: null };
+  },
+
   // Get completed health checks for a client
   listForClient: async (clientId) => {
     const { data, error } = await supabase
@@ -282,6 +299,27 @@ export const healthChecks = {
         user_id: userId,
         client_id: clientId,
         due_date: dueDate
+      })
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  // Create a health check with a specific due_date (ISO date string 'YYYY-MM-DD' or Date).
+  // Used on new-client signup to schedule the first HC with a random 10-40 day offset.
+  // For standard "next HC" scheduling after completion, use scheduleNext instead.
+  create: async (userId, { client_id, due_date }) => {
+    const dateStr = due_date instanceof Date
+      ? due_date.toISOString().split('T')[0]
+      : (typeof due_date === 'string' && due_date.includes('T'))
+        ? due_date.split('T')[0]
+        : due_date;
+    const { data, error } = await supabase
+      .from('health_checks')
+      .insert({
+        user_id: userId,
+        client_id,
+        due_date: dateStr
       })
       .select()
       .single();
