@@ -81,6 +81,12 @@ export default function AuthPage() {
 
           {error && <p style={{ fontSize: 13, color: "#C4432B", marginBottom: 14 }}>{error}</p>}
 
+          {mode === 'signup' && (
+            <p style={{ fontSize: 11.5, color: C.textMuted, lineHeight: 1.5, marginBottom: 14, textAlign: "center" }}>
+              By creating an account, you confirm you have the right to process your clients' information for client management purposes.
+            </p>
+          )}
+
           <button onClick={handleSubmit} disabled={loading} style={{ width: "100%", padding: "14px", background: C.btn, color: "#fff", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: loading ? "default" : "pointer", fontFamily: "inherit", opacity: loading ? 0.7 : 1 }}>
             {loading ? '...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
           </button>
