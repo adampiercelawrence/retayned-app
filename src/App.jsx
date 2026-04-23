@@ -2873,7 +2873,7 @@ export default function App({ user }) {
               </div>
 
               {/* COMPOSER */}
-              <div className="rt-composer" style={{ gridArea: "composer", background: C.card, border: "1px solid " + C.border, borderRadius: 14, boxShadow: C.shadowMd, position: "relative" }}>
+              <div className="rt-composer" style={{ gridArea: "composer", gridRow: "2 / -1", alignSelf: "start", background: C.card, border: "1px solid " + C.border, borderRadius: 14, boxShadow: C.shadowMd, position: "sticky", top: 118, zIndex: 9 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", flexWrap: "wrap" }}>
                   <div style={{ width: 28, height: 28, borderRadius: 14, background: C.btnLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <Icon name="plus" size={14} color={C.btn} />
@@ -3930,8 +3930,8 @@ export default function App({ user }) {
             )}
 
 
-                  {/* Toolbar: search + sort + view toggle */}
-                  <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "10px 14px", marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                  {/* Toolbar: search + sort + view toggle — sticky below title band */}
+                  <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "10px 14px", marginBottom: 14, display: "flex", flexDirection: "column", gap: 10, position: "sticky", top: 118, zIndex: 9 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <Icon name="search" size={14} color={C.textMuted} />
                       <input value={clientSearch} onChange={e => setClientSearch(e.target.value)} placeholder="Search clients, owners, industries…" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 14, padding: "2px 0", fontFamily: "inherit", color: C.text }} />
