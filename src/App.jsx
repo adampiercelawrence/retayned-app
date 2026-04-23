@@ -2184,7 +2184,6 @@ export default function App({ user }) {
             box-shadow: 0 1px 2px rgba(10,10,10,0.03), 0 2px 8px rgba(10,10,10,0.05);
             overflow-y: auto;
             overflow-x: hidden;
-            scroll-behavior: smooth;
           }
           /* Coach page keeps the card chrome (rounded corners, shadow) like every
              other page. overflow: hidden clips the purple gradient to the rounded
@@ -2841,7 +2840,7 @@ export default function App({ user }) {
           return (
             <div className="rt-today-v4" style={{ width: "100%", display: "grid", gap: 20, alignItems: "start" }}>
               {/* STATUS BAND */}
-              <div className="rt-band" style={{ gridArea: "band", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "44px 48px 20px", margin: "-28px -48px 0", borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap", position: "sticky", top: 0, background: C.card, zIndex: 10, boxShadow: "0 4px 12px -6px rgba(10,10,10,0.08)" }}>
+              <div className="rt-band" style={{ gridArea: "band", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "44px 48px 20px", margin: "-28px -48px 0", borderBottom: "1px solid " + C.borderLight, borderTopLeftRadius: 14, borderTopRightRadius: 14, flexWrap: "wrap", position: "sticky", top: 0, background: C.card, zIndex: 10, boxShadow: "0 4px 12px -6px rgba(10,10,10,0.08)" }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>{displayDate}</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>
@@ -3526,7 +3525,7 @@ export default function App({ user }) {
           return (
             <div style={{ width: "100%" }}>
               {/* STATUS BAND */}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "44px 48px 20px", margin: "-28px -48px 20px", borderBottom: "1px solid " + C.borderLight, position: "sticky", top: 0, background: C.card, zIndex: 10, boxShadow: "0 4px 12px -6px rgba(10,10,10,0.08)" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "44px 48px 20px", margin: "-28px -48px 20px", borderBottom: "1px solid " + C.borderLight, borderTopLeftRadius: 14, borderTopRightRadius: 14, position: "sticky", top: 0, background: C.card, zIndex: 10, boxShadow: "0 4px 12px -6px rgba(10,10,10,0.08)" }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Your portfolio</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Clients</h1>
@@ -4336,7 +4335,7 @@ export default function App({ user }) {
           return (
             <div style={{ width: "100%" }}>
               {/* STATUS BAND */}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "44px 48px 20px", margin: "-28px -48px 20px", borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap", position: "sticky", top: 0, background: C.card, zIndex: 10, boxShadow: "0 4px 12px -6px rgba(10,10,10,0.08)" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "44px 48px 20px", margin: "-28px -48px 20px", borderBottom: "1px solid " + C.borderLight, borderTopLeftRadius: 14, borderTopRightRadius: 14, flexWrap: "wrap", position: "sticky", top: 0, background: C.card, zIndex: 10, boxShadow: "0 4px 12px -6px rgba(10,10,10,0.08)" }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Monthly cadence · {monthLabel}</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Health Checks</h1>
@@ -4856,7 +4855,7 @@ export default function App({ user }) {
           return (
             <div style={{ width: "100%" }}>
               {/* STATUS BAND */}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "44px 48px 20px", margin: "-28px -48px 20px", borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap", position: "sticky", top: 0, background: C.card, zIndex: 10, boxShadow: "0 4px 12px -6px rgba(10,10,10,0.08)" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "44px 48px 20px", margin: "-28px -48px 20px", borderBottom: "1px solid " + C.borderLight, borderTopLeftRadius: 14, borderTopRightRadius: 14, flexWrap: "wrap", position: "sticky", top: 0, background: C.card, zIndex: 10, boxShadow: "0 4px 12px -6px rgba(10,10,10,0.08)" }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Word of mouth · this quarter</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Referrals</h1>
@@ -5384,7 +5383,7 @@ export default function App({ user }) {
           return (
             <div style={{ width: "100%" }}>
               {/* STATUS BAND */}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "44px 48px 20px", margin: "-28px -48px 20px", borderBottom: "1px solid " + C.borderLight, position: "sticky", top: 0, background: C.card, zIndex: 10, boxShadow: "0 4px 12px -6px rgba(10,10,10,0.08)" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "44px 48px 20px", margin: "-28px -48px 20px", borderBottom: "1px solid " + C.borderLight, borderTopLeftRadius: 14, borderTopRightRadius: 14, position: "sticky", top: 0, background: C.card, zIndex: 10, boxShadow: "0 4px 12px -6px rgba(10,10,10,0.08)" }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Past clients · one-offs · kept warm</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Rolodex</h1>
