@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "./lib/supabase";
 import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex as rolodexDb, referrals as referralsDb, raiSuggestions as suggestionsDb, raiConversations as convoDb, profile as profileDb, touchpoints as touchpointsDb, buildRaiContext } from "./lib/db";
- 
+
 const C = {
   primary: "#33543E", primaryLight: "#558B68", primarySoft: "#E6EFE9", primaryGhost: "#F3F8F5",
   bg: "#FAFAF7", card: "#FFFFFF", surface: "#EEEFEB", surfaceWarm: "#F2EEE8",
@@ -3205,8 +3205,8 @@ export default function App({ user }) {
                 </div>
 
               {/* CALENDAR — right column on desktop (>900px). Mobile gets the strip instead. */}
-              <div className="rt-focus-col" style={{ gridArea: "focus", display: "flex", flexDirection: "column", position: "sticky", top: 20, gap: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px 8px" }}>
+              <div className="rt-focus-col" style={{ gridArea: "focus", display: "flex", flexDirection: "column", position: "sticky", top: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px 12px" }}>
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Today's calendar</span>
                 </div>
                 <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px 16px" }}>
