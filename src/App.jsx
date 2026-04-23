@@ -2181,7 +2181,7 @@ export default function App({ user }) {
             left: calc(var(--sidebar-w) + var(--page-gap) + var(--page-gap));
             background: ${C.card};
             border-radius: 14px;
-            box-shadow: 0 1px 2px rgba(10,10,10,0.03), 0 2px 8px rgba(10,10,10,0.05);
+            box-shadow: 0 4px 8px rgba(10,10,10,0.06), 0 12px 32px rgba(10,10,10,0.12);
             overflow-y: auto;
             overflow-x: hidden;
           }
