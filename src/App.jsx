@@ -2417,7 +2417,7 @@ export default function App({ user }) {
       )}
 
       {/* SIDEBAR */}
-      <div className="r-desk" style={{ width: 240, background: C.surfaceWarm, flexDirection: "column", position: "fixed", top: 14, left: 14, bottom: 14, zIndex: 50, borderRadius: 14, boxShadow: "0 1px 2px rgba(10,10,10,0.03), 0 2px 8px rgba(10,10,10,0.05)", display: "flex" }}>
+      <div className="r-desk" style={{ width: 240, background: C.surfaceWarm, flexDirection: "column", position: "fixed", top: 14, left: 14, bottom: 14, zIndex: 50, borderRadius: 14, boxShadow: "0 4px 8px rgba(10,10,10,0.06), 0 12px 32px rgba(10,10,10,0.12)", display: "flex" }}>
         {/* Logo — fixed at top */}
         <div style={{ padding: "20px 18px 18px", flexShrink: 0 }}>
           <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span>
