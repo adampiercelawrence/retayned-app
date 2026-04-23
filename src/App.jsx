@@ -4264,6 +4264,22 @@ export default function App({ user }) {
           const driftColor = (d) => d === "Improving" ? C.success : d === "Stable" ? C.primary : d === "Something shifted" ? C.warning : C.danger;
           const driftBg = (d) => d === "Improving" ? "#D1FAE5" : d === "Stable" ? C.primarySoft : d === "Something shifted" ? "#FEF3C7" : "#FEE2E2";
 
+          // Drift wall uses a 4-tier label set (Thriving / Stable / Shifted / Declining).
+          // calcDrift() returns 5 states; merge "At risk" into "Declining" and "Improving"
+          // into "Thriving" for plot + pill purposes.
+          const toDriftTier = (d) => {
+            if (!d) return "Stable";
+            if (d === "Improving") return "Thriving";
+            if (d === "Stable") return "Stable";
+            if (d === "Something shifted") return "Shifted";
+            if (d === "Declining" || d === "At risk") return "Declining";
+            return "Stable";
+          };
+          const driftTierColor = (t) => t === "Thriving" ? C.retElite : t === "Stable" ? C.retGood : t === "Shifted" ? C.retWarn : C.retCrit;
+          const driftTierBg = (t) => t === "Thriving" ? "#DDEBE3" : t === "Stable" ? "#E2F0E8" : t === "Shifted" ? "#FBEBD5" : "#F7D9D0";
+          // Stubbed one-liner per drift tier (wired to real note field post-launch)
+          const driftStub = (t) => t === "Thriving" ? "Relationship trending up." : t === "Stable" ? "Steady. Nothing to flag." : t === "Shifted" ? "Something worth watching." : "Signals are declining.";
+
           const submitHc = async (client) => {
             const answers = hcAnswers[client] || [];
             const drift = calcDrift(answers);
@@ -4371,8 +4387,87 @@ export default function App({ user }) {
               {/* MAIN GRID: rail + main + rai (rai shows on >=1440px) */}
               <div className="rc-grid" style={{ display: "grid", gap: 20, alignItems: "start" }}>
 
-                {/* LEFT RAIL — queue of clients awaiting health check */}
+                {/* LEFT RAIL — calendar + queue */}
                 <div className="rc-rail" style={{ position: "sticky", top: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+                  {/* ─── Calendar — current month rhythm ─── */}
+                  {(() => {
+                    const today = new Date();
+                    const year = today.getFullYear();
+                    const monthIdx = today.getMonth();
+                    const todayDay = today.getDate();
+                    const firstDay = new Date(year, monthIdx, 1);
+                    const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+                    const startCol = firstDay.getDay(); // 0=Sun
+                    // Build day states from hcQueue: due_date in current month (not yet done) → planned.
+                    // Logged days require a completed-HC fetch which we don't do yet; they'll
+                    // light up when that fetch gets wired in. "Today" always wins over planned.
+                    const byDay = {};
+                    hcQueue.forEach(h => {
+                      if (h.due_date) {
+                        const d = new Date(h.due_date);
+                        if (d.getFullYear() === year && d.getMonth() === monthIdx && d.getDate() >= todayDay) {
+                          byDay[d.getDate()] = "planned";
+                        }
+                      }
+                    });
+                    // Mark just-completed sessions so the user gets immediate visual feedback
+                    Object.keys(hcDone).forEach(clientName => {
+                      if (hcDone[clientName]) byDay[todayDay] = "logged";
+                    });
+                    const loggedCount = Object.values(byDay).filter(s => s === "logged").length;
+                    const monthName = today.toLocaleString("en-US", { month: "long" });
+                    // Build the grid: 6 rows × 7 cols, fill with null where out-of-month
+                    const cells = [];
+                    for (let i = 0; i < startCol; i++) cells.push(null);
+                    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+                    while (cells.length % 7 !== 0) cells.push(null);
+                    const daysHdr = ["S", "M", "T", "W", "T", "F", "S"];
+                    return (
+                      <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
+                        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
+                          <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>{monthName} rhythm</span>
+                          <span style={{ fontSize: 10.5, color: C.textMuted, fontVariantNumeric: "tabular-nums" }}><b style={{ color: C.text }}>{loggedCount}</b> checks · <b style={{ color: C.text }}>{todayDay}</b>/{daysInMonth}</span>
+                        </div>
+                        {/* Day-of-week header */}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
+                          {daysHdr.map((d, i) => (
+                            <div key={"h-" + i} style={{ fontSize: 9.5, color: C.textMuted, textAlign: "center", fontWeight: 500 }}>{d}</div>
+                          ))}
+                        </div>
+                        {/* Day grid */}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+                          {cells.map((d, i) => {
+                            if (d === null) return <div key={"c-" + i} />;
+                            const state = d === todayDay ? "today" : byDay[d] || null;
+                            const isToday = state === "today";
+                            const isLogged = state === "logged";
+                            const isPlanned = state === "planned";
+                            return (
+                              <div key={"c-" + i} style={{
+                                aspectRatio: "1",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: 11,
+                                fontWeight: isToday || isLogged ? 700 : 500,
+                                fontVariantNumeric: "tabular-nums",
+                                borderRadius: 6,
+                                color: isToday ? "#fff" : isLogged ? "#fff" : isPlanned ? C.textSec : C.textMuted,
+                                background: isToday ? C.btn : isLogged ? C.retGood : "transparent",
+                                border: isPlanned ? "1px dashed " + C.border : "1px solid transparent",
+                              }}>{d}</div>
+                            );
+                          })}
+                        </div>
+                        {/* Legend */}
+                        <div style={{ display: "flex", gap: 10, marginTop: 12, fontSize: 10, color: C.textMuted, flexWrap: "wrap" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: C.retGood }} />logged</span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "transparent", border: "1px dashed " + C.border }} />planned</span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: C.btn }} />today</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
                     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
                       <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Queue</span>
@@ -4505,69 +4600,60 @@ export default function App({ user }) {
 
                   {/* ─── Drift Wall — 2D quadrant ─── */}
                   {driftPoints.length > 0 && (() => {
-                    const W = 600, H = 380;
-                    const padL = 50, padR = 20, padT = 36, padB = 44;
+                    const W = 640, H = 380;
+                    const padL = 46, padR = 22, padT = 40, padB = 50;
                     const innerW = W - padL - padR;
                     const innerH = H - padT - padB;
-                    const xMin = -10, xMax = 20; // cadence drift days
-                    const yMin = -6, yMax = 6;   // score delta
+                    const xMin = -10, xMax = 20;
+                    const yMin = -8, yMax = 6;
                     const xToPx = (x) => padL + ((Math.max(xMin, Math.min(xMax, x)) - xMin) / (xMax - xMin)) * innerW;
                     const yToPx = (y) => padT + innerH - ((Math.max(yMin, Math.min(yMax, y)) - yMin) / (yMax - yMin)) * innerH;
                     const zeroX = xToPx(0);
                     const zeroY = yToPx(0);
-                    // Quadrant tints (subtle)
-                    const tints = {
-                      tl: C.retGood + "11",   // score↑ cadence held (healthy)
-                      tr: C.retOk + "16",     // score↑ cadence slip (investigate)
-                      bl: C.retOk + "16",     // score↓ cadence held (worrying)
-                      br: C.retCrit + "15",   // score↓ cadence slip (danger)
-                    };
                     return (
-                      <div style={{ marginTop: 24, background: C.card, borderRadius: 12, border: "1px solid " + C.border, boxShadow: C.shadowSm, padding: "18px 20px" }}>
-                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
+                      <div style={{ marginTop: 24, background: C.card, borderRadius: 12, border: "1px solid " + C.border, boxShadow: C.shadowSm, padding: "20px 22px 16px" }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
                           <div>
                             <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: 0.4 }}>Drift wall — this month</div>
-                            <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>Every client, plotted by how they moved</div>
+                            <div style={{ fontSize: 13, color: C.textSec, marginTop: 3 }}>Every client, plotted by how they moved.</div>
                           </div>
-                          <div style={{ display: "flex", gap: 10, fontSize: 10.5, color: C.textMuted, flexWrap: "wrap" }}>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 4, background: C.retElite }} />Thriving</span>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 4, background: C.retGood }} />Healthy</span>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 4, background: C.retOk }} />Watch</span>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 4, background: C.retWarn }} />At risk</span>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 4, background: C.retCrit }} />Critical</span>
+                          <div style={{ display: "flex", gap: 14, fontSize: 11, color: C.textSec, flexWrap: "wrap" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: C.retElite }} />Thriving</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: C.retGood }} />Stable</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: C.retWarn }} />Shifted</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: C.retCrit }} />Declining</span>
                           </div>
                         </div>
                         <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
-                          {/* Quadrant tints */}
-                          <rect x={padL}   y={padT}   width={zeroX - padL}   height={zeroY - padT}   fill={tints.tl} />
-                          <rect x={zeroX}  y={padT}   width={W - padR - zeroX} height={zeroY - padT}   fill={tints.tr} />
-                          <rect x={padL}   y={zeroY}  width={zeroX - padL}   height={H - padB - zeroY} fill={tints.bl} />
-                          <rect x={zeroX}  y={zeroY}  width={W - padR - zeroX} height={H - padB - zeroY} fill={tints.br} />
-                          {/* Frame */}
-                          <rect x={padL} y={padT} width={innerW} height={innerH} fill="none" stroke={C.borderLight} strokeWidth="1" />
-                          {/* Zero axes — dashed */}
-                          <line x1={zeroX} y1={padT} x2={zeroX} y2={padT + innerH} stroke={C.border} strokeWidth="1" strokeDasharray="3 3" />
-                          <line x1={padL} y1={zeroY} x2={padL + innerW} y2={zeroY} stroke={C.border} strokeWidth="1" strokeDasharray="3 3" />
-                          {/* Quadrant labels */}
-                          <text x={padL + 10}               y={padT + 16} fontSize="9.5" fontWeight="700" fill={C.retElite} letterSpacing="0.4">SCORE ↑ · CADENCE HELD</text>
-                          <text x={zeroX + 10}              y={padT + 16} fontSize="9.5" fontWeight="700" fill={C.retOk} letterSpacing="0.4">SCORE ↑ · CADENCE SLIP</text>
-                          <text x={padL + 10}               y={padT + innerH - 8} fontSize="9.5" fontWeight="700" fill={C.retOk} letterSpacing="0.4">SCORE ↓ · CADENCE HELD</text>
-                          <text x={zeroX + 10}              y={padT + innerH - 8} fontSize="9.5" fontWeight="700" fill={C.retCrit} letterSpacing="0.4">SCORE ↓ · CADENCE SLIP</text>
+                          {/* Subtle quadrant tints */}
+                          <rect x={padL}   y={padT}   width={zeroX - padL}      height={zeroY - padT}      fill={C.retGood + "10"} />
+                          <rect x={zeroX}  y={padT}   width={W - padR - zeroX}  height={zeroY - padT}      fill={C.retWarn + "0A"} />
+                          <rect x={padL}   y={zeroY}  width={zeroX - padL}      height={H - padB - zeroY}  fill={C.retWarn + "0A"} />
+                          <rect x={zeroX}  y={zeroY}  width={W - padR - zeroX}  height={H - padB - zeroY}  fill={C.retCrit + "10"} />
+                          {/* Zero-axis dividers — subtle */}
+                          <line x1={zeroX} y1={padT} x2={zeroX} y2={padT + innerH} stroke={C.borderLight} strokeWidth="1" />
+                          <line x1={padL} y1={zeroY} x2={padL + innerW} y2={zeroY} stroke={C.borderLight} strokeWidth="1" />
+                          {/* Quadrant labels — positioned in the 4 corners, muted */}
+                          <text x={padL + 10}          y={padT + 18}          fontSize="10" fontWeight="700" fill={C.retElite} letterSpacing="0.5" opacity="0.75">SCORE ↑ · CADENCE HELD</text>
+                          <text x={W - padR - 10}      y={padT + 18}          fontSize="10" fontWeight="700" fill={C.retWarn}  letterSpacing="0.5" opacity="0.75" textAnchor="end">SCORE ↑ · CADENCE SLIP</text>
+                          <text x={padL + 10}          y={padT + innerH - 10} fontSize="10" fontWeight="700" fill={C.retWarn}  letterSpacing="0.5" opacity="0.75">SCORE ↓ · CADENCE HELD</text>
+                          <text x={W - padR - 10}      y={padT + innerH - 10} fontSize="10" fontWeight="700" fill={C.retCrit}  letterSpacing="0.5" opacity="0.75" textAnchor="end">SCORE ↓ · CADENCE SLIP</text>
                           {/* Axis tick labels */}
-                          <text x={padL - 8} y={padT + 4}           fontSize="9" fill={C.textMuted} textAnchor="end">+{yMax}</text>
-                          <text x={padL - 8} y={padT + innerH + 4}  fontSize="9" fill={C.textMuted} textAnchor="end">{yMin}</text>
-                          <text x={padL}                y={H - padB + 16} fontSize="9.5" fill={C.textMuted}>on-target cadence</text>
-                          <text x={padL + innerW}       y={H - padB + 16} fontSize="9.5" fill={C.textMuted} textAnchor="end">+{xMax} days slower</text>
-                          {/* Client dots */}
+                          <text x={padL - 10} y={padT + 6}          fontSize="10" fill={C.textMuted} textAnchor="end">+{yMax}</text>
+                          <text x={padL - 10} y={padT + innerH + 4} fontSize="10" fill={C.textMuted} textAnchor="end">{yMin}</text>
+                          <text x={padL}            y={H - 14}       fontSize="10.5" fill={C.textMuted}>on-target cadence</text>
+                          <text x={padL + innerW}   y={H - 14}       fontSize="10.5" fill={C.textMuted} textAnchor="end">+{xMax} days slower</text>
+                          {/* Client dots — colored by drift tier */}
                           {driftPoints.map(({ c, delta, drift }) => {
                             const cx = xToPx(drift);
                             const cy = yToPx(delta);
-                            const color = retColor(c.ret || 50);
+                            const tier = toDriftTier(clientDrift[c.name]);
+                            const color = driftTierColor(tier);
                             const initials = c.name.split(/\s|&/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase();
                             return (
                               <g key={c.id}>
-                                <circle cx={cx} cy={cy} r={15} fill={color} opacity="0.92" />
-                                <text x={cx} y={cy + 3.5} fontSize="9" fontWeight="700" fill="#fff" textAnchor="middle" style={{ pointerEvents: "none", fontFamily: "inherit" }}>{initials}</text>
+                                <circle cx={cx} cy={cy} r={16} fill={color} opacity="0.95" />
+                                <text x={cx} y={cy + 3.8} fontSize="9.5" fontWeight="700" fill="#fff" textAnchor="middle" style={{ pointerEvents: "none", fontFamily: "inherit" }}>{initials}</text>
                               </g>
                             );
                           })}
@@ -4576,23 +4662,34 @@ export default function App({ user }) {
                     );
                   })()}
 
-                  {/* Done today */}
+                  {/* Done this month */}
                   {justCompleted.length > 0 && (
-                    <div style={{ marginTop: 24 }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Done today · {justCompleted.length}</div>
-                      <div style={{ background: C.card, borderRadius: 12, border: "1px solid " + C.borderLight, overflow: "hidden" }}>
-                        {justCompleted.map((h, i) => {
-                          const drift = clientDrift[h.client];
-                          return (
-                            <div key={"done-" + i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: i < justCompleted.length - 1 ? "1px solid " + C.borderLight : "none", opacity: 0.7 }}>
-                              <span style={{ fontSize: 13.5, fontWeight: 500, color: C.textSec }}>{h.client}</span>
-                              {drift && (
-                                <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 10px", borderRadius: 999, background: driftBg(drift), color: driftColor(drift) }}>{drift}</span>
-                              )}
-                            </div>
-                          );
-                        })}
+                    <div style={{ marginTop: 24, background: C.card, borderRadius: 12, border: "1px solid " + C.border, boxShadow: C.shadowSm, overflow: "hidden" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "16px 20px 12px", borderBottom: "1px solid " + C.borderLight }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: 0.4 }}>Done this month</span>
+                        <span style={{ fontSize: 11, color: C.textMuted }}>Most recent first</span>
                       </div>
+                      {justCompleted.map((h, i) => {
+                        const tier = toDriftTier(clientDrift[h.client]);
+                        const tc = driftTierColor(tier);
+                        const initials = h.client.split(/\s|&/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase();
+                        return (
+                          <div key={"done-" + i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 20px 12px 16px", borderBottom: i < justCompleted.length - 1 ? "1px solid " + C.borderLight : "none" }}>
+                            {/* Left priority bar */}
+                            <div style={{ width: 3, alignSelf: "stretch", background: tc, borderRadius: 2, flexShrink: 0 }} />
+                            {/* Avatar */}
+                            <div style={{ width: 28, height: 28, borderRadius: 14, background: tc, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{initials}</div>
+                            {/* Name */}
+                            <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text, flexShrink: 0 }}>{h.client}</span>
+                            {/* Drift pill */}
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 999, border: "1px solid " + tc, color: tc, letterSpacing: 0.4, textTransform: "uppercase", flexShrink: 0 }}>{tier}</span>
+                            {/* One-liner stub */}
+                            <span style={{ fontSize: 12.5, color: C.textSec, fontStyle: "italic", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{driftStub(tier)}</span>
+                            {/* Timestamp — stubbed as "Today" for just-completed checks */}
+                            <span style={{ fontSize: 11.5, color: C.textMuted, flexShrink: 0 }}>Today</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -6074,7 +6171,7 @@ export default function App({ user }) {
         return (
           <>
             <div onClick={() => setSelectedClient(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 90 }} />
-            <div className="r-client-modal" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "100%", maxWidth: 520, maxHeight: "90vh", background: C.card, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", zIndex: 100, overflowY: "scroll", borderRadius: 16 }}>
+            <div className="r-client-modal" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "100%", maxWidth: 520, maxHeight: "90vh", background: C.card, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", zIndex: 100, overflowY: "auto", borderRadius: 16 }}>
               {/* Top bar — close only (industry now lives in hero eyebrow) */}
               <div style={{ padding: "12px 20px", display: "flex", justifyContent: "flex-end", position: "sticky", top: 0, background: C.card, zIndex: 1, borderBottom: "1px solid " + C.borderLight }}>
                 <button onClick={() => setSelectedClient(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: C.textMuted, lineHeight: 1, padding: 0, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
