@@ -2132,7 +2132,7 @@ export default function App({ user }) {
         .r-mob-top { display: flex; }
         .r-mob-bot { display: flex; }
         .r-main { padding: 16px 16px 96px; }
-        .r-main:has(.r-rai-page) { background: none; }
+        .r-main:has(.r-rai-page) { background: none; padding: 0 !important; }
         .r-today-panel { display: none !important; }
         .r-client-modal { top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; transform: none !important; max-width: 100% !important; max-height: 100% !important; border-radius: 0 !important; }
         /* Mobile: Log button becomes icon-only, tighter padding */
@@ -2143,7 +2143,6 @@ export default function App({ user }) {
         .r-chat-msg-user { scroll-margin-top: 56px !important; }
         /* Mobile: tighten chat input bar bottom padding — clear mobile nav (60px) + breathing room */
         .r-rai-inputbar { padding: 10px 16px 88px !important; }
-        .r-main:has(.r-rai-page) { padding-bottom: 0 !important; }
         /* Rai purple gradient — stronger on intro empty-state, lighter once chat starts */
         .r-rai-intro {
           background:
