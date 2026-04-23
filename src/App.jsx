@@ -2211,13 +2211,11 @@ export default function App({ user }) {
           0%   { transform: translate(0,0) rotate(0); opacity: 1; }
           100% { transform: translate(var(--tx), 70vh) rotate(var(--rot)); opacity: 0; }
         }
-        .rt-row:hover { transform: translateY(-1px); background: ${C.primaryGhost} !important; }
-        .rc-queue-item:hover { background: ${C.primaryGhost} !important; }
         .rt-row:hover .rt-dismiss { opacity: 1 !important; }
+        .rc-queue-item:hover { background: ${C.primaryGhost} !important; }
         /* Rai sidebar — reveal star/delete on row hover */
         .r-convo-row:hover { background: rgba(91,33,182,0.06); }
         .r-convo-row:hover .r-convo-action { opacity: 1 !important; }
-        .rt-row-selected { background: ${C.surfaceSelected}; }
         /* Today v4 — Grid layout, 3 breakpoints */
         /* Default: narrow desktop (901-1439px) — 2 cols, status + composer span full width, tasks + focus below */
         .rt-today-v4 {
@@ -2253,8 +2251,7 @@ export default function App({ user }) {
           .rt-composer-pill span { font-size: 11.5px !important; }
           .rt-row-meta span:nth-child(n+4) { display: none !important; }
           .rt-row-score { display: none !important; }
-          /* Mobile: no selected-row fill (no Focus Pane to open) + tag collapses to icon */
-          .rt-row-selected { background: #FFFFFF !important; }
+          /* Mobile: tag collapses to icon */
           .rt-row-tag { padding: 0 !important; border: none !important; background: transparent !important; }
           .rt-row-tag-label { display: none !important; }
         }
@@ -3073,35 +3070,6 @@ export default function App({ user }) {
 
               {/* TASKS COLUMN */}
               <div className="rt-tasks-col" style={{ gridArea: "tasks", minWidth: 0 }}>
-                  {/* Desktop calendar — placeholder for Google Calendar integration */}
-                  <div className="rt-desk-cal" style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px 16px", marginBottom: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 26, height: 26, borderRadius: 7, background: C.primaryGhost, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <Icon name="calendar" size={13} color={C.primary} />
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: 0.3, textTransform: "uppercase", fontWeight: 700 }}>Today's calendar</div>
-                          <div style={{ fontSize: 12.5, color: C.textSec, marginTop: 1 }}>From Google Calendar · connect to activate</div>
-                        </div>
-                      </div>
-                      <button style={{ fontSize: 11.5, fontWeight: 600, padding: "6px 12px", background: C.btnLight, color: C.btn, border: "none", borderRadius: 7, cursor: "pointer", fontFamily: "inherit" }}>Connect</button>
-                    </div>
-                    {/* Placeholder events list */}
-                    <div style={{ opacity: 0.55 }}>
-                      {[
-                        { time: "2:30pm", title: "Backyard Discovery sync" },
-                        { time: "4:00pm", title: "Motley Fool review" },
-                        { time: "5:30pm", title: "Internal — weekly planning" },
-                      ].map((e, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderTop: "1px solid " + C.borderLight }}>
-                          <span style={{ fontSize: 11.5, color: C.textMuted, fontVariantNumeric: "tabular-nums", fontWeight: 500, width: 56, flexShrink: 0 }}>{e.time}</span>
-                          <span style={{ fontSize: 13, color: C.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 4px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Your plate</span>
@@ -3138,17 +3106,15 @@ export default function App({ user }) {
                       const delta = client ? stubDelta(client.name) : 0;
 
                       return (
-                        <div key={t.id} onClick={() => setFocusId(t.id)}
-                          className={"rt-row" + (isFocus ? " rt-row-selected" : "")}
+                        <div key={t.id}
+                          className="rt-row"
                           style={{
                             display: "flex", alignItems: "center", gap: 12,
                             padding: "12px 14px",
-                            background: isFocus ? C.surfaceSelected : C.card,
+                            background: C.card,
                             border: "1px solid " + C.borderSoft,
                             borderRadius: 12,
                             boxShadow: C.shadowSm,
-                            cursor: "pointer",
-                            transition: "background 150ms",
                           }}>
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleTask(t.id); }}
@@ -3238,36 +3204,37 @@ export default function App({ user }) {
                   )}
                 </div>
 
-              {/* FOCUS PANE — on desktop (>900px). Only when task selected. */}
-              <div className="rt-focus-col" style={{ gridArea: "focus", display: "flex", flexDirection: "column", position: "sticky", top: 20 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px 12px" }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Current focus</span>
+              {/* CALENDAR — right column on desktop (>900px). Mobile gets the strip instead. */}
+              <div className="rt-focus-col" style={{ gridArea: "focus", display: "flex", flexDirection: "column", position: "sticky", top: 20, gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px 8px" }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Today's calendar</span>
                 </div>
-                {focusTask && focusClient ? (
-                  <FocusPane
-                    task={focusTask}
-                    client={focusClient}
-                    retHistory={stubRetentionHistory(focusClient.ret || 60)}
-                    whyText={stubWhy(focusTask, focusClient)}
-                    whyNowText={stubWhyNow(focusTask, focusClient)}
-                    patternText={stubPattern(focusTask, focusClient)}
-                    confidence={stubConfidence()}
-                    draftText={stubDraft(focusClient.name)}
-                    contextData={buildContext(focusClient)}
-                    C={C}
-                    Icon={Icon}
-                    Spark={Spark}
-                    ClientAvatar={ClientAvatar}
-                    ScoreChip={ScoreChip}
-                    retColor={retColor}
-                    onComplete={() => toggleTask(focusTask.id)}
-                    onLog={() => { setShowTouchpoint(true); setTpClient(focusClient.name); }}
-                  />
-                ) : (
-                  <div style={{ padding: "28px 20px", background: "transparent", border: "1px dashed " + C.border, borderRadius: 14, textAlign: "center" }}>
-                    <div style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5 }}>Pick a task to focus on.</div>
+                <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <div style={{ width: 26, height: 26, borderRadius: 7, background: C.primaryGhost, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <Icon name="calendar" size={13} color={C.primary} />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: 0.3, textTransform: "uppercase", fontWeight: 700 }}>From Google Calendar</div>
+                        <div style={{ fontSize: 12, color: C.textSec, marginTop: 1 }}>Connect to activate</div>
+                      </div>
+                    </div>
+                    <button style={{ fontSize: 11.5, fontWeight: 600, padding: "6px 12px", background: C.btnLight, color: C.btn, border: "none", borderRadius: 7, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Connect</button>
                   </div>
-                )}
+                  <div style={{ opacity: 0.55 }}>
+                    {[
+                      { time: "2:30pm", title: "Backyard Discovery sync" },
+                      { time: "4:00pm", title: "Motley Fool review" },
+                      { time: "5:30pm", title: "Internal — weekly planning" },
+                    ].map((e, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderTop: "1px solid " + C.borderLight }}>
+                        <span style={{ fontSize: 11.5, color: C.textMuted, fontVariantNumeric: "tabular-nums", fontWeight: 500, width: 56, flexShrink: 0 }}>{e.time}</span>
+                        <span style={{ fontSize: 13, color: C.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* RAI COLUMN — wide desktop only (>=1440px). Grid auto-aligns with composer. */}
