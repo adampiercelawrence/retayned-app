@@ -4842,11 +4842,13 @@ export default function App({ user }) {
           // ─── Network Map (hub-and-spoke SVG) ────────────────────────────
           // Referrers = clients who have sent at least one referral.
           // Build: { id, name, revenue, children: [{ name, mrr, status }] }
+          // Guard against missing/null `from` and `name` fields on logged refs.
           const referrerMap = {};
           refs.forEach(r => {
-            if (!referrerMap[r.from]) referrerMap[r.from] = { id: r.from, name: r.from, revenue: 0, children: [] };
-            referrerMap[r.from].children.push({ id: r.id, name: r.name, mrr: r.revenue || 0, status: r.status, on: r.on });
-            referrerMap[r.from].revenue += (r.revenue || 0);
+            const fromName = r.from || "Unknown";
+            if (!referrerMap[fromName]) referrerMap[fromName] = { id: fromName, name: fromName, revenue: 0, children: [] };
+            referrerMap[fromName].children.push({ id: r.id || Math.random(), name: r.name || "Untitled", mrr: r.revenue || 0, status: r.status || "pending", on: r.on });
+            referrerMap[fromName].revenue += (r.revenue || 0);
           });
           const referrers = Object.values(referrerMap);
 
