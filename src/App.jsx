@@ -4738,6 +4738,7 @@ export default function App({ user }) {
 
         {/* ═══ REFERRALS v2 — "The Network Map" ═══ */}
         {page === "referrals" && (() => {
+          try {
           // ─── Helpers ───────────────────────────────────────────────────
           const AVATAR_COLORS = ["#1F7A5C", "#2C9A76", "#0C3A2E", C.btn, "#D17A1B", "#12523F"];
           const getInitials = (name) => (name || "?").split(/\s+/).map(w => w[0]).filter(Boolean).join("").slice(0, 2).toUpperCase();
@@ -4877,11 +4878,11 @@ export default function App({ user }) {
                 </div>
               </div>
 
-              {/* MAIN GRID: left rail (ask queue) + main (network + draft) */}
-              <div style={{ display: "grid", gridTemplateColumns: "300px minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
+              {/* MAIN GRID: rail + main + rai (rai shows on >=1440px) */}
+              <div className="rc-grid" style={{ display: "grid", gap: 20, alignItems: "start" }}>
 
                 {/* LEFT RAIL: Who to ask next */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 14, position: "sticky", top: 0, alignSelf: "start" }}>
+                <div className="rc-rail" style={{ display: "flex", flexDirection: "column", gap: 14, position: "sticky", top: 0, alignSelf: "start" }}>
                   <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, overflow: "hidden" }}>
                     <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid " + C.borderLight }}>
                       <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Who to ask next</div>
@@ -5114,6 +5115,11 @@ export default function App({ user }) {
                     )}
                   </div>
                 </div>
+
+                {/* RAI COLUMN — wide desktop only (>=1440px) */}
+                <div className="rc-rai-col" style={{ display: "none", position: "sticky", top: 20, alignSelf: "start" }}>
+                  <RaiMiniPanel />
+                </div>
               </div>
 
               {/* Referral form modal — preserved from v1 */}
@@ -5147,10 +5153,20 @@ export default function App({ user }) {
               )}
             </div>
           );
+          } catch (err) {
+            return (
+              <div style={{ padding: 40, background: "#FFF5F5", border: "2px solid #C04323", borderRadius: 14, margin: 20 }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#C04323", marginBottom: 12 }}>Referrals page crashed</div>
+                <div style={{ fontSize: 13, color: C.text, marginBottom: 8 }}>Error: <code style={{ background: C.bg, padding: "2px 6px", borderRadius: 4 }}>{String(err?.message || err)}</code></div>
+                <pre style={{ fontSize: 11, color: C.textSec, background: C.bg, padding: 12, borderRadius: 6, overflow: "auto", maxHeight: 300 }}>{String(err?.stack || "No stack trace")}</pre>
+              </div>
+            );
+          }
         })()}
 
         {/* ═══ ROLODEX v2 — "The Deck" ═══ */}
         {page === "retros" && (() => {
+          try {
           // ─── Helpers ───────────────────────────────────────────────────
           // Avatars: deterministic palette by id, initials from name.
           const AVATAR_COLORS = ["#1F7A5C", "#2C9A76", "#0C3A2E", C.btn, "#D17A1B", "#12523F"];
@@ -5347,11 +5363,11 @@ export default function App({ user }) {
                 </button>
               </div>
 
-              {/* MAIN GRID: rail + main */}
-              <div style={{ display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
+              {/* MAIN GRID: rail + main + rai (rai shows on >=1440px) */}
+              <div className="rc-grid" style={{ display: "grid", gap: 20, alignItems: "start" }}>
 
                 {/* LEFT RAIL: stacks + queue */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 14, position: "sticky", top: 0, alignSelf: "start" }}>
+                <div className="rc-rail" style={{ display: "flex", flexDirection: "column", gap: 14, position: "sticky", top: 0, alignSelf: "start" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", padding: "0 4px 2px" }}>Stacks</div>
                     {[
@@ -5568,6 +5584,11 @@ export default function App({ user }) {
                     )}
                   </div>
                 </div>
+
+                {/* RAI COLUMN — wide desktop only (>=1440px) */}
+                <div className="rc-rai-col" style={{ display: "none", position: "sticky", top: 20, alignSelf: "start" }}>
+                  <RaiMiniPanel />
+                </div>
               </div>
 
               {/* Add contact modal */}
@@ -5626,6 +5647,15 @@ export default function App({ user }) {
               )}
             </div>
           );
+          } catch (err) {
+            return (
+              <div style={{ padding: 40, background: "#FFF5F5", border: "2px solid #C04323", borderRadius: 14, margin: 20 }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#C04323", marginBottom: 12 }}>Rolodex page crashed</div>
+                <div style={{ fontSize: 13, color: C.text, marginBottom: 8 }}>Error: <code style={{ background: C.bg, padding: "2px 6px", borderRadius: 4 }}>{String(err?.message || err)}</code></div>
+                <pre style={{ fontSize: 11, color: C.textSec, background: C.bg, padding: 12, borderRadius: 6, overflow: "auto", maxHeight: 300 }}>{String(err?.stack || "No stack trace")}</pre>
+              </div>
+            );
+          }
         })()}
         {/* ═══ COACH / TALK TO RAI — Claude-style chat ═══ */}
         {page === "coach" && (
