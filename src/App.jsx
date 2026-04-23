@@ -9,7 +9,7 @@ const C = {
   text: "#1E261F", textSec: "#6B6B66", textMuted: "#9A9A93",
   ink900: "#0A0A0A", ink700: "#2A2A28", ink500: "#6B6B66", ink400: "#9A9A93", ink300: "#C4C4BD",
   border: "#D8DFD8", borderLight: "#EFEFEA", borderSoft: "#EFEFEA",
-  surfaceSelected: "#FAF6FE",
+  surfaceSelected: "#F3F8F5",
   heroGrad: "linear-gradient(145deg, #1E261F 0%, #2A382C 40%, #33543E 100%)",
   raiGrad: "linear-gradient(145deg, #1E261F 0%, #33543E 55%, #558B68 100%)",
   danger: "#C4432B", warning: "#B88B15", success: "#2D8659",
@@ -56,6 +56,9 @@ const Icon = ({ name, size = 18, color = "currentColor" }) => {
     star: (<><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" stroke={color} strokeWidth="1.8" fill="none" strokeLinejoin="round"/></>),
     starFill: (<><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill={color} stroke={color} strokeWidth="1.8" strokeLinejoin="round"/></>),
     trash: (<><polyline points="3 6 5 6 21 6" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6M10 11v6M14 11v6M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>),
+    calendar: (<><rect x="3" y="4" width="18" height="18" rx="2" stroke={color} strokeWidth="1.8" fill="none"/><line x1="16" y1="2" x2="16" y2="6" stroke={color} strokeWidth="1.8" strokeLinecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke={color} strokeWidth="1.8" strokeLinecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke={color} strokeWidth="1.8"/></>),
+    "chevron-up": (<><polyline points="18 15 12 9 6 15" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>),
+    "chevron-down": (<><polyline points="6 9 12 15 18 9" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>),
   };
 
 
@@ -572,6 +575,8 @@ export default function App({ user }) {
   // ═══ DATA LOADING ═══
   const [dataLoaded, setDataLoaded] = useState(false);
   const [hcQueue, setHcQueue] = useState([]);
+  const [todayStripOpen, setTodayStripOpen] = useState(false);
+  const [healthStripOpen, setHealthStripOpen] = useState(false);
   const [retroAnswers, setRetroAnswers] = useState({});
   const [rolodex, setRolodex] = useState([]);
   const [rolodexFlowOpen, setRolodexFlowOpen] = useState(null);
@@ -2206,7 +2211,8 @@ export default function App({ user }) {
           0%   { transform: translate(0,0) rotate(0); opacity: 1; }
           100% { transform: translate(var(--tx), 70vh) rotate(var(--rot)); opacity: 0; }
         }
-        .rt-row:hover { transform: translateY(-1px); }
+        .rt-row:hover { transform: translateY(-1px); background: ${C.primaryGhost} !important; }
+        .rc-queue-item:hover { background: ${C.primaryGhost} !important; }
         .rt-row:hover .rt-dismiss { opacity: 1 !important; }
         /* Rai sidebar — reveal star/delete on row hover */
         .r-convo-row:hover { background: rgba(91,33,182,0.06); }
@@ -2221,6 +2227,7 @@ export default function App({ user }) {
             "composer composer"
             "tasks focus";
         }
+        .rt-mob-strip { display: none; }
         @media (max-width: 900px) {
           .rt-today-v4 {
             grid-template-columns: 1fr;
@@ -2283,6 +2290,11 @@ export default function App({ user }) {
           .rc-view-toggle { display: none !important; }
           .rc-desktop-view { display: none !important; }
           .rc-mobile-list { display: block !important; }
+          .rt-mob-strip { display: block !important; }
+          .rt-desk-cal { display: none !important; }
+          .rt-today-v4 {
+            grid-template-areas: "band" "strip" "composer" "tasks" !important;
+          }
         }
         @media (min-width: 769px) {
           .rc-mobile-list { display: none !important; }
@@ -2870,6 +2882,54 @@ export default function App({ user }) {
                 </div>
               </div>
 
+              {/* MOBILE UPCOMING STRIP — between band and composer */}
+              <div className="rt-mob-strip" style={{ gridArea: "strip" }}>
+                {(() => {
+                  // Stub events until Google Calendar is wired. Shape: [{ time, title }]
+                  // In the real thing this comes from a fetched `calendarEvents` array filtered to today.
+                  const nowHr = new Date().getHours();
+                  const events = [
+                    { time: "2:30pm", title: "Backyard Discovery sync" },
+                    { time: "4:00pm", title: "Motley Fool review" },
+                    { time: "5:30pm", title: "Internal — weekly planning" },
+                  ].filter(e => {
+                    // Crude filter: show events that aren't obviously past
+                    const hr = parseInt(e.time);
+                    const pm = e.time.includes("pm");
+                    const h24 = pm && hr !== 12 ? hr + 12 : hr;
+                    return h24 >= nowHr;
+                  });
+                  const nextTime = events[0]?.time;
+                  const summary = events.length === 0 ? "Nothing left today" : `${events.length} event${events.length > 1 ? "s" : ""}${nextTime ? " · next at " + nextTime : ""}`;
+                  return (
+                    <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, overflow: "hidden" }}>
+                      <div onClick={() => setTodayStripOpen(!todayStripOpen)} style={{ padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, cursor: "pointer" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                          <div style={{ width: 28, height: 28, borderRadius: 8, background: C.primaryGhost, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Icon name="calendar" size={14} color={C.primary} />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: 0.3, textTransform: "uppercase", fontWeight: 700, marginBottom: 2 }}>Rest of today</div>
+                            <div style={{ fontSize: 13.5, color: C.text, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</div>
+                          </div>
+                        </div>
+                        <Icon name={todayStripOpen ? "chevron-up" : "chevron-down"} size={14} color={C.textMuted} />
+                      </div>
+                      {todayStripOpen && events.length > 0 && (
+                        <div style={{ padding: "4px 14px 10px", borderTop: "1px solid " + C.borderLight }}>
+                          {events.map((e, i) => (
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < events.length - 1 ? "1px solid " + C.borderLight : "none" }}>
+                              <span style={{ fontSize: 11.5, color: C.textMuted, fontVariantNumeric: "tabular-nums", fontWeight: 500, width: 48, flexShrink: 0 }}>{e.time}</span>
+                              <span style={{ fontSize: 13, color: C.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* COMPOSER */}
               <div className="rt-composer" style={{ gridArea: "composer", background: C.card, border: "1px solid " + C.border, borderRadius: 14, boxShadow: C.shadowMd, position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", flexWrap: "wrap" }}>
@@ -3013,6 +3073,35 @@ export default function App({ user }) {
 
               {/* TASKS COLUMN */}
               <div className="rt-tasks-col" style={{ gridArea: "tasks", minWidth: 0 }}>
+                  {/* Desktop calendar — placeholder for Google Calendar integration */}
+                  <div className="rt-desk-cal" style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px 16px", marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 26, height: 26, borderRadius: 7, background: C.primaryGhost, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Icon name="calendar" size={13} color={C.primary} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: 0.3, textTransform: "uppercase", fontWeight: 700 }}>Today's calendar</div>
+                          <div style={{ fontSize: 12.5, color: C.textSec, marginTop: 1 }}>From Google Calendar · connect to activate</div>
+                        </div>
+                      </div>
+                      <button style={{ fontSize: 11.5, fontWeight: 600, padding: "6px 12px", background: C.btnLight, color: C.btn, border: "none", borderRadius: 7, cursor: "pointer", fontFamily: "inherit" }}>Connect</button>
+                    </div>
+                    {/* Placeholder events list */}
+                    <div style={{ opacity: 0.55 }}>
+                      {[
+                        { time: "2:30pm", title: "Backyard Discovery sync" },
+                        { time: "4:00pm", title: "Motley Fool review" },
+                        { time: "5:30pm", title: "Internal — weekly planning" },
+                      ].map((e, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderTop: "1px solid " + C.borderLight }}>
+                          <span style={{ fontSize: 11.5, color: C.textMuted, fontVariantNumeric: "tabular-nums", fontWeight: 500, width: 56, flexShrink: 0 }}>{e.time}</span>
+                          <span style={{ fontSize: 13, color: C.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 4px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Your plate</span>
@@ -4384,6 +4473,90 @@ export default function App({ user }) {
                 </div>
               </div>
 
+              {/* MOBILE UPCOMING STRIP — between band and main grid (mobile only) */}
+              <div className="rt-mob-strip" style={{ marginBottom: 16 }}>
+                {(() => {
+                  const today = new Date();
+                  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+                  const daysLeft = daysInMonth - today.getDate();
+                  const planned = hcQueue.filter(h => !h.runnable).length;
+                  const summary = `${checkedThisMonth} logged · ${planned} planned · ${daysLeft}d left`;
+                  const monthName = today.toLocaleString("en-US", { month: "long" });
+                  const year = today.getFullYear();
+                  const monthIdx = today.getMonth();
+                  const todayDay = today.getDate();
+                  const firstDay = new Date(year, monthIdx, 1);
+                  const startCol = firstDay.getDay();
+                  const byDay = {};
+                  hcQueue.forEach(h => {
+                    if (h.due_date) {
+                      const d = new Date(h.due_date);
+                      if (d.getFullYear() === year && d.getMonth() === monthIdx && d.getDate() >= todayDay) {
+                        byDay[d.getDate()] = "planned";
+                      }
+                    }
+                  });
+                  Object.keys(hcDone).forEach(cn => { if (hcDone[cn]) byDay[todayDay] = "logged"; });
+                  const cells = [];
+                  for (let i = 0; i < startCol; i++) cells.push(null);
+                  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+                  while (cells.length % 7 !== 0) cells.push(null);
+                  const daysHdr = ["S", "M", "T", "W", "T", "F", "S"];
+                  return (
+                    <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, overflow: "hidden" }}>
+                      <div onClick={() => setHealthStripOpen(!healthStripOpen)} style={{ padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, cursor: "pointer" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                          <div style={{ width: 28, height: 28, borderRadius: 8, background: C.primaryGhost, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Icon name="health" size={14} color={C.primary} />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: 0.3, textTransform: "uppercase", fontWeight: 700, marginBottom: 2 }}>{monthName} rhythm</div>
+                            <div style={{ fontSize: 13.5, color: C.text, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</div>
+                          </div>
+                        </div>
+                        <Icon name={healthStripOpen ? "chevron-up" : "chevron-down"} size={14} color={C.textMuted} />
+                      </div>
+                      {healthStripOpen && (
+                        <div style={{ padding: 14, borderTop: "1px solid " + C.borderLight }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3, marginBottom: 6 }}>
+                            {daysHdr.map((d, i) => <div key={"h-" + i} style={{ fontSize: 9.5, color: C.textMuted, textAlign: "center", fontWeight: 500 }}>{d}</div>)}
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3 }}>
+                            {cells.map((d, i) => {
+                              if (d === null) return <div key={"c-" + i} />;
+                              const state = d === todayDay ? "today" : byDay[d] || null;
+                              const isToday = state === "today";
+                              const isLogged = state === "logged";
+                              const isPlanned = state === "planned";
+                              return (
+                                <div key={"c-" + i} style={{
+                                  aspectRatio: "1",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: 11,
+                                  fontWeight: isToday || isLogged ? 700 : 500,
+                                  fontVariantNumeric: "tabular-nums",
+                                  borderRadius: 4,
+                                  color: isToday || isLogged ? "#fff" : isPlanned ? C.textSec : C.textMuted,
+                                  background: isToday ? C.btn : isLogged ? C.retGood : "transparent",
+                                  border: isPlanned ? "1px dashed " + C.border : "1px solid transparent",
+                                }}>{d}</div>
+                              );
+                            })}
+                          </div>
+                          <div style={{ display: "flex", gap: 10, marginTop: 10, fontSize: 10, color: C.textMuted, flexWrap: "wrap" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: C.retGood }} />logged</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "transparent", border: "1px dashed " + C.border }} />planned</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: C.btn }} />today</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* MAIN GRID: rail + main + rai (rai shows on >=1440px) */}
               <div className="rc-grid" style={{ display: "grid", gap: 20, alignItems: "start" }}>
 
@@ -4484,12 +4657,20 @@ export default function App({ user }) {
                         const subLabel = overdueDays > 0 ? `${overdueDays}d overdue` : h.due === "Today" ? "Due today" : `Start early · in ${h.daysUntil}d`;
                         const subColor = overdueDays > 0 ? C.retWarn : isStartEarly ? C.btn : C.retOk;
                         return (
-                          <div key={i} onClick={() => setHcOpen(isOpen ? null : h.client)} style={{
+                          <div key={i} onClick={() => setHcOpen(isOpen ? null : h.client)}
+                            className="rc-queue-item"
+                            style={{
+                            position: "relative",
                             padding: "10px 12px", borderRadius: 8, cursor: "pointer",
-                            background: isOpen ? C.primaryGhost : "transparent",
+                            background: isOpen ? C.primarySoft : "transparent",
                             border: "1px solid " + (isOpen ? C.primary + "55" : "transparent"),
                             display: "flex", alignItems: "center", gap: 10,
+                            transition: "background 140ms",
                           }}>
+                            {/* Overdue red dot — top right */}
+                            {overdueDays > 0 && (
+                              <span style={{ position: "absolute", top: 8, right: 10, width: 7, height: 7, borderRadius: 4, background: C.retCrit }} />
+                            )}
                             <div style={{ width: 24, height: 24, borderRadius: 12, background: retColor(h.ret), color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
                               {h.client.split(/\s|&/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase()}
                             </div>
