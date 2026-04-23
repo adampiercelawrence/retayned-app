@@ -2841,7 +2841,7 @@ export default function App({ user }) {
           return (
             <div className="rt-today-v4" style={{ width: "100%", display: "grid", gap: 20, alignItems: "start" }}>
               {/* STATUS BAND */}
-              <div className="rt-band" style={{ gridArea: "band", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
+              <div className="rt-band" style={{ gridArea: "band", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "16px 4px 20px", borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap", position: "sticky", top: 0, background: C.card, zIndex: 10 }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>{displayDate}</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>
@@ -3526,7 +3526,7 @@ export default function App({ user }) {
           return (
             <div style={{ width: "100%" }}>
               {/* STATUS BAND */}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight }}>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "16px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, position: "sticky", top: 0, background: C.card, zIndex: 10 }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Your portfolio</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Clients</h1>
@@ -4336,7 +4336,7 @@ export default function App({ user }) {
           return (
             <div style={{ width: "100%" }}>
               {/* STATUS BAND */}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "16px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap", position: "sticky", top: 0, background: C.card, zIndex: 10 }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Monthly cadence · {monthLabel}</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Health Checks</h1>
@@ -4856,7 +4856,7 @@ export default function App({ user }) {
           return (
             <div style={{ width: "100%" }}>
               {/* STATUS BAND */}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "16px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap", position: "sticky", top: 0, background: C.card, zIndex: 10 }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Word of mouth · this quarter</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Referrals</h1>
@@ -4969,66 +4969,102 @@ export default function App({ user }) {
                         <div style={{ fontSize: 12 }}>Log your first one to start building the network.</div>
                       </div>
                     ) : (() => {
-                      // Layout: hub center, referrers on inner ring, children on outer ring
-                      const W = 720, H = 380;
+                      // Layout: hub center, referrers on inner ring, children on outer ring.
+                      // Angle offset prevents 2-node or 4-node layouts from collapsing to a
+                      // straight vertical line (the bug in v1). Offset is largest when n is
+                      // small and approaches 0 as n grows.
+                      const W = 820, H = 440;
                       const cx = W / 2, cy = H / 2;
-                      const innerR = 120;
-                      const outerExtra = 90;
+                      const innerR = 140;
+                      const outerExtra = 110;
+                      const n = referrers.length;
+                      const angleOffset = n <= 2 ? Math.PI / 4 : (n <= 4 ? Math.PI / 6 : 0);
+                      const maxRev = Math.max(1, ...referrers.map(rr => rr.revenue));
                       const nodes = referrers.map((r, i) => {
-                        const n = referrers.length;
-                        const theta = (i / n) * Math.PI * 2 - Math.PI / 2;
-                        const maxRev = Math.max(1, ...referrers.map(rr => rr.revenue));
-                        const thickness = 1 + (r.revenue / maxRev) * 4;
+                        const theta = (i / n) * Math.PI * 2 - Math.PI / 2 + angleOffset;
+                        const thickness = 1.5 + (r.revenue / maxRev) * 3.5;
                         return { ...r, x: cx + Math.cos(theta) * innerR, y: cy + Math.sin(theta) * innerR, theta, thickness };
                       });
+                      // Curved path from hub to referrer — bezier with control point offset
+                      // perpendicular to the line, creating a subtle arc.
+                      const curvedPath = (x1, y1, x2, y2, curvature = 0.15) => {
+                        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+                        const dx = x2 - x1, dy = y2 - y1;
+                        const len = Math.sqrt(dx * dx + dy * dy);
+                        const nx = -dy / len, ny = dx / len; // perpendicular unit vector
+                        const cpx = mx + nx * len * curvature;
+                        const cpy = my + ny * len * curvature;
+                        return `M ${x1} ${y1} Q ${cpx} ${cpy} ${x2} ${y2}`;
+                      };
                       return (
-                        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", maxHeight: 420 }} onMouseLeave={() => setNetworkHoverId(null)}>
-                          {/* Concentric circles for depth */}
-                          <circle cx={cx} cy={cy} r={innerR} fill="none" stroke={C.borderLight} strokeWidth="1" strokeDasharray="2 3" opacity="0.6" />
-                          <circle cx={cx} cy={cy} r={innerR + outerExtra} fill="none" stroke={C.borderLight} strokeWidth="1" strokeDasharray="2 3" opacity="0.4" />
-                          {/* Edges from hub to each referrer */}
-                          {nodes.map(n => {
-                            const dim = networkHoverId && networkHoverId !== n.id ? 0.2 : 1;
+                        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", maxHeight: 460 }} onMouseLeave={() => setNetworkHoverId(null)}>
+                          <defs>
+                            <radialGradient id="hubGlow" cx="50%" cy="50%" r="50%">
+                              <stop offset="0%" stopColor={C.primary} stopOpacity="0.25" />
+                              <stop offset="100%" stopColor={C.primary} stopOpacity="0" />
+                            </radialGradient>
+                            <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
+                              <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#000" floodOpacity="0.12" />
+                            </filter>
+                          </defs>
+                          {/* Decorative concentric rings for depth */}
+                          <circle cx={cx} cy={cy} r={innerR + outerExtra + 30} fill="none" stroke={C.borderLight} strokeWidth="1" strokeDasharray="2 4" opacity="0.35" />
+                          <circle cx={cx} cy={cy} r={innerR + outerExtra} fill="none" stroke={C.borderLight} strokeWidth="1" strokeDasharray="2 4" opacity="0.5" />
+                          <circle cx={cx} cy={cy} r={innerR} fill="none" stroke={C.borderLight} strokeWidth="1" strokeDasharray="2 4" opacity="0.7" />
+                          {/* Hub glow aura */}
+                          <circle cx={cx} cy={cy} r="80" fill="url(#hubGlow)" />
+                          {/* Curved edges from hub to each referrer */}
+                          {nodes.map(node => {
+                            const dim = networkHoverId && networkHoverId !== node.id ? 0.2 : 1;
+                            const side = node.x < cx ? -1 : 1;
                             return (
-                              <g key={"edge-" + n.id} opacity={dim}>
-                                <line x1={cx} y1={cy} x2={n.x} y2={n.y} stroke={C.retGood} strokeWidth={n.thickness} opacity="0.5" />
+                              <g key={"edge-" + node.id} opacity={dim}>
+                                <path d={curvedPath(cx, cy, node.x, node.y, 0.1 * side)} stroke={C.retGood} strokeWidth={node.thickness} fill="none" opacity="0.45" strokeLinecap="round" />
                               </g>
                             );
                           })}
-                          {/* Edges from referrer to their children */}
-                          {nodes.map(n => {
-                            const dim = networkHoverId && networkHoverId !== n.id ? 0.1 : 1;
-                            return n.children.map((ch, ci) => {
-                              const cn = n.children.length;
-                              const spread = Math.PI / 3;
-                              const childTheta = n.theta + (cn === 1 ? 0 : (ci / (cn - 1) - 0.5) * spread);
-                              const childX = n.x + Math.cos(childTheta) * outerExtra;
-                              const childY = n.y + Math.sin(childTheta) * outerExtra;
+                          {/* Curved edges from referrer to their children */}
+                          {nodes.map(node => {
+                            const dim = networkHoverId && networkHoverId !== node.id ? 0.12 : 1;
+                            const cn = node.children.length;
+                            const spread = cn === 1 ? 0 : Math.PI / 2.5;
+                            return node.children.map((ch, ci) => {
+                              const childTheta = node.theta + (cn === 1 ? 0 : (ci / (cn - 1) - 0.5) * spread);
+                              const childX = node.x + Math.cos(childTheta) * outerExtra;
+                              const childY = node.y + Math.sin(childTheta) * outerExtra;
                               const color = ch.status === "converted" || ch.status === "active" ? C.retGood : "#D17A1B";
+                              const side = childX < node.x ? -1 : 1;
+                              const name = ch.name || "Untitled";
+                              const displayName = name.length > 16 ? name.slice(0, 15) + "…" : name;
                               return (
-                                <g key={"ch-" + n.id + "-" + ci} opacity={dim}>
-                                  <line x1={n.x} y1={n.y} x2={childX} y2={childY} stroke={color} strokeWidth="1.5" opacity="0.6" />
-                                  <circle cx={childX} cy={childY} r="6" fill={color} />
-                                  <text x={childX} y={childY + 18} fontSize="10" fill={C.textSec} textAnchor="middle" fontWeight="500">{ch.name.length > 14 ? ch.name.slice(0, 13) + "…" : ch.name}</text>
+                                <g key={"ch-" + node.id + "-" + ci} opacity={dim}>
+                                  <path d={curvedPath(node.x, node.y, childX, childY, 0.12 * side)} stroke={color} strokeWidth="1.5" fill="none" opacity="0.55" strokeLinecap="round" />
+                                  <circle cx={childX} cy={childY} r="7" fill={color} filter="url(#softShadow)" />
+                                  <circle cx={childX} cy={childY} r="3" fill="#fff" opacity="0.9" />
+                                  <text x={childX} y={childY + 22} fontSize="11" fill={C.text} textAnchor="middle" fontWeight="500">{displayName}</text>
+                                  {ch.mrr > 0 && <text x={childX} y={childY + 36} fontSize="9.5" fill={C.textMuted} textAnchor="middle" fontWeight="500">${(ch.mrr / 1000).toFixed(ch.mrr >= 10000 ? 0 : 1)}k/mo</text>}
                                 </g>
                               );
                             });
                           })}
                           {/* Referrer nodes */}
-                          {nodes.map(n => {
-                            const highlighted = networkHoverId === n.id;
+                          {nodes.map(node => {
+                            const highlighted = networkHoverId === node.id;
+                            const name = node.name || "Unknown";
+                            const displayName = name.length > 18 ? name.slice(0, 17) + "…" : name;
                             return (
-                              <g key={"node-" + n.id} style={{ cursor: "pointer" }} onMouseEnter={() => setNetworkHoverId(n.id)}>
-                                <circle cx={n.x} cy={n.y} r={highlighted ? 22 : 18} fill={getAvatarColor(n.id)} stroke="#fff" strokeWidth="2" style={{ transition: "r 150ms" }} />
-                                <text x={n.x} y={n.y + 4} fontSize="10" fill="#fff" textAnchor="middle" fontWeight="700">{getInitials(n.name)}</text>
-                                <text x={n.x} y={n.y - 26} fontSize="11" fill={C.text} textAnchor="middle" fontWeight="600">{n.name.length > 16 ? n.name.slice(0, 15) + "…" : n.name}</text>
+                              <g key={"node-" + node.id} style={{ cursor: "pointer" }} onMouseEnter={() => setNetworkHoverId(node.id)}>
+                                <circle cx={node.x} cy={node.y} r={highlighted ? 26 : 22} fill={getAvatarColor(node.id)} stroke="#fff" strokeWidth="3" filter="url(#softShadow)" style={{ transition: "r 180ms" }} />
+                                <text x={node.x} y={node.y + 4} fontSize="11" fill="#fff" textAnchor="middle" fontWeight="700">{getInitials(name)}</text>
+                                <text x={node.x} y={node.y - 34} fontSize="12" fill={C.text} textAnchor="middle" fontWeight="600">{displayName}</text>
+                                {node.revenue > 0 && <text x={node.x} y={node.y - 48} fontSize="10" fill={C.retGood} textAnchor="middle" fontWeight="700">${(node.revenue / 1000).toFixed(node.revenue >= 10000 ? 0 : 1)}k/mo</text>}
                               </g>
                             );
                           })}
                           {/* Hub (you) */}
-                          <circle cx={cx} cy={cy} r="34" fill={C.primary} stroke="#fff" strokeWidth="3" />
-                          <text x={cx} y={cy - 2} fontSize="11" fill="#fff" textAnchor="middle" fontWeight="700" letterSpacing="0.5">YOU</text>
-                          <text x={cx} y={cy + 12} fontSize="9" fill="#fff" textAnchor="middle" fontWeight="500" opacity="0.9">Retaynd</text>
+                          <circle cx={cx} cy={cy} r="42" fill={C.primary} stroke="#fff" strokeWidth="4" filter="url(#softShadow)" />
+                          <text x={cx} y={cy - 3} fontSize="12" fill="#fff" textAnchor="middle" fontWeight="700" letterSpacing="0.8">YOU</text>
+                          <text x={cx} y={cy + 13} fontSize="10" fill="#fff" textAnchor="middle" fontWeight="500" opacity="0.85">Retaynd</text>
                         </svg>
                       );
                     })()}
@@ -5348,7 +5384,7 @@ export default function App({ user }) {
           return (
             <div style={{ width: "100%" }}>
               {/* STATUS BAND */}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight }}>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "16px 4px 20px", marginBottom: 20, borderBottom: "1px solid " + C.borderLight, position: "sticky", top: 0, background: C.card, zIndex: 10 }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Past clients · one-offs · kept warm</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Rolodex</h1>
