@@ -4,7 +4,7 @@ import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex a
 
 const C = {
   primary: "#33543E", primaryLight: "#558B68", primarySoft: "#E6EFE9", primaryGhost: "#F3F8F5",
-  bg: "#FAFAF7", card: "#FFFFFF", surface: "#EEEFEB", surfaceWarm: "#F2EEE8",
+  bg: "#FAFAF7", card: "#FFFFFF", surface: "#EEEFEB", surfaceWarm: "#F9EFE4",
   sidebar: "#FAFAF7",
   text: "#1E261F", textSec: "#6B6B66", textMuted: "#9A9A93",
   ink900: "#0A0A0A", ink700: "#2A2A28", ink500: "#6B6B66", ink400: "#9A9A93", ink300: "#C4C4BD",
@@ -59,6 +59,7 @@ const Icon = ({ name, size = 18, color = "currentColor" }) => {
     calendar: (<><rect x="3" y="4" width="18" height="18" rx="2" stroke={color} strokeWidth="1.8" fill="none"/><line x1="16" y1="2" x2="16" y2="6" stroke={color} strokeWidth="1.8" strokeLinecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke={color} strokeWidth="1.8" strokeLinecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke={color} strokeWidth="1.8"/></>),
     "chevron-up": (<><polyline points="18 15 12 9 6 15" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>),
     "chevron-down": (<><polyline points="6 9 12 15 18 9" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>),
+    "chevron-right": (<><polyline points="9 18 15 12 9 6" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></>),
   };
 
 
@@ -546,11 +547,19 @@ export default function App({ user }) {
   // leaving fixed-positioned elements (like the bottom nav) anchored to the wrong bottom.
   // visualViewport API tracks the actual visible viewport. We write its height to a CSS var
   // that components can use instead of 100vh. Falls back gracefully on non-supporting browsers.
+  // Also: detect keyboard open on mobile so we can hide the bottom nav (iOS covers the input
+  // with the keyboard + the fixed bottom nav, making the input unreachable).
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
     const update = () => {
       document.documentElement.style.setProperty("--app-h", `${vv.height}px`);
+      // Keyboard is considered open when the visual viewport is meaningfully shorter
+      // than the layout viewport. 100px threshold catches most mobile keyboards while
+      // avoiding false positives on URL-bar collapse (which is typically ~60-80px).
+      const gap = window.innerHeight - vv.height;
+      setKeyboardOpen(gap > 100);
     };
     update();
     vv.addEventListener("resize", update);
@@ -1784,47 +1793,41 @@ export default function App({ user }) {
   const RaiMiniPanel = () => (
     <div className="r-today-panel" style={{ width: "100%", flexShrink: 0 }}>
       <div style={{
-        background: "linear-gradient(180deg, #F6F1FE 0%, #FAF6FE 45%, #FFFFFF 100%)",
-        borderRadius: 18,
-        border: "1px solid #E3D6F7",
-        boxShadow: "0 1px 2px rgba(91,33,182,0.04), 0 4px 16px rgba(91,33,182,0.06)",
         display: "flex",
         flexDirection: "column",
         maxHeight: "calc(100vh - 140px)",
         overflow: "hidden"
       }}>
 
-        {/* Header band — lavender */}
+        {/* Header — no background, no border bottom */}
         <div style={{
-          background: "linear-gradient(180deg, #EEE4FC 0%, #F3EAFD 100%)",
-          borderBottom: "1px solid #E3D6F7",
-          padding: "14px 16px",
-          display: "flex", gap: 12, alignItems: "center"
+          padding: "4px 4px 16px",
+          display: "flex", gap: 10, alignItems: "center"
         }}>
           <div style={{
-            width: 36, height: 36, borderRadius: "50%",
+            width: 26, height: 26, borderRadius: "50%",
             background: C.btn,
             display: "flex", alignItems: "center", justifyContent: "center",
             flexShrink: 0
           }}>
-            <Icon name="sparkles" size={16} color="#fff" />
+            <Icon name="sparkles" size={12} color="#fff" />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.2 }}>Talk to Rai</div>
-            <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Reading your portfolio</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.2 }}>Talk to Rai</div>
+            <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>Reading your portfolio</div>
           </div>
           {aiMessages.length > 0 && (
             <button
               onClick={startNewRaiChat}
               title="New chat"
               style={{
-                height: 30, padding: "0 10px", borderRadius: 7,
-                border: "1px solid #E3D6F7",
+                height: 28, padding: "0 10px", borderRadius: 7,
+                border: "1px solid " + C.borderLight,
                 background: "#fff",
                 color: C.btn,
                 display: "inline-flex", alignItems: "center", gap: 5,
                 cursor: "pointer",
-                fontSize: 12, fontWeight: 600, fontFamily: "inherit"
+                fontSize: 11.5, fontWeight: 600, fontFamily: "inherit"
               }}
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 20h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1833,25 +1836,18 @@ export default function App({ user }) {
           )}
         </div>
 
-        {/* Body content */}
-        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
+        {/* Body — flat, no card container */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
 
-          {/* Input */}
+          {/* Input — standalone card so typing target is clear */}
           <div style={{
-            border: "1px solid #E3D6F7",
-            borderRadius: 12,
-            padding: "12px 14px",
+            border: "1px solid " + C.borderLight,
+            borderRadius: 10,
+            padding: "10px 12px",
             background: "#fff",
             display: "flex", alignItems: "center", gap: 10
           }}>
-            <div style={{
-              width: 24, height: 24, borderRadius: "50%",
-              background: C.btnLight,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0
-            }}>
-              <Icon name="sparkles" size={11} color={C.btn} />
-            </div>
+            <Icon name="sparkles" size={13} color={C.btn} />
             <input
               value={aiInput}
               onChange={e => setAiInput(e.target.value)}
@@ -1859,38 +1855,31 @@ export default function App({ user }) {
               placeholder="Ask Rai about your book..."
               style={{
                 flex: 1, border: "none", outline: "none", background: "transparent",
-                fontSize: 14, fontFamily: "inherit", color: C.text
+                fontSize: 13, fontFamily: "inherit", color: C.text
               }}
             />
             <button
               onClick={() => sendAi()}
               disabled={!aiInput.trim()}
               style={{
-                width: 26, height: 26, borderRadius: 7,
-                border: "1px solid " + C.borderLight,
-                background: aiInput.trim() ? C.btn : "#fff",
-                color: aiInput.trim() ? "#fff" : C.textMuted,
+                width: 24, height: 24, borderRadius: 6,
+                border: "none",
+                background: aiInput.trim() ? C.btn : C.btnLight,
+                color: aiInput.trim() ? "#fff" : C.btn,
                 cursor: aiInput.trim() ? "pointer" : "default",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0
               }}
-            ><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill={aiInput.trim() ? "#fff" : C.textMuted}/></svg></button>
+            ><svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill={aiInput.trim() ? "#fff" : C.btn}/></svg></button>
           </div>
 
           {aiMessages.length === 0 ? (
             <>
-              {/* Greeting with avatar */}
-              <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "4px 2px" }}>
-                <div style={{
-                  width: 26, height: 26, borderRadius: "50%",
-                  background: C.btnLight,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0, marginTop: 2
-                }}>
-                  <Icon name="sparkles" size={12} color={C.btn} />
-                </div>
-                <div style={{ fontSize: 14, lineHeight: 1.55, color: C.text, flex: 1 }}>
-                  <b style={{ fontWeight: 700 }}>
+              {/* Greeting with small accent */}
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "4px 4px" }}>
+                <Icon name="sparkles" size={13} color={C.btn} />
+                <div style={{ fontSize: 13, lineHeight: 1.55, color: C.textSec, flex: 1 }}>
+                  <b style={{ fontWeight: 600, color: C.text }}>
                     {(() => {
                       const h = new Date().getHours();
                       if (h >= 5 && h < 12) return "Morning";
@@ -1902,55 +1891,58 @@ export default function App({ user }) {
                       return n ? ", " + n : "";
                     })()}.
                   </b>{" "}
-                  <span style={{ color: C.textSec }}>I've been reading your book. Where should we start?</span>
+                  I've been reading your book. Where should we start?
                 </div>
               </div>
 
-              {/* SUGGESTED label */}
+              {/* SUGGESTED label with top divider */}
               <div style={{
-                fontSize: 10.5, color: C.textMuted, fontWeight: 700,
-                letterSpacing: 0.8, textTransform: "uppercase", marginTop: 2
+                fontSize: 10, color: C.textMuted, fontWeight: 700,
+                letterSpacing: 0.5, textTransform: "uppercase",
+                paddingTop: 12, marginTop: 4,
+                borderTop: "1px solid " + C.borderLight,
+                paddingLeft: 4
               }}>Suggested</div>
 
-              {/* Suggestion buttons */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {/* Suggestion rows — flat, borderless, arrow on right */}
+              <div style={{ display: "flex", flexDirection: "column", marginTop: -6 }}>
                 {[
-                  { icon: "sparkles", label: "Who needs me today?" },
-                  { icon: "trendUp", label: "Summarize this week" },
-                  { icon: "spark", label: "Find risk patterns" },
-                  { icon: "mail", label: "Draft a renewal note" },
-                  { icon: "search", label: "Find clients missing cadence" },
+                  { label: "Who needs me today?" },
+                  { label: "Summarize this week" },
+                  { label: "Find risk patterns" },
+                  { label: "Draft a renewal note" },
+                  { label: "Find clients missing cadence" },
                 ].map((p, i) => (
                   <button
                     key={i}
                     onClick={() => { setAiInput(p.label); }}
                     style={{
-                      display: "flex", alignItems: "center", gap: 12,
-                      padding: "11px 14px",
-                      background: "#fff",
-                      border: "1px solid " + C.borderLight,
-                      borderRadius: 10,
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "10px 8px",
+                      background: "transparent",
+                      border: "none",
+                      borderRadius: 6,
                       cursor: "pointer",
                       textAlign: "left",
                       fontFamily: "inherit",
                       color: C.text,
-                      transition: "background 120ms, border-color 120ms"
+                      transition: "background 120ms, padding 120ms"
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#FBF8FE"; e.currentTarget.style.borderColor = "#D9C6F2"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = C.borderLight; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = C.primaryGhost; e.currentTarget.style.paddingLeft = "12px"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.paddingLeft = "8px"; }}
                   >
-                    <Icon name={p.icon} size={14} color={C.btn} />
-                    <span style={{ flex: 1, fontSize: 13.5, color: C.text, fontWeight: 500 }}>{p.label}</span>
-                    <Icon name="plus" size={12} color={C.textMuted} />
+                    <span style={{ flex: 1, fontSize: 13, color: C.text, fontWeight: 500 }}>{p.label}</span>
+                    <Icon name="chevron-right" size={12} color={C.textMuted} />
                   </button>
                 ))}
               </div>
 
-              {/* Disclaimer */}
+              {/* Disclaimer — top border only */}
               <div style={{
-                fontSize: 12, color: C.textMuted, lineHeight: 1.5,
+                fontSize: 11, color: C.textMuted, lineHeight: 1.5,
                 paddingTop: 14, marginTop: 2,
-                borderTop: "1px solid " + C.borderLight
+                borderTop: "1px solid " + C.borderLight,
+                paddingLeft: 4
               }}>
                 Rai only knows what's in your book. Ask about clients, cadence, revenue, or renewals.
               </div>
@@ -3209,10 +3201,10 @@ export default function App({ user }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px 12px" }}>
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Today's calendar</span>
                 </div>
-                <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px 16px" }}>
+                <div style={{ background: C.surfaceWarm, border: "1px solid #EDE1CF", borderRadius: 12, padding: "14px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 10 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                      <div style={{ width: 26, height: 26, borderRadius: 7, background: C.primaryGhost, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <div style={{ width: 26, height: 26, borderRadius: 7, background: C.card, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <Icon name="calendar" size={13} color={C.primary} />
                       </div>
                       <div style={{ minWidth: 0 }}>
@@ -3228,7 +3220,7 @@ export default function App({ user }) {
                       { time: "4:00pm", title: "Motley Fool review" },
                       { time: "5:30pm", title: "Internal — weekly planning" },
                     ].map((e, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderTop: "1px solid " + C.borderLight }}>
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderTop: "1px solid #EDE1CF" }}>
                         <span style={{ fontSize: 11.5, color: C.textMuted, fontVariantNumeric: "tabular-nums", fontWeight: 500, width: 56, flexShrink: 0 }}>{e.time}</span>
                         <span style={{ fontSize: 13, color: C.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</span>
                       </div>
@@ -4563,7 +4555,7 @@ export default function App({ user }) {
                     while (cells.length % 7 !== 0) cells.push(null);
                     const daysHdr = ["S", "M", "T", "W", "T", "F", "S"];
                     return (
-                      <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
+                      <div style={{ background: C.surfaceWarm, border: "1px solid #EDE1CF", borderRadius: 12, padding: "14px" }}>
                         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
                           <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>{monthName} rhythm</span>
                           <span style={{ fontSize: 10.5, color: C.textMuted, fontVariantNumeric: "tabular-nums" }}><b style={{ color: C.text }}>{loggedCount}</b> checks · <b style={{ color: C.text }}>{todayDay}</b>/{daysInMonth}</span>
@@ -4594,7 +4586,7 @@ export default function App({ user }) {
                                 borderRadius: 6,
                                 color: isToday ? "#fff" : isLogged ? "#fff" : isPlanned ? C.textSec : C.textMuted,
                                 background: isToday ? C.btn : isLogged ? C.retGood : "transparent",
-                                border: isPlanned ? "1px dashed " + C.border : "1px solid transparent",
+                                border: isPlanned ? "1px dashed #CFC1A8" : "1px solid transparent",
                               }}>{d}</div>
                             );
                           })}
@@ -4602,7 +4594,7 @@ export default function App({ user }) {
                         {/* Legend */}
                         <div style={{ display: "flex", gap: 10, marginTop: 12, fontSize: 10, color: C.textMuted, flexWrap: "wrap" }}>
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: C.retGood }} />logged</span>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "transparent", border: "1px dashed " + C.border }} />planned</span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "transparent", border: "1px dashed #CFC1A8" }} />planned</span>
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: C.btn }} />today</span>
                         </div>
                       </div>
@@ -7043,8 +7035,8 @@ export default function App({ user }) {
       })()}
 
 
-      {/* MOBILE BOTTOM NAV */}
-      <div className="r-mob-bot" style={{ position: "fixed", top: "calc(var(--app-h, 100vh) - 82px)", left: 12, right: 12, background: C.surfaceWarm, borderRadius: 18, boxShadow: "0 2px 6px rgba(10,10,10,0.04), 0 4px 14px rgba(10,10,10,0.07)", justifyContent: "space-around", padding: "10px 6px 12px", zIndex: 40 }}>
+      {/* MOBILE BOTTOM NAV — hidden when keyboard is up so inputs aren't covered */}
+      <div className="r-mob-bot" style={{ position: "fixed", top: "calc(var(--app-h, 100vh) - 82px)", left: 12, right: 12, background: C.surfaceWarm, borderRadius: 18, boxShadow: "0 2px 6px rgba(10,10,10,0.04), 0 4px 14px rgba(10,10,10,0.07)", justifyContent: "space-around", padding: "10px 6px 12px", zIndex: 40, display: keyboardOpen ? "none" : undefined }}>
         {(tier === "enterprise" ? mobileNavEnterprise : mobileNavCore).map(n => {
           const dot = hasDot(n.id);
           const active = page === n.id || (n.id === "more" && showMore);
