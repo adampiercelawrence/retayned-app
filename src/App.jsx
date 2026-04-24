@@ -2295,6 +2295,7 @@ export default function App({ user }) {
           .rt-mob-strip { display: block !important; }
           .rt-desk-cal { display: none !important; }
           .rc-sort-cadence { display: none !important; }
+          .rc-sort-renewal { display: none !important; }
           .rt-today-v4 {
             grid-template-areas: "band" "strip" "composer" "tasks" !important;
           }
@@ -4007,7 +4008,7 @@ export default function App({ user }) {
                       <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginRight: 2 }}>Sort</span>
                         {sortOptions.map(s => (
-                          <button key={s.id} onClick={() => setClientsSort(s.id)} className={s.id === "cadence" ? "rc-sort-cadence" : ""} style={{
+                          <button key={s.id} onClick={() => setClientsSort(s.id)} className={s.id === "cadence" ? "rc-sort-cadence" : s.id === "renewal" ? "rc-sort-renewal" : ""} style={{
                             padding: "4px 10px", fontSize: 11.5, borderRadius: 999, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
                             background: sortId === s.id ? C.text : "transparent",
                             color: sortId === s.id ? "#fff" : C.textMuted,
@@ -4423,8 +4424,6 @@ export default function App({ user }) {
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>Monthly cadence · {monthLabel}</div>
                   <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>Health Checks</h1>
                   <div style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span><b style={{ color: C.text, fontWeight: 700 }}>{activeQueue.length}</b> in queue</span>
-                    <span style={{ color: C.border }}>·</span>
                     <span style={{ color: activeQueue.filter(h => h.overdue > 0).length > 0 ? C.retWarn : C.textMuted, fontWeight: 600 }}>
                       <b>{activeQueue.filter(h => h.overdue > 0).length}</b> overdue
                     </span>
@@ -4448,7 +4447,6 @@ export default function App({ user }) {
                   <div style={{ height: 4, background: C.borderLight, borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${pctChecked}%`, background: `linear-gradient(90deg, ${C.primaryLight}, ${C.primary})`, borderRadius: 2, transition: "width 400ms cubic-bezier(.2,.7,.3,1)" }} />
                   </div>
-                  <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>{checkedThisMonth} of {totalClients} this month</div>
                 </div>
               </div>
 
