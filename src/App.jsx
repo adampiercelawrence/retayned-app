@@ -908,6 +908,8 @@ export default function App({ user }) {
   const [tpSearch, setTpSearch] = useState("");
   const [tpLogged, setTpLogged] = useState([]);
   const [allTouchpoints, setAllTouchpoints] = useState([]);
+  // Toast for touchpoint logging confirmation: { id, channel, client } | null
+  const [tpToast, setTpToast] = useState(null);
   const [confetti, setConfetti] = useState(false);
   // ─── Today v4 state ──
   const [todayFocusId, setTodayFocusId] = useState(null);
@@ -3042,10 +3044,17 @@ export default function App({ user }) {
                           ].map(ch => (
                             <button key={ch.key} onClick={async () => {
                               const cObj = clients.find(c => c.name === tpClient);
-                              await touchpointsDb.create(user.id, { client_id: cObj?.id || null, client_name: tpClient, channel: ch.key });
-                              setTpLogged(prev => [...prev, { client: tpClient, channel: ch.key, t: Date.now() }]);
+                              const tpRes = await touchpointsDb.create(user.id, { client_id: cObj?.id || null, client_name: tpClient, channel: ch.key });
+                              const newId = tpRes?.data?.id || null;
+                              setTpLogged(prev => [...prev, { id: newId, client: tpClient, channel: ch.key, t: Date.now() }]);
                               setShowTouchpoint(false);
+                              const loggedClient = tpClient;
                               setTpClient(null);
+                              // Toast confirmation — auto-dismiss after 4s
+                              setTpToast({ id: newId, channel: ch.key, client: loggedClient });
+                              setTimeout(() => {
+                                setTpToast(prev => (prev && prev.id === newId) ? null : prev);
+                              }, 4000);
                             }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "10px 4px", background: C.primaryGhost, border: "1px solid " + C.borderLight, borderRadius: 8, cursor: "pointer", fontFamily: "inherit" }}>
                               <Icon name={ch.icon} size={16} color={C.textSec} />
                               <span style={{ fontSize: 10.5, color: C.textSec, fontWeight: 500 }}>{ch.label}</span>
@@ -3201,10 +3210,10 @@ export default function App({ user }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px 12px" }}>
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Today's calendar</span>
                 </div>
-                <div style={{ background: C.surfaceWarm, border: "1px solid #EDE1CF", borderRadius: 12, padding: "14px 16px" }}>
+                <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 10 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                      <div style={{ width: 26, height: 26, borderRadius: 7, background: C.card, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <div style={{ width: 26, height: 26, borderRadius: 7, background: C.primaryGhost, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <Icon name="calendar" size={13} color={C.primary} />
                       </div>
                       <div style={{ minWidth: 0 }}>
@@ -3220,7 +3229,7 @@ export default function App({ user }) {
                       { time: "4:00pm", title: "Motley Fool review" },
                       { time: "5:30pm", title: "Internal — weekly planning" },
                     ].map((e, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderTop: "1px solid #EDE1CF" }}>
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderTop: "1px solid " + C.borderLight }}>
                         <span style={{ fontSize: 11.5, color: C.textMuted, fontVariantNumeric: "tabular-nums", fontWeight: 500, width: 56, flexShrink: 0 }}>{e.time}</span>
                         <span style={{ fontSize: 13, color: C.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</span>
                       </div>
@@ -4555,7 +4564,7 @@ export default function App({ user }) {
                     while (cells.length % 7 !== 0) cells.push(null);
                     const daysHdr = ["S", "M", "T", "W", "T", "F", "S"];
                     return (
-                      <div style={{ background: C.surfaceWarm, border: "1px solid #EDE1CF", borderRadius: 12, padding: "14px" }}>
+                      <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: C.shadowSm, padding: "14px" }}>
                         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
                           <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>{monthName} rhythm</span>
                           <span style={{ fontSize: 10.5, color: C.textMuted, fontVariantNumeric: "tabular-nums" }}><b style={{ color: C.text }}>{loggedCount}</b> checks · <b style={{ color: C.text }}>{todayDay}</b>/{daysInMonth}</span>
@@ -4586,7 +4595,7 @@ export default function App({ user }) {
                                 borderRadius: 6,
                                 color: isToday ? "#fff" : isLogged ? "#fff" : isPlanned ? C.textSec : C.textMuted,
                                 background: isToday ? C.btn : isLogged ? C.retGood : "transparent",
-                                border: isPlanned ? "1px dashed #CFC1A8" : "1px solid transparent",
+                                border: isPlanned ? "1px dashed " + C.border : "1px solid transparent",
                               }}>{d}</div>
                             );
                           })}
@@ -4594,7 +4603,7 @@ export default function App({ user }) {
                         {/* Legend */}
                         <div style={{ display: "flex", gap: 10, marginTop: 12, fontSize: 10, color: C.textMuted, flexWrap: "wrap" }}>
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: C.retGood }} />logged</span>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "transparent", border: "1px dashed #CFC1A8" }} />planned</span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "transparent", border: "1px dashed " + C.border }} />planned</span>
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: C.btn }} />today</span>
                         </div>
                       </div>
@@ -7067,6 +7076,58 @@ export default function App({ user }) {
             </div>
           </div>
         </>
+      )}
+
+      {/* Touchpoint logged toast — bottom of screen, auto-dismisses after 4s */}
+      {tpToast && (
+        <div style={{
+          position: "fixed",
+          bottom: 28,
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "#1E261F",
+          color: "#FFFFFF",
+          borderRadius: 12,
+          padding: "12px 14px 12px 16px",
+          boxShadow: "0 12px 32px rgba(10,10,10,0.25), 0 4px 12px rgba(10,10,10,0.12)",
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          zIndex: 100,
+          maxWidth: "calc(100vw - 32px)",
+          fontSize: 13.5,
+          animation: "fadeIn 0.2s ease",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <div style={{ width: 20, height: 20, borderRadius: 10, background: C.success, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon name="check" size={12} color="#fff" />
+            </div>
+            <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              Logged · {tpToast.channel} · <span style={{ fontWeight: 700 }}>{tpToast.client}</span>
+            </span>
+          </div>
+          <button
+            onClick={async () => {
+              if (tpToast.id) {
+                await touchpointsDb.delete(tpToast.id);
+                setTpLogged(prev => prev.filter(t => t.id !== tpToast.id));
+              }
+              setTpToast(null);
+            }}
+            style={{
+              background: "transparent",
+              border: "1px solid rgba(255,255,255,0.2)",
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "4px 10px",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              flexShrink: 0,
+            }}
+          >Undo</button>
+        </div>
       )}
     </div>
   );
