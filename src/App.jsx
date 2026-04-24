@@ -1795,119 +1795,128 @@ export default function App({ user }) {
   const RaiMiniPanel = () => (
     <div className="r-today-panel" style={{ width: "100%", flexShrink: 0 }}>
       <div style={{
+        background: C.card,
+        border: "1px solid " + C.borderLight,
+        borderRadius: 14,
+        overflow: "hidden",
+        boxShadow: "0 1px 2px rgba(10,10,10,0.04), 0 4px 12px rgba(10,10,10,0.05)",
         display: "flex",
         flexDirection: "column",
-        maxHeight: "calc(100vh - 140px)",
-        overflow: "hidden"
+        maxHeight: "calc(100vh - 140px)"
       }}>
 
-        {/* Header — no background, no border bottom */}
+        {/* LAVENDER INTRO — avatar + title + greeting grouped as one warm zone */}
         <div style={{
-          padding: "4px 4px 16px",
-          display: "flex", gap: 10, alignItems: "center"
+          background: "linear-gradient(180deg, #F7F4FC 0%, #FFFFFF 100%)",
+          padding: "20px 18px 18px",
+          borderBottom: "1px solid " + C.borderLight
         }}>
-          <div style={{
-            width: 26, height: 26, borderRadius: "50%",
-            background: C.btn,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0
-          }}>
-            <Icon name="sparkles" size={12} color="#fff" />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: 8,
+              background: C.btn,
+              color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0
+            }}>
+              <Icon name="sparkles" size={13} color="#fff" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.2 }}>Talk to Rai</div>
+              <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 5, height: 5, borderRadius: 3, background: C.success }} />
+                Reading your portfolio
+              </div>
+            </div>
+            {aiMessages.length > 0 && (
+              <button
+                onClick={startNewRaiChat}
+                title="New chat"
+                style={{
+                  height: 26, padding: "0 9px", borderRadius: 6,
+                  border: "1px solid " + C.borderLight,
+                  background: "#fff",
+                  color: C.btn,
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  cursor: "pointer",
+                  fontSize: 11, fontWeight: 600, fontFamily: "inherit"
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M12 20h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                New
+              </button>
+            )}
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.2 }}>Talk to Rai</div>
-            <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>Reading your portfolio</div>
-          </div>
-          {aiMessages.length > 0 && (
-            <button
-              onClick={startNewRaiChat}
-              title="New chat"
-              style={{
-                height: 28, padding: "0 10px", borderRadius: 7,
-                border: "1px solid " + C.borderLight,
-                background: "#fff",
-                color: C.btn,
-                display: "inline-flex", alignItems: "center", gap: 5,
-                cursor: "pointer",
-                fontSize: 11.5, fontWeight: 600, fontFamily: "inherit"
-              }}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 20h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              New chat
-            </button>
+
+          {aiMessages.length === 0 && (
+            <div style={{ fontSize: 13, lineHeight: 1.55, color: C.textSec }}>
+              <b style={{ fontWeight: 600, color: C.text }}>
+                {(() => {
+                  const h = new Date().getHours();
+                  if (h >= 5 && h < 12) return "Morning";
+                  if (h >= 12 && h < 17) return "Afternoon";
+                  return "Evening";
+                })()}{(() => {
+                  const n = user?.user_metadata?.full_name?.split(" ")[0]
+                    || (user?.email ? user.email.split("@")[0].replace(/^\w/, c => c.toUpperCase()) : "");
+                  return n ? ", " + n : "";
+                })()}.
+              </b>{" "}
+              I've been reading your book. Where should we start?
+            </div>
           )}
         </div>
 
-        {/* Body — flat, no card container */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
+        {/* BODY — input + suggestions OR conversation */}
+        <div style={{ display: "flex", flexDirection: "column", overflowY: "auto", flex: 1 }}>
 
-          {/* Input — standalone card so typing target is clear */}
-          <div style={{
-            border: "1px solid " + C.borderLight,
-            borderRadius: 10,
-            padding: "10px 12px",
-            background: "#fff",
-            display: "flex", alignItems: "center", gap: 10
-          }}>
-            <Icon name="sparkles" size={13} color={C.btn} />
-            <input
-              value={aiInput}
-              onChange={e => setAiInput(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }}
-              placeholder="Ask Rai about your book..."
-              style={{
-                flex: 1, border: "none", outline: "none", background: "transparent",
-                fontSize: 13, fontFamily: "inherit", color: C.text
-              }}
-            />
-            <button
-              onClick={() => sendAi()}
-              disabled={!aiInput.trim()}
-              style={{
-                width: 24, height: 24, borderRadius: 6,
-                border: "none",
-                background: aiInput.trim() ? C.btn : C.btnLight,
-                color: aiInput.trim() ? "#fff" : C.btn,
-                cursor: aiInput.trim() ? "pointer" : "default",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0
-              }}
-            ><svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill={aiInput.trim() ? "#fff" : C.btn}/></svg></button>
+          {/* Input section */}
+          <div style={{ padding: "14px 16px 4px" }}>
+            <div style={{
+              padding: "10px 12px",
+              background: C.bg,
+              border: "1px solid " + C.borderLight,
+              borderRadius: 10,
+              display: "flex", alignItems: "center", gap: 10
+            }}>
+              <Icon name="sparkles" size={13} color={C.btn} />
+              <input
+                value={aiInput}
+                onChange={e => setAiInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAi(); } }}
+                placeholder="Ask Rai about your book..."
+                style={{
+                  flex: 1, border: "none", outline: "none", background: "transparent",
+                  fontSize: 13, fontFamily: "inherit", color: C.text
+                }}
+              />
+              <button
+                onClick={() => sendAi()}
+                disabled={!aiInput.trim()}
+                style={{
+                  width: 24, height: 24, borderRadius: 6,
+                  border: "none",
+                  background: aiInput.trim() ? C.btn : C.btnLight,
+                  color: aiInput.trim() ? "#fff" : C.btn,
+                  cursor: aiInput.trim() ? "pointer" : "default",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0
+                }}
+              ><svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 13L13 8L3 3V7L9 8L3 9V13Z" fill={aiInput.trim() ? "#fff" : C.btn}/></svg></button>
+            </div>
           </div>
 
           {aiMessages.length === 0 ? (
             <>
-              {/* Greeting with small accent */}
-              <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "4px 4px" }}>
-                <Icon name="sparkles" size={13} color={C.btn} />
-                <div style={{ fontSize: 13, lineHeight: 1.55, color: C.textSec, flex: 1 }}>
-                  <b style={{ fontWeight: 600, color: C.text }}>
-                    {(() => {
-                      const h = new Date().getHours();
-                      if (h >= 5 && h < 12) return "Morning";
-                      if (h >= 12 && h < 17) return "Afternoon";
-                      return "Evening";
-                    })()}{(() => {
-                      const n = user?.user_metadata?.full_name?.split(" ")[0]
-                        || (user?.email ? user.email.split("@")[0].replace(/^\w/, c => c.toUpperCase()) : "");
-                      return n ? ", " + n : "";
-                    })()}.
-                  </b>{" "}
-                  I've been reading your book. Where should we start?
-                </div>
-              </div>
-
-              {/* SUGGESTED label with top divider */}
+              {/* SUGGESTED label */}
               <div style={{
                 fontSize: 10, color: C.textMuted, fontWeight: 700,
                 letterSpacing: 0.5, textTransform: "uppercase",
-                paddingTop: 12, marginTop: 4,
-                borderTop: "1px solid " + C.borderLight,
-                paddingLeft: 4
+                padding: "16px 18px 8px"
               }}>Suggested</div>
 
-              {/* Suggestion rows — flat, borderless, arrow on right */}
-              <div style={{ display: "flex", flexDirection: "column", marginTop: -6 }}>
+              {/* Suggestion rows — rounded pills inside card */}
+              <div style={{ display: "flex", flexDirection: "column", padding: "0 8px 4px" }}>
                 {[
                   { label: "Who needs me today?" },
                   { label: "Summarize this week" },
@@ -1919,8 +1928,8 @@ export default function App({ user }) {
                     key={i}
                     onClick={() => { setAiInput(p.label); }}
                     style={{
-                      display: "flex", alignItems: "center", gap: 10,
-                      padding: "10px 8px",
+                      display: "flex", alignItems: "center",
+                      padding: "10px 10px",
                       background: "transparent",
                       border: "none",
                       borderRadius: 6,
@@ -1928,10 +1937,10 @@ export default function App({ user }) {
                       textAlign: "left",
                       fontFamily: "inherit",
                       color: C.text,
-                      transition: "background 120ms, padding 120ms"
+                      transition: "background 120ms"
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = C.primaryGhost; e.currentTarget.style.paddingLeft = "12px"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.paddingLeft = "8px"; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#F7F4FC"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                   >
                     <span style={{ flex: 1, fontSize: 13, color: C.text, fontWeight: 500 }}>{p.label}</span>
                     <Icon name="chevron-right" size={12} color={C.textMuted} />
@@ -1939,18 +1948,20 @@ export default function App({ user }) {
                 ))}
               </div>
 
-              {/* Disclaimer — top border only */}
+              {/* Disclaimer */}
               <div style={{
-                fontSize: 11, color: C.textMuted, lineHeight: 1.5,
-                paddingTop: 14, marginTop: 2,
+                padding: "14px 18px 16px",
+                marginTop: 8,
                 borderTop: "1px solid " + C.borderLight,
-                paddingLeft: 4
+                fontSize: 11,
+                color: C.textMuted,
+                lineHeight: 1.55
               }}>
                 Rai only knows what's in your book. Ask about clients, cadence, revenue, or renewals.
               </div>
             </>
           ) : (
-            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, padding: "14px 16px 16px" }}>
               {aiMessages.map((m, i) => (
                 m.role === "user" ? (
                   <div key={i} style={{ alignSelf: "flex-end", background: C.surface, color: C.text, borderRadius: 18, padding: "8px 14px", fontSize: 13, lineHeight: 1.5, maxWidth: "85%" }}>
@@ -2255,7 +2266,7 @@ export default function App({ user }) {
             grid-template-columns: minmax(0, 1fr) 360px 360px;
             grid-template-rows: auto auto 1fr;
             grid-template-areas:
-              "band band ."
+              "band band band"
               "composer composer rai"
               "tasks focus rai";
           }
@@ -2283,6 +2294,7 @@ export default function App({ user }) {
           .rc-mobile-list { display: block !important; }
           .rt-mob-strip { display: block !important; }
           .rt-desk-cal { display: none !important; }
+          .rc-sort-cadence { display: none !important; }
           .rt-today-v4 {
             grid-template-areas: "band" "strip" "composer" "tasks" !important;
           }
@@ -2443,8 +2455,7 @@ export default function App({ user }) {
             affecting nav items or the Portfolio widget at the bottom. */}
         {page === "coach" ? (
           <div style={{ padding: "12px 10px 0", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-            <button onClick={startNewRaiChat} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: C.btn, color: "#fff", fontSize: 13, fontWeight: 600, textAlign: "center", cursor: "pointer", border: "none", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, boxShadow: "0 1px 2px rgba(91,33,182,0.15), 0 2px 6px rgba(91,33,182,0.22)", flexShrink: 0 }}>
-              <Icon name="plus" size={13} color="#fff" />
+            <button onClick={startNewRaiChat} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: C.btn, color: "#fff", fontSize: 13, fontWeight: 600, textAlign: "center", cursor: "pointer", border: "none", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 2px rgba(91,33,182,0.15), 0 2px 6px rgba(91,33,182,0.22)", flexShrink: 0 }}>
               New Chat
             </button>
             {raiConvoList.length > 0 && (() => {
@@ -3996,7 +4007,7 @@ export default function App({ user }) {
                       <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", marginRight: 2 }}>Sort</span>
                         {sortOptions.map(s => (
-                          <button key={s.id} onClick={() => setClientsSort(s.id)} style={{
+                          <button key={s.id} onClick={() => setClientsSort(s.id)} className={s.id === "cadence" ? "rc-sort-cadence" : ""} style={{
                             padding: "4px 10px", fontSize: 11.5, borderRadius: 999, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
                             background: sortId === s.id ? C.text : "transparent",
                             color: sortId === s.id ? "#fff" : C.textMuted,
