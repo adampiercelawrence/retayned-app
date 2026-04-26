@@ -2302,11 +2302,12 @@ export default function App({ user }) {
           .rt-rai-col { display: none !important; }
           /* Band stays row-direction on mobile so compact % sits right of headline */
           .rt-band { flex-wrap: nowrap !important; gap: 12px !important; }
+          .rt-band-greet { font-size: 24px !important; white-space: nowrap; }
           .rt-band-right { display: block !important; min-width: 0 !important; flex-shrink: 0; }
-          .rt-band-right .rt-pct-num { font-size: 26px !important; }
-          .rt-band-right .rt-pct-num span { font-size: 14px !important; }
-          .rt-band-right .rt-pct-lbl { display: block !important; font-size: 9.5px !important; }
-          .rt-band-right .rt-pct-bar { width: 140px; height: 5px !important; margin-top: 6px !important; }
+          .rt-band-right .rt-pct-num { font-size: 24px !important; }
+          .rt-band-right .rt-pct-num span { font-size: 13px !important; }
+          .rt-band-right .rt-pct-lbl { display: block !important; font-size: 9px !important; }
+          .rt-band-right .rt-pct-bar { width: 110px; height: 4px !important; margin-top: 6px !important; }
           .rt-band-sub-pct { display: none !important; }
           .rt-band-sub-bar { display: none !important; }
           .rt-band-sub { width: 100% !important; }
@@ -2928,7 +2929,7 @@ export default function App({ user }) {
               <div className="rt-band" style={{ gridArea: "band", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>{displayDate}</div>
-                  <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>
+                  <h1 className="rt-band-greet" style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>
                     {greeting}{firstName ? ", " + firstName : ""}.
                   </h1>
                   <div className="rt-band-sub" style={{ fontSize: 13.5, color: C.textMuted, marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
