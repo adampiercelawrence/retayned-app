@@ -787,10 +787,13 @@ export default function App({ user }) {
     const total = allClients.reduce((a, c) => a + (c.revenue || 0), 0);
     const avg = 1 / allClients.length;
     const revFactor = total > 0 ? ((client.revenue || 0) / total) / avg : 1;
-    const revNorm = Math.max(0.75, Math.min(1.50, 0.4 + revFactor * 0.6));
+    // Tightened ceiling: was 1.50, now 1.25. A client at 2-3× book-average revenue
+    // no longer triggers a 50% multiplier — caps at 25%.
+    const revNorm = Math.max(0.75, Math.min(1.25, 0.4 + revFactor * 0.6));
     const ltvF = 0.8 + percentileRank(allClients.map(c => getAdjustedLTV(c)), getAdjustedLTV(client)) * 0.4;
     const tenF = 0.8 + percentileRank(allClients.map(c => c.months || 0), client.months || 0) * 0.4;
-    const multiplier = Math.max(0.90, revNorm * 0.60 + ltvF * 0.20 + tenF * 0.20);
+    // Lowered floor: was 0.90, now 0.75. Lets struggling clients actually sink.
+    const multiplier = Math.max(0.75, revNorm * 0.60 + ltvF * 0.20 + tenF * 0.20);
     return Math.max(1, Math.min(99, Math.round(rs * multiplier)));
   };
 
@@ -3276,25 +3279,6 @@ export default function App({ user }) {
                               {client ? client.name : ""}
                             </div>
                           </div>
-
-                          {/* ━━━ DEBUG SCORE CHIP — REMOVE BEFORE LAUNCH ━━━ */}
-                          {(() => {
-                            const c = clients.find(x => x.name === t.client);
-                            const psBase = c ? calcProfileScore(c.ret || 50, c, clients) : 0;
-                            const totalRev = clients.reduce((a, x) => a + (x.revenue || 0), 0);
-                            const revPct = c && totalRev > 0 ? (c.revenue || 0) / totalRev : 0;
-                            const newBoost = c ? calcNewClientBoost(c.ret || 50, revPct, c.daysOld != null ? c.daysOld : 999) : 0;
-                            const raiBoost = t.raiPriority ? getRaiBoost(psBase) : 0;
-                            const total = getProfileSortScore(t.client, t.raiPriority);
-                            return (
-                              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", fontSize: 10, color: "#888", fontFamily: "monospace", lineHeight: 1.3, minWidth: 80, marginRight: 4 }}>
-                                <div style={{ color: "#5B21B6", fontWeight: 700 }}>FINAL: {total}</div>
-                                <div>ps={psBase} +nb={newBoost} +rai={raiBoost}</div>
-                                <div>{t.raiPriority ? "🔮rai" : ""} {t.alert ? "⚠️alert" : ""} {t.recurring ? "🔁rec" : ""}</div>
-                              </div>
-                            );
-                          })()}
-                          {/* ━━━ END DEBUG ━━━ */}
 
                           {/* Task-type tag — right slot, always one of three states */}
                           <div className="rt-row-tag" style={{
