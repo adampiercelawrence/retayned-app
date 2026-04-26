@@ -3009,9 +3009,9 @@ export default function App({ user }) {
                     />
                   </div>
                   <div className="rt-composer-controls" style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "nowrap" }}>
-                    <button onClick={() => setComposerMenuOpen(!composerMenuOpen)} className="rt-composer-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0 10px", height: 28, border: "none", borderRadius: 7, fontSize: 12, color: C.textSec, background: "transparent", cursor: "pointer", fontFamily: "inherit", flexShrink: 0, transition: "background 120ms ease, color 120ms ease" }}
+                    <button onClick={() => setComposerMenuOpen(!composerMenuOpen)} className="rt-composer-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0 10px", height: 28, border: "none", borderRadius: 7, fontSize: 12, color: C.textSec, background: composerMenuOpen ? "rgba(0,0,0,0.04)" : "transparent", cursor: "pointer", fontFamily: "inherit", flexShrink: 0, transition: "background 120ms ease, color 120ms ease" }}
                       onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                      onMouseLeave={e => { if (!composerMenuOpen) e.currentTarget.style.background = "transparent"; }}>
                       <Icon name="clients" size={12} /><span style={{ fontWeight: 500 }}>Client</span>
                     </button>
                     <button
@@ -3276,6 +3276,25 @@ export default function App({ user }) {
                               {client ? client.name : ""}
                             </div>
                           </div>
+
+                          {/* ━━━ DEBUG SCORE CHIP — REMOVE BEFORE LAUNCH ━━━ */}
+                          {(() => {
+                            const c = clients.find(x => x.name === t.client);
+                            const psBase = c ? calcProfileScore(c.ret || 50, c, clients) : 0;
+                            const totalRev = clients.reduce((a, x) => a + (x.revenue || 0), 0);
+                            const revPct = c && totalRev > 0 ? (c.revenue || 0) / totalRev : 0;
+                            const newBoost = c ? calcNewClientBoost(c.ret || 50, revPct, c.daysOld != null ? c.daysOld : 999) : 0;
+                            const raiBoost = t.raiPriority ? getRaiBoost(psBase) : 0;
+                            const total = getProfileSortScore(t.client, t.raiPriority);
+                            return (
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", fontSize: 10, color: "#888", fontFamily: "monospace", lineHeight: 1.3, minWidth: 80, marginRight: 4 }}>
+                                <div style={{ color: "#5B21B6", fontWeight: 700 }}>FINAL: {total}</div>
+                                <div>ps={psBase} +nb={newBoost} +rai={raiBoost}</div>
+                                <div>{t.raiPriority ? "🔮rai" : ""} {t.alert ? "⚠️alert" : ""} {t.recurring ? "🔁rec" : ""}</div>
+                              </div>
+                            );
+                          })()}
+                          {/* ━━━ END DEBUG ━━━ */}
 
                           {/* Task-type tag — right slot, always one of three states */}
                           <div className="rt-row-tag" style={{
