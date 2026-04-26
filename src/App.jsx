@@ -2191,8 +2191,8 @@ export default function App({ user }) {
         }
         @media (min-width: 768px) {
           :root { --sidebar-w: 240px; --page-gap: 14px; }
-          html, body { background: ${C.surface} !important; }
-          .app-root { background: ${C.surface} !important; }
+          html, body { background: ${C.bg} !important; }
+          .app-root { background: ${C.bg} !important; }
           .r-desk { display: flex !important; }
           .r-mob-top { display: none !important; }
           .r-mob-bot { display: none !important; }
