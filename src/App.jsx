@@ -897,6 +897,9 @@ export default function App({ user }) {
 
   // Today — task manager
   const [tasks, setTasks] = useState([]);
+  // Tracks tasks just completed within the last ~700ms so the pulse animation only fires
+  // on the actual click, not on every re-render where t.done is true.
+  const [justCompletedIds, setJustCompletedIds] = useState({});
   const [newTask, setNewTask] = useState("");
   const [newTaskClient, setNewTaskClient] = useState("");
   const [newTaskRecurring, setNewTaskRecurring] = useState(false);
@@ -1137,6 +1140,17 @@ export default function App({ user }) {
     // Optimistic update
     const updated = tasks.map(t => t.id === id ? { ...t, done: newDone, completed_at: newDone ? nowIso : null } : t);
     setTasks(updated);
+    // ASMR completion pulse — only fire when transitioning to done, clear after 720ms
+    if (newDone) {
+      setJustCompletedIds(prev => ({ ...prev, [id]: true }));
+      setTimeout(() => {
+        setJustCompletedIds(prev => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      }, 720);
+    }
     const countable = updated.filter(t => !t.ai);
     const doneNow = countable.filter(t => t.done).length;
     if (doneNow === countable.length && countable.length > 0) {
@@ -2217,6 +2231,51 @@ export default function App({ user }) {
           100% { transform: translate(var(--tx), 70vh) rotate(var(--rot)); opacity: 0; }
         }
         .rt-row:hover .rt-dismiss { opacity: 1 !important; }
+        /* ASMR completion — done state styling */
+        .rt-row.is-done {
+          background: ${C.primaryGhost} !important;
+          border-color: #DBE8DF !important;
+          transition: background 320ms ease, border-color 320ms ease;
+        }
+        .rt-row .rt-check {
+          transition: background 240ms ease, border-color 240ms ease, transform 280ms cubic-bezier(.34,1.56,.64,1);
+        }
+        .rt-row .rt-check svg {
+          opacity: 0;
+          transform: scale(0.4);
+          transition: opacity 220ms ease 60ms, transform 320ms cubic-bezier(.34,1.56,.64,1) 60ms;
+        }
+        .rt-row.is-done .rt-check {
+          background: ${C.success} !important;
+          border-color: ${C.success} !important;
+          transform: scale(1.08);
+        }
+        .rt-row.is-done .rt-check svg { opacity: 1; transform: scale(1); }
+        .rt-row .rt-task-title {
+          position: relative;
+          display: inline-block;
+          transition: color 320ms ease;
+        }
+        .rt-row .rt-task-title::after {
+          content: ""; position: absolute; left: 0; top: 50%;
+          height: 1.5px; width: 0; background: currentColor;
+          transition: width 360ms cubic-bezier(.6, 0, .4, 1);
+        }
+        .rt-row.is-done .rt-task-title { color: ${C.textSec}; }
+        .rt-row.is-done .rt-task-title::after { width: 100%; }
+        .rt-row.is-done .rt-row-meta { opacity: 0.6; transition: opacity 320ms ease; }
+        .rt-row.is-done .rt-task-avatar { opacity: 0.45; filter: grayscale(0.4); transition: opacity 320ms ease, filter 320ms ease; }
+        .rt-row.is-done .rt-row-tag { opacity: 0.5; transition: opacity 320ms ease; }
+        .rt-row.is-done .rt-dismiss { opacity: 0.4 !important; }
+        @keyframes rt-glow-pulse {
+          0% { box-shadow: 0 0 0 0 rgba(45,134,89,0); transform: scale(1); }
+          30% { box-shadow: 0 0 0 6px rgba(45,134,89,0.18); transform: scale(0.985); }
+          100% { box-shadow: 0 0 0 0 rgba(45,134,89,0); transform: scale(1); }
+        }
+        .rt-row.is-just-done {
+          animation: rt-glow-pulse 700ms ease-out;
+        }
+        .rt-row.is-just-done .rt-check { transform: scale(1.18); }
         .rc-queue-item:hover { background: ${C.primaryGhost} !important; }
         /* Rai sidebar — reveal star/delete on row hover */
         .r-convo-row:hover { background: rgba(91,33,182,0.06); }
@@ -2296,7 +2355,7 @@ export default function App({ user }) {
           .rt-desk-cal { display: none !important; }
           .rc-sort-cadence { display: none !important; }
           .rc-sort-renewal { display: none !important; }
-          .rt-mob-cal-trigger { display: inline-flex !important; }
+          .rt-mob-cal-trigger { display: flex !important; }
           .rt-mob-cal-sheet { display: block !important; }
           .rt-today-v4 {
             grid-template-areas: "band" "composer" "tasks" !important;
@@ -2612,6 +2671,16 @@ export default function App({ user }) {
             return (b.created_at || 0) - (a.created_at || 0);           // newer above older (stable tiebreak)
           });
           const completedTasks = visibleTasks.filter(t => t.done);
+          // Render order: same priority sort applied to ALL tasks (done included).
+          // Tasks stay in place when toggled — done state is visual only, no reordering.
+          const renderTasks = [...visibleTasks].sort((a, b) => {
+            const psA = getProfileSortScore(a.client, a.raiPriority);
+            const psB = getProfileSortScore(b.client, b.raiPriority);
+            if (psA !== psB) return psB - psA;
+            if (a.alert !== b.alert) return a.alert ? -1 : 1;
+            if (a.recurring !== b.recurring) return a.recurring ? -1 : 1;
+            return (b.created_at || 0) - (a.created_at || 0);
+          });
           const focusTask = openTasks.find(t => t.id === focusId) || openTasks[0] || null;
           const focusClient = focusTask ? clients.find(c => c.name === focusTask.client) : null;
 
@@ -2866,6 +2935,8 @@ export default function App({ user }) {
                     <span><b style={{ color: C.text, fontWeight: 700 }}>{remaining}</b> tasks</span>
                     <span style={{ color: C.border }}>·</span>
                     <span><b style={{ color: C.text, fontWeight: 700 }}>{doneCount}</b> done</span>
+                    <span style={{ color: C.border }}>·</span>
+                    <span><b style={{ color: C.text, fontWeight: 700 }}>3</b> events</span>
                     <span className="rt-band-sub-pct" style={{ display: "none", marginLeft: "auto", fontSize: 11, fontWeight: 700, color: C.primary, background: C.primarySoft, padding: "2px 8px", borderRadius: 999 }}>
                       {Math.round(pct * 100)}%
                     </span>
@@ -2979,14 +3050,10 @@ export default function App({ user }) {
 
                 {showTouchpoint && (
                   <div style={{ position: "absolute", top: 64, right: 80, width: 320, background: "#fff", border: "1px solid " + C.border, borderRadius: 12, boxShadow: "0 12px 32px rgba(10,10,10,0.12)", zIndex: 30, padding: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Log a touchpoint</span>
-                      <button onClick={() => setShowTouchpoint(false)} style={{ padding: 2, background: "none", border: "none", cursor: "pointer", color: C.textMuted }}><Icon name="x" size={14} /></button>
-                    </div>
+                    <button onClick={() => setShowTouchpoint(false)} style={{ position: "absolute", top: 8, right: 8, padding: 4, background: "none", border: "none", cursor: "pointer", color: C.textMuted, zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6 }}><Icon name="x" size={14} /></button>
                     {!tpClient && (
                       <div>
-                        <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 8 }}>Which client?</div>
-                        <div style={{ position: "relative", marginBottom: 8 }}>
+                        <div style={{ position: "relative", marginBottom: 8, marginRight: 24 }}>
                           <input
                             type="text"
                             value={tpSearch}
@@ -3073,28 +3140,37 @@ export default function App({ user }) {
                       <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Your plate</span>
                       <span style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, padding: "1px 8px", background: C.borderLight, borderRadius: 999 }}>{openTasks.length}</span>
                     </div>
-                    {/* Mobile-only calendar trigger */}
-                    <button
-                      className="rt-mob-cal-trigger"
-                      onClick={() => setTodayStripOpen(!todayStripOpen)}
-                      style={{
-                        display: "none",
-                        alignItems: "center",
-                        gap: 5,
-                        padding: "5px 4px",
-                        background: "transparent",
-                        border: "none",
-                        cursor: "pointer",
-                        color: C.btn,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        fontFamily: "inherit"
-                      }}
-                    >
-                      <Icon name="calendar" size={13} color={C.btn} />
-                      <span>3 events today</span>
-                      <Icon name="chevron-right" size={11} color={C.btn} />
-                    </button>
+                    {/* Mobile-only calendar trigger + Log button */}
+                    <div className="rt-mob-cal-trigger" style={{ display: "none", alignItems: "center", gap: 4 }}>
+                      <button
+                        onClick={() => { setShowTouchpoint(!showTouchpoint); setTpClient(null); setTpChannel(null); setTpSearch(""); }}
+                        className="rt-composer-pill"
+                        style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: C.card, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                        title="Log a touchpoint"
+                      >
+                        <Icon name="phone" size={12} /><span>Log</span>
+                      </button>
+                      <button
+                        onClick={() => setTodayStripOpen(!todayStripOpen)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          padding: "5px 4px",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          color: C.btn,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          fontFamily: "inherit"
+                        }}
+                      >
+                        <Icon name="calendar" size={13} color={C.btn} />
+                        <span>3 events today</span>
+                        <Icon name="chevron-right" size={11} color={C.btn} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Mobile-only expanded calendar sheet (toggled by trigger above) */}
@@ -3136,17 +3212,18 @@ export default function App({ user }) {
                     </div>
                   )}
 
-                  {/* OPEN TASKS */}
+                  {/* TASK LIST — open + done rendered together, done state visual only */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {openTasks.map(t => {
+                    {renderTasks.map(t => {
                       const client = clients.find(c => c.name === t.client);
                       const kind = taskKind(t);
-                      const isFocus = focusTask?.id === t.id;
-                      const delta = client ? stubDelta(client.name) : 0;
+                      const isDone = !!t.done;
+                      const isJustDone = !!justCompletedIds[t.id];
+                      const cls = "rt-row" + (isDone ? " is-done" : "") + (isJustDone ? " is-just-done" : "");
 
                       return (
                         <div key={t.id}
-                          className="rt-row"
+                          className={cls}
                           style={{
                             display: "flex", alignItems: "center", gap: 12,
                             padding: "12px 14px",
@@ -3157,19 +3234,23 @@ export default function App({ user }) {
                           }}>
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleTask(t.id); }}
-                            aria-label="mark complete"
+                            aria-label={isDone ? "mark incomplete" : "mark complete"}
+                            className="rt-check"
                             style={{
                               width: 22, height: 22, borderRadius: 11, border: "1.5px solid " + C.ink300,
                               background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-                              flexShrink: 0, transition: "all 180ms", cursor: "pointer",
+                              flexShrink: 0, cursor: "pointer", padding: 0,
                             }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                           </button>
 
-                          {client ? <ClientAvatar client={client} size={28} /> : <div style={{ width: 28, height: 28, borderRadius: 14, background: C.borderSoft, flexShrink: 0 }} />}
+                          {client
+                            ? <div className="rt-task-avatar" style={{ display: "flex", flexShrink: 0 }}><ClientAvatar client={client} size={28} /></div>
+                            : <div className="rt-task-avatar" style={{ width: 28, height: 28, borderRadius: 14, background: C.borderSoft, flexShrink: 0 }} />}
 
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {t.text}
+                              <span className="rt-task-title">{t.text}</span>
                             </div>
                             <div className="rt-row-meta" style={{ fontSize: 11.5, color: C.ink500, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {client ? client.name : ""}
@@ -3210,37 +3291,7 @@ export default function App({ user }) {
                     })}
                   </div>
 
-                  {/* COMPLETED SECTION */}
-                  {completedTasks.length > 0 && (
-                    <div style={{ marginTop: 24, padding: 14, background: C.primarySoft, border: "1px solid " + C.borderLight, borderRadius: 12 }}>
-                      <div onClick={() => setCompletedOpen(!completedOpen)} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: C.primary, cursor: "pointer" }}>
-                        <Icon name="check" size={12} color={C.primary} />
-                        <span>{completedTasks.length} completed today</span>
-                        <span style={{ flex: 1 }} />
-                        <span style={{ fontSize: 10.5, color: C.textMuted }}>{completedOpen ? "Hide" : "Click to expand"}</span>
-                      </div>
-                      {completedOpen && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
-                          {completedTasks.map(t => {
-                            const client = clients.find(c => c.name === t.client);
-                            return (
-                              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#fff", borderRadius: 8, border: "1px solid " + C.borderLight }}>
-                                <div style={{ width: 18, height: 18, borderRadius: 9, background: C.primary, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                  <Icon name="check" size={11} color="#fff" />
-                                </div>
-                                {client && <ClientAvatar client={client} size={20} />}
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontSize: 12.5, textDecoration: "line-through", color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.text}</div>
-                                </div>
-                                {client && <span style={{ fontSize: 10.5, color: C.textMuted }}>{client.name}</span>}
-                                <button onClick={() => toggleTask(t.id)} style={{ fontSize: 11, color: C.btn, fontWeight: 500, padding: "2px 8px", borderRadius: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>Undo</button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Completed section removed — done tasks now render inline above with strikethrough state. */}
                 </div>
 
               {/* CALENDAR — right column on desktop (>900px). Mobile gets the strip instead. */}
@@ -3259,7 +3310,12 @@ export default function App({ user }) {
                         <div style={{ fontSize: 12, color: C.textSec, marginTop: 1 }}>Connect to activate</div>
                       </div>
                     </div>
-                    <button style={{ fontSize: 11.5, fontWeight: 600, padding: "6px 12px", background: C.btnLight, color: C.btn, border: "none", borderRadius: 7, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Connect</button>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                      <button onClick={() => { setShowTouchpoint(!showTouchpoint); setTpClient(null); setTpChannel(null); setTpSearch(""); }} className="rt-composer-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: C.card, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }} title="Log a touchpoint">
+                        <Icon name="phone" size={12} /><span>Log</span>
+                      </button>
+                      <button style={{ fontSize: 11.5, fontWeight: 600, padding: "6px 12px", background: C.btnLight, color: C.btn, border: "none", borderRadius: 7, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Connect</button>
+                    </div>
                   </div>
                   <div style={{ opacity: 0.55 }}>
                     {[
