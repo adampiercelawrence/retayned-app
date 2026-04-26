@@ -2682,34 +2682,24 @@ export default function App({ user }) {
             if (a.recurring !== b.recurring) return a.recurring ? -1 : 1;
             return (b.created_at || 0) - (a.created_at || 0);
           });
-          // ── DEBUG: log what's actually driving the sort for each task ──
+          // ── DEBUG: log Matte Collection + Motley Fool sort breakdown ──
           if (typeof window !== "undefined" && !window.__rt_sort_logged) {
             window.__rt_sort_logged = true;
-            console.group("🔍 Today task sort breakdown");
-            renderTasks.forEach((t, i) => {
-              const c = clients.find(x => x.name === t.client);
-              const psBase = c ? calcProfileScore(c.ret || 50, c, clients) : 0;
-              const totalRev = clients.reduce((a, x) => a + (x.revenue || 0), 0);
-              const revPct = c && totalRev > 0 ? (c.revenue || 0) / totalRev : 0;
-              const newBoost = c ? calcNewClientBoost(c.ret || 50, revPct, c.daysOld != null ? c.daysOld : 999) : 0;
-              const raiBoost = t.raiPriority ? getRaiBoost(psBase) : 0;
-              const total = getProfileSortScore(t.client, t.raiPriority);
-              console.log(
-                `${i + 1}. ${t.text} (${t.client || "—"})`,
-                {
-                  retention: c?.ret,
-                  profileScore_base: psBase,
-                  newClientBoost: newBoost,
-                  raiPriority: !!t.raiPriority,
-                  raiBoost: raiBoost,
-                  finalSortScore: total,
-                  alert: !!t.alert,
-                  recurring: !!t.recurring,
-                  created: t.created_at,
-                }
-              );
-            });
-            console.groupEnd();
+            const targets = ["Matte Collection", "The Motley Fool", "Motley Fool"];
+            renderTasks
+              .filter(t => targets.includes(t.client))
+              .forEach((t, i) => {
+                const c = clients.find(x => x.name === t.client);
+                const psBase = c ? calcProfileScore(c.ret || 50, c, clients) : 0;
+                const totalRev = clients.reduce((a, x) => a + (x.revenue || 0), 0);
+                const revPct = c && totalRev > 0 ? (c.revenue || 0) / totalRev : 0;
+                const newBoost = c ? calcNewClientBoost(c.ret || 50, revPct, c.daysOld != null ? c.daysOld : 999) : 0;
+                const raiBoost = t.raiPriority ? getRaiBoost(psBase) : 0;
+                const total = getProfileSortScore(t.client, t.raiPriority);
+                console.log(
+                  `🔍 SORT [${t.client}] ret=${c?.ret} ps=${psBase} newBoost=${newBoost} raiPri=${!!t.raiPriority} raiBoost=${raiBoost} FINAL=${total} alert=${!!t.alert} recurring=${!!t.recurring} created=${t.created_at}`
+                );
+              });
           }
           const focusTask = openTasks.find(t => t.id === focusId) || openTasks[0] || null;
           const focusClient = focusTask ? clients.find(c => c.name === focusTask.client) : null;
@@ -3037,15 +3027,15 @@ export default function App({ user }) {
                         border: "none",
                         borderRadius: 7,
                         fontSize: 12,
-                        color: newTaskRecurring ? C.primary : C.textSec,
-                        background: newTaskRecurring ? C.primaryGhost : "transparent",
+                        color: C.textSec,
+                        background: newTaskRecurring ? "rgba(0,0,0,0.04)" : "transparent",
                         cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
                         transition: "background 120ms ease, color 120ms ease",
                       }}
                       onMouseEnter={e => { if (!newTaskRecurring) e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
                       onMouseLeave={e => { if (!newTaskRecurring) e.currentTarget.style.background = "transparent"; }}
                     >
-                      <Icon name="clock" size={12} color={newTaskRecurring ? C.primary : C.textMuted} />
+                      <Icon name="clock" size={12} color={C.textMuted} />
                       <span style={{ fontWeight: newTaskRecurring ? 600 : 500 }}>Recurring</span>
                     </button>
                     <button onClick={submitComposer} disabled={!newTask.trim()} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0 12px", height: 28, background: C.btn, color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", cursor: newTask.trim() ? "pointer" : "default", opacity: newTask.trim() ? 1 : 0.4, fontFamily: "inherit", marginLeft: "auto", flexShrink: 0 }}>
