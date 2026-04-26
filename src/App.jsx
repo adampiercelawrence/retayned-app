@@ -2296,8 +2296,10 @@ export default function App({ user }) {
           .rt-desk-cal { display: none !important; }
           .rc-sort-cadence { display: none !important; }
           .rc-sort-renewal { display: none !important; }
+          .rt-mob-cal-trigger { display: inline-flex !important; }
+          .rt-mob-cal-sheet { display: block !important; }
           .rt-today-v4 {
-            grid-template-areas: "band" "strip" "composer" "tasks" !important;
+            grid-template-areas: "band" "composer" "tasks" !important;
           }
         }
         @media (min-width: 769px) {
@@ -2885,54 +2887,6 @@ export default function App({ user }) {
                 </div>
               </div>
 
-              {/* MOBILE UPCOMING STRIP — between band and composer */}
-              <div className="rt-mob-strip" style={{ gridArea: "strip" }}>
-                {(() => {
-                  // Stub events until Google Calendar is wired. Shape: [{ time, title }]
-                  // In the real thing this comes from a fetched `calendarEvents` array filtered to today.
-                  const nowHr = new Date().getHours();
-                  const events = [
-                    { time: "2:30pm", title: "Backyard Discovery sync" },
-                    { time: "4:00pm", title: "Motley Fool review" },
-                    { time: "5:30pm", title: "Internal — weekly planning" },
-                  ].filter(e => {
-                    // Crude filter: show events that aren't obviously past
-                    const hr = parseInt(e.time);
-                    const pm = e.time.includes("pm");
-                    const h24 = pm && hr !== 12 ? hr + 12 : hr;
-                    return h24 >= nowHr;
-                  });
-                  const nextTime = events[0]?.time;
-                  const summary = events.length === 0 ? "Nothing left today" : `${events.length} event${events.length > 1 ? "s" : ""}${nextTime ? " · next at " + nextTime : ""}`;
-                  return (
-                    <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, overflow: "hidden" }}>
-                      <div onClick={() => setTodayStripOpen(!todayStripOpen)} style={{ padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, cursor: "pointer" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                          <div style={{ width: 28, height: 28, borderRadius: 8, background: C.primaryGhost, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <Icon name="calendar" size={14} color={C.primary} />
-                          </div>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: 0.3, textTransform: "uppercase", fontWeight: 700, marginBottom: 2 }}>Rest of today</div>
-                            <div style={{ fontSize: 13.5, color: C.text, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</div>
-                          </div>
-                        </div>
-                        <Icon name={todayStripOpen ? "chevron-up" : "chevron-down"} size={14} color={C.textMuted} />
-                      </div>
-                      {todayStripOpen && events.length > 0 && (
-                        <div style={{ padding: "4px 14px 10px", borderTop: "1px solid " + C.borderLight }}>
-                          {events.map((e, i) => (
-                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < events.length - 1 ? "1px solid " + C.borderLight : "none" }}>
-                              <span style={{ fontSize: 11.5, color: C.textMuted, fontVariantNumeric: "tabular-nums", fontWeight: 500, width: 48, flexShrink: 0 }}>{e.time}</span>
-                              <span style={{ fontSize: 13, color: C.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-
               {/* COMPOSER */}
               <div className="rt-composer" style={{ gridArea: "composer", background: C.card, border: "1px solid " + C.border, borderRadius: 14, boxShadow: C.shadowMd, position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", flexWrap: "wrap" }}>
@@ -2988,7 +2942,7 @@ export default function App({ user }) {
                       <Icon name="clock" size={12} color={newTaskRecurring ? C.btn : C.textMuted} />
                       <span style={{ fontWeight: newTaskRecurring ? 600 : 500 }}>Recurring</span>
                     </button>
-                    <button onClick={() => { setShowTouchpoint(!showTouchpoint); setTpClient(null); setTpChannel(null); }} className="rt-composer-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: C.card, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }} title="Log a touchpoint">
+                    <button onClick={() => { setShowTouchpoint(!showTouchpoint); setTpClient(null); setTpChannel(null); setTpSearch(""); }} className="rt-composer-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: C.card, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }} title="Log a touchpoint">
                       <Icon name="phone" size={12} /><span>Log</span>
                     </button>
                     <button onClick={submitComposer} disabled={!newTask.trim()} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px 7px 14px", background: C.btn, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: newTask.trim() ? "pointer" : "default", opacity: newTask.trim() ? 1 : 0.4, fontFamily: "inherit", marginLeft: "auto", flexShrink: 0 }}>
@@ -3031,15 +2985,46 @@ export default function App({ user }) {
                     </div>
                     {!tpClient && (
                       <div>
-                        <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6 }}>Which client?</div>
+                        <div style={{ fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 8 }}>Which client?</div>
+                        <div style={{ position: "relative", marginBottom: 8 }}>
+                          <input
+                            type="text"
+                            value={tpSearch}
+                            onChange={e => setTpSearch(e.target.value)}
+                            placeholder="Search clients..."
+                            autoFocus
+                            style={{
+                              width: "100%",
+                              padding: "8px 12px 8px 32px",
+                              fontSize: 12.5,
+                              border: "1px solid " + C.borderLight,
+                              borderRadius: 7,
+                              fontFamily: "inherit",
+                              outline: "none",
+                              background: C.bg,
+                              color: C.text,
+                              boxSizing: "border-box"
+                            }}
+                            onFocus={e => e.target.style.borderColor = C.btn}
+                            onBlur={e => e.target.style.borderColor = C.borderLight}
+                          />
+                          <Icon name="search" size={12} color={C.textMuted} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                        </div>
                         <div style={{ maxHeight: 220, overflow: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
-                          {clients.map(c => (
-                            <button key={c.id || c.name} onClick={() => setTpClient(c.name)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 6, textAlign: "left", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                              <ClientAvatar client={c} size={22} />
-                              <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
-                              <ScoreChip score={c.ret} size="sm" />
-                            </button>
-                          ))}
+                          {(() => {
+                            const q = tpSearch.trim().toLowerCase();
+                            const list = q ? clients.filter(c => (c.name || "").toLowerCase().includes(q)) : clients;
+                            if (list.length === 0) {
+                              return <div style={{ padding: "12px 8px", fontSize: 12, color: C.textMuted, textAlign: "center" }}>No clients match "{tpSearch}"</div>;
+                            }
+                            return list.map(c => (
+                              <button key={c.id || c.name} onClick={() => setTpClient(c.name)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 6, textAlign: "left", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                                <ClientAvatar client={c} size={22} />
+                                <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                                <ScoreChip score={c.ret} size="sm" />
+                              </button>
+                            ));
+                          })()}
                         </div>
                       </div>
                     )}
@@ -3088,7 +3073,48 @@ export default function App({ user }) {
                       <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Your plate</span>
                       <span style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, padding: "1px 8px", background: C.borderLight, borderRadius: 999 }}>{openTasks.length}</span>
                     </div>
+                    {/* Mobile-only calendar trigger */}
+                    <button
+                      className="rt-mob-cal-trigger"
+                      onClick={() => setTodayStripOpen(!todayStripOpen)}
+                      style={{
+                        display: "none",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "5px 4px",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        color: C.btn,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        fontFamily: "inherit"
+                      }}
+                    >
+                      <Icon name="calendar" size={13} color={C.btn} />
+                      <span>3 events today</span>
+                      <Icon name="chevron-right" size={11} color={C.btn} />
+                    </button>
                   </div>
+
+                  {/* Mobile-only expanded calendar sheet (toggled by trigger above) */}
+                  {todayStripOpen && (
+                    <div className="rt-mob-cal-sheet" style={{ display: "none", marginBottom: 12, background: C.card, border: "1px solid " + C.borderLight, borderRadius: 10, padding: "10px 14px" }}>
+                      {(() => {
+                        const events = [
+                          { time: "2:30pm", title: "Backyard Discovery sync" },
+                          { time: "4:00pm", title: "Motley Fool review" },
+                          { time: "5:30pm", title: "Internal — weekly planning" },
+                        ];
+                        return events.map((e, i) => (
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < events.length - 1 ? "1px solid " + C.borderLight : "none" }}>
+                            <span style={{ fontSize: 11.5, color: C.textMuted, fontVariantNumeric: "tabular-nums", fontWeight: 500, width: 48, flexShrink: 0 }}>{e.time}</span>
+                            <span style={{ fontSize: 13, color: C.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</span>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  )}
 
                   {openTasks.length === 0 && completedTasks.length === 0 && (
                     <div style={{ textAlign: "center", padding: "60px 20px", background: C.primaryGhost || C.primarySoft, border: "1px dashed " + C.border, borderRadius: 14 }}>
