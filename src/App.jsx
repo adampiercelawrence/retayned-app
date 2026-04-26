@@ -2989,9 +2989,11 @@ export default function App({ user }) {
                       style={{ flex: 1, minWidth: 100, border: "none", outline: "none", background: "transparent", fontSize: 14.5, padding: "4px 0", fontFamily: "inherit", color: C.text }}
                     />
                   </div>
-                  <div className="rt-composer-controls" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap" }}>
-                    <button onClick={() => setComposerMenuOpen(!composerMenuOpen)} className="rt-composer-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", border: "1px solid " + C.border, borderRadius: 8, fontSize: 12, color: C.textSec, background: C.card, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
-                      <Icon name="clients" size={12} /><span>Client</span>
+                  <div className="rt-composer-controls" style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "nowrap" }}>
+                    <button onClick={() => setComposerMenuOpen(!composerMenuOpen)} className="rt-composer-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0 10px", height: 28, border: "none", borderRadius: 7, fontSize: 12, color: C.textSec, background: "transparent", cursor: "pointer", fontFamily: "inherit", flexShrink: 0, transition: "background 120ms ease, color 120ms ease" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                      <Icon name="clients" size={12} /><span style={{ fontWeight: 500 }}>Client</span>
                     </button>
                     <button
                       type="button"
@@ -3001,20 +3003,23 @@ export default function App({ user }) {
                       className="rt-composer-pill"
                       style={{
                         display: "inline-flex", alignItems: "center", gap: 5,
-                        padding: "6px 10px",
-                        border: "1px solid " + (newTaskRecurring ? C.btn : C.border),
-                        borderRadius: 8,
+                        padding: "0 10px",
+                        height: 28,
+                        border: "none",
+                        borderRadius: 7,
                         fontSize: 12,
-                        color: newTaskRecurring ? C.btn : C.textSec,
-                        background: newTaskRecurring ? C.btnLight + "26" : C.card,
+                        color: newTaskRecurring ? C.primary : C.textSec,
+                        background: newTaskRecurring ? C.primaryGhost : "transparent",
                         cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
-                        transition: "all 150ms",
+                        transition: "background 120ms ease, color 120ms ease",
                       }}
+                      onMouseEnter={e => { if (!newTaskRecurring) e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
+                      onMouseLeave={e => { if (!newTaskRecurring) e.currentTarget.style.background = "transparent"; }}
                     >
-                      <Icon name="clock" size={12} color={newTaskRecurring ? C.btn : C.textMuted} />
+                      <Icon name="clock" size={12} color={newTaskRecurring ? C.primary : C.textMuted} />
                       <span style={{ fontWeight: newTaskRecurring ? 600 : 500 }}>Recurring</span>
                     </button>
-                    <button onClick={submitComposer} disabled={!newTask.trim()} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 18px 7px 20px", background: C.btn, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: newTask.trim() ? "pointer" : "default", opacity: newTask.trim() ? 1 : 0.4, fontFamily: "inherit", marginLeft: "auto", flexShrink: 0 }}>
+                    <button onClick={submitComposer} disabled={!newTask.trim()} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0 12px", height: 28, background: C.btn, color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", cursor: newTask.trim() ? "pointer" : "default", opacity: newTask.trim() ? 1 : 0.4, fontFamily: "inherit", marginLeft: "auto", flexShrink: 0 }}>
                       Add
                       <span style={{ background: "rgba(255,255,255,0.2)", padding: "1px 5px", borderRadius: 3, fontSize: 10.5, fontFamily: "monospace", fontWeight: 600 }}>↵</span>
                     </button>
@@ -3028,6 +3033,7 @@ export default function App({ user }) {
                       <input autoFocus value={composerQuery} onChange={e => setComposerQuery(e.target.value)}
                         onKeyDown={e => { if (e.key === "Escape") setComposerMenuOpen(false); if (e.key === "Enter" && clientMatches[0]) { setComposerClient(clientMatches[0].name); setComposerMenuOpen(false); setComposerQuery(""); } }}
                         placeholder="Search clients…" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 12.5, fontFamily: "inherit", color: C.text }} />
+                      <button onClick={() => { setComposerMenuOpen(false); setComposerQuery(""); }} style={{ padding: 2, background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex", alignItems: "center" }}><Icon name="x" size={14} /></button>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", paddingTop: 4, maxHeight: 300, overflow: "auto" }}>
                       {clientMatches.map(c => (
@@ -3038,7 +3044,7 @@ export default function App({ user }) {
                             <div style={{ fontSize: 12.5, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
                             <div style={{ fontSize: 10.5, color: C.textMuted }}>{c.industry || "Client"}</div>
                           </div>
-                          <ScoreChip score={c.ret} delta={stubDelta(c.name)} size="sm" />
+                          <ScoreChip score={c.ret} size="sm" />
                         </button>
                       ))}
                       {clientMatches.length === 0 && <div style={{ padding: "12px 10px", fontSize: 12, color: C.textMuted }}>No matches</div>}
