@@ -2190,7 +2190,7 @@ export default function App({ user }) {
           .r-rai-intro .r-rai-inner { justify-content: flex-start !important; padding-top: 48px !important; }
         }
         @media (min-width: 768px) {
-          :root { --sidebar-w: 240px; --page-gap: 14px; }
+          :root { --sidebar-w: 240px; --page-gap: 14px; --sidebar-left: 7px; }
           html, body { background: ${C.bg} !important; }
           .app-root { background: ${C.bg} !important; }
           .r-desk { display: flex !important; }
@@ -2204,8 +2204,8 @@ export default function App({ user }) {
             top: var(--page-gap);
             right: var(--page-gap);
             bottom: var(--page-gap);
-            left: calc(var(--sidebar-w) + var(--page-gap) + var(--page-gap));
-            background: ${C.card};
+            left: calc(var(--sidebar-left) + var(--sidebar-w) + var(--page-gap));
+            background: ${C.bg};
             border-radius: 14px;
             box-shadow: 0 2px 4px rgba(10,10,10,0.04), 0 8px 24px rgba(10,10,10,0.08);
             overflow-y: auto;
@@ -2497,7 +2497,7 @@ export default function App({ user }) {
       )}
 
       {/* SIDEBAR */}
-      <div className="r-desk" style={{ width: 240, background: C.surfaceWarm, flexDirection: "column", position: "fixed", top: 14, left: 14, bottom: 14, zIndex: 50, borderRadius: 14, boxShadow: "0 2px 4px rgba(10,10,10,0.04), 0 8px 24px rgba(10,10,10,0.08)" }}>
+      <div className="r-desk" style={{ width: 240, background: C.surfaceWarm, flexDirection: "column", position: "fixed", top: 14, left: 7, bottom: 14, zIndex: 50, borderRadius: 14, boxShadow: "0 2px 4px rgba(10,10,10,0.04), 0 8px 24px rgba(10,10,10,0.08)" }}>
         {/* Logo — fixed at top */}
         <div style={{ padding: "20px 18px 18px", flexShrink: 0 }}>
           <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.04em", color: C.primary, fontFamily: "system-ui, -apple-system, sans-serif" }}>Retayned<span style={{ letterSpacing: "0" }}>.</span></span>
