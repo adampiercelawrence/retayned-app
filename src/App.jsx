@@ -2603,12 +2603,12 @@ export default function App({ user }) {
                   <div key={i} style={{ flex: s.n, background: s.color, borderRadius: i === 0 ? "4px 0 0 4px" : i === segs.length - 1 ? "0 4px 4px 0" : 0 }} />
                 ))}
               </div>
-              {/* Inline segment labels — count + label on a single line per segment */}
-              <div style={{ display: "flex", gap: 2, fontSize: 10.5 }}>
+              {/* Inline segment labels — count over label, stacked so 5 buckets fit without truncation. */}
+              <div style={{ display: "flex", gap: 6 }}>
                 {segs.map((s, i) => (
-                  <div key={i} style={{ flex: s.n }}>
-                    <span style={{ color: s.color, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{s.n}</span>
-                    <span style={{ color: C.textSec }}> {s.label}</span>
+                  <div key={i} style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                    <div style={{ color: s.color, fontWeight: 700, fontSize: 13, fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>{s.n}</div>
+                    <div style={{ color: C.textSec, fontSize: 9.5, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.label}</div>
                   </div>
                 ))}
               </div>
@@ -2682,6 +2682,35 @@ export default function App({ user }) {
             if (a.recurring !== b.recurring) return a.recurring ? -1 : 1;
             return (b.created_at || 0) - (a.created_at || 0);
           });
+          // ── DEBUG: log what's actually driving the sort for each task ──
+          if (typeof window !== "undefined" && !window.__rt_sort_logged) {
+            window.__rt_sort_logged = true;
+            console.group("🔍 Today task sort breakdown");
+            renderTasks.forEach((t, i) => {
+              const c = clients.find(x => x.name === t.client);
+              const psBase = c ? calcProfileScore(c.ret || 50, c, clients) : 0;
+              const totalRev = clients.reduce((a, x) => a + (x.revenue || 0), 0);
+              const revPct = c && totalRev > 0 ? (c.revenue || 0) / totalRev : 0;
+              const newBoost = c ? calcNewClientBoost(c.ret || 50, revPct, c.daysOld != null ? c.daysOld : 999) : 0;
+              const raiBoost = t.raiPriority ? getRaiBoost(psBase) : 0;
+              const total = getProfileSortScore(t.client, t.raiPriority);
+              console.log(
+                `${i + 1}. ${t.text} (${t.client || "—"})`,
+                {
+                  retention: c?.ret,
+                  profileScore_base: psBase,
+                  newClientBoost: newBoost,
+                  raiPriority: !!t.raiPriority,
+                  raiBoost: raiBoost,
+                  finalSortScore: total,
+                  alert: !!t.alert,
+                  recurring: !!t.recurring,
+                  created: t.created_at,
+                }
+              );
+            });
+            console.groupEnd();
+          }
           const focusTask = openTasks.find(t => t.id === focusId) || openTasks[0] || null;
           const focusClient = focusTask ? clients.find(c => c.name === focusTask.client) : null;
 
@@ -3143,15 +3172,15 @@ export default function App({ user }) {
                         background: "transparent",
                         border: "none",
                         cursor: "pointer",
-                        color: C.btn,
+                        color: C.textSec,
                         fontSize: 12,
                         fontWeight: 600,
                         fontFamily: "inherit"
                       }}
                     >
-                      <Icon name="calendar" size={13} color={C.btn} />
+                      <Icon name="calendar" size={13} color={C.textSec} />
                       <span>3 events today</span>
-                      <Icon name="chevron-right" size={11} color={C.btn} />
+                      <Icon name="chevron-right" size={11} color={C.textSec} />
                     </button>
                   </div>
 
