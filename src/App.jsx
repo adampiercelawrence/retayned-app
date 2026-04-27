@@ -606,6 +606,8 @@ export default function App({ user }) {
     _setManualTaskOrder(order);
     try { window.localStorage.setItem("rt_manual_task_order", JSON.stringify(order)); } catch {}
   };
+  const [draggingTaskId, setDraggingTaskId] = useState(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState(null);
   const [healthStripOpen, setHealthStripOpen] = useState(false);
   const [retroAnswers, setRetroAnswers] = useState({});
   const [rolodex, setRolodex] = useState([]);
@@ -3311,19 +3313,85 @@ export default function App({ user }) {
                       const kind = taskKind(t);
                       const isDone = !!t.done;
                       const isJustDone = !!justCompletedIds[t.id];
+                      const isManual = rankMode === "manual";
+                      const isRaiMode = rankMode === "rai";
+                      const isRaisPick = isRaiMode && !!t.raiPriority && !isDone;
+                      const isDragging = draggingTaskId === t.id;
+                      const isDragOver = dragOverTaskId === t.id && draggingTaskId !== t.id;
                       const cls = "rt-row" + (isDone ? " is-done" : "") + (isJustDone ? " is-just-done" : "");
+
+                      // Reorder handler: when dropping onto target, move dragging task to target's position
+                      const handleDrop = (e) => {
+                        e.preventDefault();
+                        if (!draggingTaskId || draggingTaskId === t.id) {
+                          setDraggingTaskId(null);
+                          setDragOverTaskId(null);
+                          return;
+                        }
+                        // Build current order from renderTasks (current visual order)
+                        const currentOrder = renderTasks.map(rt => rt.id);
+                        const fromIdx = currentOrder.indexOf(draggingTaskId);
+                        const toIdx = currentOrder.indexOf(t.id);
+                        if (fromIdx === -1 || toIdx === -1) {
+                          setDraggingTaskId(null);
+                          setDragOverTaskId(null);
+                          return;
+                        }
+                        const newOrder = [...currentOrder];
+                        newOrder.splice(fromIdx, 1);
+                        newOrder.splice(toIdx, 0, draggingTaskId);
+                        setManualTaskOrder(newOrder);
+                        setDraggingTaskId(null);
+                        setDragOverTaskId(null);
+                      };
 
                       return (
                         <div key={t.id}
                           className={cls}
+                          draggable={isManual}
+                          onDragStart={isManual ? (e) => {
+                            setDraggingTaskId(t.id);
+                            try { e.dataTransfer.effectAllowed = "move"; } catch {}
+                          } : undefined}
+                          onDragOver={isManual ? (e) => {
+                            e.preventDefault();
+                            if (draggingTaskId && draggingTaskId !== t.id) setDragOverTaskId(t.id);
+                          } : undefined}
+                          onDragLeave={isManual ? () => {
+                            if (dragOverTaskId === t.id) setDragOverTaskId(null);
+                          } : undefined}
+                          onDrop={isManual ? handleDrop : undefined}
+                          onDragEnd={isManual ? () => {
+                            setDraggingTaskId(null);
+                            setDragOverTaskId(null);
+                          } : undefined}
                           style={{
                             display: "flex", alignItems: "center", gap: 12,
                             padding: "12px 14px",
                             background: C.card,
-                            border: "1px solid " + C.borderSoft,
+                            border: isDragOver ? "1px solid " + C.btn : "1px solid " + C.borderSoft,
                             borderRadius: 12,
-                            boxShadow: C.shadowSm,
+                            boxShadow: isDragOver ? "0 0 0 2px " + C.btnLight + ", " + C.shadowSm : C.shadowSm,
+                            opacity: isDragging ? 0.4 : 1,
+                            cursor: isManual ? "grab" : "default",
+                            transition: "border-color 120ms, box-shadow 120ms, opacity 120ms",
                           }}>
+                          {isManual && (
+                            <div
+                              aria-hidden="true"
+                              style={{
+                                color: C.textMuted,
+                                fontSize: 14,
+                                lineHeight: 1,
+                                letterSpacing: "-1px",
+                                userSelect: "none",
+                                flexShrink: 0,
+                                cursor: "grab",
+                                padding: "0 2px",
+                              }}>
+                              ⋮⋮
+                            </div>
+                          )}
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleTask(t.id); }}
                             aria-label={isDone ? "mark incomplete" : "mark complete"}
@@ -3349,28 +3417,46 @@ export default function App({ user }) {
                             </div>
                           </div>
 
-                          {/* Task-type tag — right slot, always one of three states */}
-                          <div className="rt-row-tag" style={{
-                            display: "inline-flex", alignItems: "center", gap: 4,
-                            padding: "3px 9px",
-                            background: kind === "rai" ? C.btnLight : "transparent",
-                            color: kind === "rai" ? C.btn : C.ink500,
-                            border: kind === "rai" ? "none" : "1px solid " + C.ink300,
-                            borderRadius: 999,
-                            fontSize: 11,
-                            fontWeight: kind === "rai" ? 600 : 400,
-                            flexShrink: 0,
-                            whiteSpace: "nowrap",
-                          }}>
-                            <Icon
-                              name={kind === "rai" ? "sparkles" : (t.recurring ? "clock" : "today")}
-                              size={10}
-                              color={kind === "rai" ? C.btn : C.ink500}
-                            />
-                            <span className="rt-row-tag-label">
-                              {kind === "rai" ? "Assigned by Rai" : (t.recurring ? "Recurring" : "Today")}
-                            </span>
-                          </div>
+                          {/* Right slot: Rai's pick badge in Rai mode for raiPriority tasks, otherwise standard tag */}
+                          {isRaisPick ? (
+                            <div className="rt-row-tag" style={{
+                              display: "inline-flex", alignItems: "center", gap: 4,
+                              padding: "3px 9px",
+                              background: C.btnLight,
+                              color: C.btn,
+                              border: "none",
+                              borderRadius: 999,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              flexShrink: 0,
+                              whiteSpace: "nowrap",
+                            }}>
+                              <Icon name="sparkles" size={10} color={C.btn} />
+                              <span className="rt-row-tag-label">Rai's pick</span>
+                            </div>
+                          ) : (
+                            <div className="rt-row-tag" style={{
+                              display: "inline-flex", alignItems: "center", gap: 4,
+                              padding: "3px 9px",
+                              background: kind === "rai" ? C.btnLight : "transparent",
+                              color: kind === "rai" ? C.btn : C.ink500,
+                              border: kind === "rai" ? "none" : "1px solid " + C.ink300,
+                              borderRadius: 999,
+                              fontSize: 11,
+                              fontWeight: kind === "rai" ? 600 : 400,
+                              flexShrink: 0,
+                              whiteSpace: "nowrap",
+                            }}>
+                              <Icon
+                                name={kind === "rai" ? "sparkles" : (t.recurring ? "clock" : "today")}
+                                size={10}
+                                color={kind === "rai" ? C.btn : C.ink500}
+                              />
+                              <span className="rt-row-tag-label">
+                                {kind === "rai" ? "Assigned by Rai" : (t.recurring ? "Recurring" : "Today")}
+                              </span>
+                            </div>
+                          )}
 
                           <button onClick={(e) => { e.stopPropagation(); if (t.ai) { dismissAi(t.id); } else { setTasks(tasks.filter(t2 => t2.id !== t.id)); tasksDb.delete(t.id); } }}
                             className="rt-dismiss"
