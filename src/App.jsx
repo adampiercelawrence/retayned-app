@@ -3283,7 +3283,7 @@ export default function App({ user }) {
                             transition: "background 120ms"
                           }}
                         >
-                          <span style={{ fontSize: 10 }}>✨</span> Ranked by Rai
+                          <span style={{}}>Ranked by Rai</span>
                         </button>
                         <button
                           onClick={() => setRankMode("manual")}
@@ -3316,10 +3316,11 @@ export default function App({ user }) {
                             }
                           }}
                           style={{
+                            position: "relative",
+                            overflow: "hidden",
                             display: "inline-flex",
                             alignItems: "center",
-                            gap: 5,
-                            padding: "6px 12px",
+                            padding: "6px 14px",
                             borderRadius: 999,
                             background: focusMode ? C.primaryDeep : "transparent",
                             border: focusMode ? "1px solid " + C.primaryDeep : "1px solid " + C.ink300,
@@ -3332,8 +3333,21 @@ export default function App({ user }) {
                             transition: "background 120ms, color 120ms, border-color 120ms"
                           }}
                         >
-                          <span style={{ color: focusMode ? "#FBB540" : C.textSec, fontSize: 11 }}>⚡</span>
-                          {focusMode ? "Focusing" : "Focus"}
+                          {/* Background bolt watermark — V4 fill style, offset +15% right of center */}
+                          <span aria-hidden="true" style={{
+                            position: "absolute",
+                            top: "50%",
+                            left: "65%",
+                            transform: "translate(-50%, -50%)",
+                            fontSize: 60,
+                            color: focusMode ? "rgba(251,181,64,0.18)" : "rgba(251,181,64,0.10)",
+                            zIndex: 1,
+                            pointerEvents: "none",
+                            lineHeight: 1,
+                          }}>⚡</span>
+                          <span style={{ position: "relative", zIndex: 2 }}>
+                            {focusMode ? "Focusing" : "Focus"}
+                          </span>
                         </button>
                       )}
                     </div>
