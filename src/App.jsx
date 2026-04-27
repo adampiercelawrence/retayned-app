@@ -585,6 +585,9 @@ export default function App({ user }) {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [hcQueue, setHcQueue] = useState([]);
   const [todayStripOpen, setTodayStripOpen] = useState(false);
+  // Focus mode: laser-focus on top task, dim everything else. Only available in Rai mode.
+  // Not persisted — resets to off on each session/page reload.
+  const [focusMode, setFocusMode] = useState(false);
   // Rank mode: 'rai' (default, sorted by Profile Score) or 'manual' (user drag-and-drop order).
   // Persisted in localStorage. Manual order also persisted, restored when user toggles back to manual.
   const [rankMode, _setRankMode] = useState(() => {
@@ -593,6 +596,7 @@ export default function App({ user }) {
   });
   const setRankMode = (m) => {
     _setRankMode(m);
+    if (m !== "rai") setFocusMode(false);
     try { window.localStorage.setItem("rt_rank_mode", m); } catch {}
   };
   const [manualTaskOrder, _setManualTaskOrder] = useState(() => {
@@ -2304,6 +2308,23 @@ export default function App({ user }) {
         /* Rai sidebar — reveal star/delete on row hover */
         .r-convo-row:hover { background: rgba(91,33,182,0.06); }
         .r-convo-row:hover .r-convo-action { opacity: 1 !important; }
+        /* Focus mode — dim everything marked data-focus-dim, highlight the top task */
+        .rt-focus-on [data-focus-dim] {
+          opacity: 0.18 !important;
+          pointer-events: none !important;
+          transition: opacity 280ms ease;
+        }
+        .rt-focus-on .rt-row.rt-focus-top {
+          border-color: ${C.btn} !important;
+          box-shadow: 0 4px 14px rgba(91,33,182,0.14), 0 0 0 1px ${C.btn} !important;
+          transform: scale(1.012);
+          transition: transform 280ms ease, box-shadow 280ms ease, border-color 280ms ease;
+        }
+        .rt-focus-on .rt-row:not(.rt-focus-top) {
+          opacity: 0.18 !important;
+          pointer-events: none !important;
+          transition: opacity 280ms ease;
+        }
         /* Today v4 — Grid layout, 3 breakpoints */
         /* Default: narrow desktop (901-1439px) — 2 cols, status + composer span full width, tasks + focus below */
         .rt-today-v4 {
@@ -2698,14 +2719,14 @@ export default function App({ user }) {
             return (b.created_at || 0) - (a.created_at || 0);
           };
 
-          // Sort comparator for Manual mode: respect manualTaskOrder array; new tasks (not in order) go to bottom by created_at desc
+          // Sort comparator for Manual mode: new tasks (not in saved order) go to TOP, newest first.
+          // Tasks in manualTaskOrder follow, in saved order.
           const manualCompare = (a, b) => {
             const ia = manualTaskOrder.indexOf(a.id);
             const ib = manualTaskOrder.indexOf(b.id);
-            if (ia !== -1 && ib !== -1) return ia - ib;
-            if (ia !== -1) return -1;  // a is in saved order, b is not
-            if (ib !== -1) return 1;   // b is in saved order, a is not
-            return (b.created_at || 0) - (a.created_at || 0);  // both new, newest first
+            if (ia !== -1 && ib !== -1) return ia - ib;     // both in saved order → respect order
+            if (ia === -1 && ib === -1) return (b.created_at || 0) - (a.created_at || 0);  // both new → newest first
+            return ia === -1 ? -1 : 1;                      // new task wins, goes above saved-order task
           };
 
           const activeCompare = rankMode === "manual" ? manualCompare : raiCompare;
@@ -2976,9 +2997,18 @@ export default function App({ user }) {
 
           // ─── RENDER ──────────────────────────────────────────────────────
           return (
-            <div className="rt-today-v4" style={{ width: "100%", display: "grid", gap: 20, alignItems: "start" }}>
+            <div
+              className={"rt-today-v4" + (focusMode ? " rt-focus-on" : "")}
+              onClick={focusMode ? (e) => {
+                // Exit focus if click target is the wrapper itself (background area), not bubbled from inside a task or button.
+                // We use a data attribute on focus-protected zones; if no protected ancestor, exit.
+                const t = e.target;
+                if (t && t.closest && t.closest("[data-focus-keep]")) return;
+                setFocusMode(false);
+              } : undefined}
+              style={{ width: "100%", display: "grid", gap: 20, alignItems: "start" }}>
               {/* STATUS BAND */}
-              <div className="rt-band" style={{ gridArea: "band", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
+              <div className="rt-band" data-focus-dim style={{ gridArea: "band", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <div style={{ fontSize: 11.5, color: C.textMuted, letterSpacing: 0.3, marginBottom: 4 }}>{displayDate}</div>
                   <h1 className="rt-band-greet" style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: -0.4, color: C.text }}>
@@ -3012,7 +3042,7 @@ export default function App({ user }) {
               </div>
 
               {/* COMPOSER */}
-              <div className="rt-composer" style={{ gridArea: "composer", background: C.card, border: "1px solid " + C.border, borderRadius: 14, boxShadow: C.shadowMd, position: "relative" }}>
+              <div className="rt-composer" data-focus-dim style={{ gridArea: "composer", background: C.card, border: "1px solid " + C.border, borderRadius: 14, boxShadow: C.shadowMd, position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", flexWrap: "wrap" }}>
                   <div style={{ width: 28, height: 28, borderRadius: 14, background: C.btnLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <Icon name="plus" size={14} color={C.btn} />
@@ -3177,7 +3207,7 @@ export default function App({ user }) {
               </div>
 
               {/* TASKS COLUMN */}
-              <div className="rt-tasks-col" style={{ gridArea: "tasks", minWidth: 0 }}>
+              <div className="rt-tasks-col" data-focus-keep style={{ gridArea: "tasks", minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 4px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       {/* Ranked by Rai / Manual toggle — pill segmented control */}
@@ -3222,7 +3252,31 @@ export default function App({ user }) {
                           Manual
                         </button>
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, padding: "1px 8px", background: C.borderLight, borderRadius: 999 }}>{openTasks.length}</span>
+                      {/* Focus mode button — only enabled in Rai mode */}
+                      {rankMode === "rai" && (
+                        <button
+                          onClick={() => setFocusMode(!focusMode)}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            padding: "6px 12px",
+                            borderRadius: 999,
+                            background: focusMode ? C.primaryDeep : "transparent",
+                            border: focusMode ? "1px solid " + C.primaryDeep : "1px solid " + C.ink300,
+                            color: focusMode ? "#fff" : C.textSec,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            fontFamily: "inherit",
+                            cursor: "pointer",
+                            boxShadow: focusMode ? "0 1px 2px rgba(28,50,36,0.18), 0 2px 6px rgba(28,50,36,0.22)" : "none",
+                            transition: "background 120ms, color 120ms, border-color 120ms"
+                          }}
+                        >
+                          <span style={{ color: focusMode ? "#FBB540" : C.textSec, fontSize: 11 }}>⚡</span>
+                          {focusMode ? "Focusing" : "Focus"}
+                        </button>
+                      )}
                     </div>
                     {/* Mobile-only calendar trigger */}
                     <button
@@ -3318,7 +3372,10 @@ export default function App({ user }) {
                       const isRaisPick = isRaiMode && !!t.raiPriority && !isDone;
                       const isDragging = draggingTaskId === t.id;
                       const isDragOver = dragOverTaskId === t.id && draggingTaskId !== t.id;
-                      const cls = "rt-row" + (isDone ? " is-done" : "") + (isJustDone ? " is-just-done" : "");
+                      // Focus target: first NON-done task in renderTasks. In focus mode it gets highlighted; others dim.
+                      const focusTopId = renderTasks.find(rt => !rt.done)?.id;
+                      const isFocusTop = focusMode && t.id === focusTopId;
+                      const cls = "rt-row" + (isDone ? " is-done" : "") + (isJustDone ? " is-just-done" : "") + (isFocusTop ? " rt-focus-top" : "");
 
                       // Reorder handler: when dropping onto target, move dragging task to target's position
                       const handleDrop = (e) => {
@@ -3473,7 +3530,7 @@ export default function App({ user }) {
                 </div>
 
               {/* CALENDAR — right column on desktop (>900px). Mobile gets the strip instead. */}
-              <div className="rt-focus-col" style={{ gridArea: "focus", display: "flex", flexDirection: "column", position: "sticky", top: 20 }}>
+              <div className="rt-focus-col" data-focus-dim style={{ gridArea: "focus", display: "flex", flexDirection: "column", position: "sticky", top: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px 12px" }}>
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Today's calendar</span>
                 </div>
