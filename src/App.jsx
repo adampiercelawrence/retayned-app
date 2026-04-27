@@ -2190,7 +2190,7 @@ export default function App({ user }) {
           .r-rai-intro .r-rai-inner { justify-content: flex-start !important; padding-top: 48px !important; }
         }
         @media (min-width: 768px) {
-          :root { --sidebar-w: 240px; --page-gap: 14px; --sidebar-left: 7px; }
+          :root { --sidebar-w: 240px; --page-gap: 14px; --sidebar-left: 14px; }
           html, body { background: ${C.bg} !important; }
           .app-root { background: ${C.bg} !important; }
           .r-desk { display: flex !important; }
