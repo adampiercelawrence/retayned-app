@@ -585,6 +585,27 @@ export default function App({ user }) {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [hcQueue, setHcQueue] = useState([]);
   const [todayStripOpen, setTodayStripOpen] = useState(false);
+  // Rank mode: 'rai' (default, sorted by Profile Score) or 'manual' (user drag-and-drop order).
+  // Persisted in localStorage. Manual order also persisted, restored when user toggles back to manual.
+  const [rankMode, _setRankMode] = useState(() => {
+    if (typeof window === "undefined") return "rai";
+    try { return window.localStorage.getItem("rt_rank_mode") || "rai"; } catch { return "rai"; }
+  });
+  const setRankMode = (m) => {
+    _setRankMode(m);
+    try { window.localStorage.setItem("rt_rank_mode", m); } catch {}
+  };
+  const [manualTaskOrder, _setManualTaskOrder] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("rt_manual_task_order");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const setManualTaskOrder = (order) => {
+    _setManualTaskOrder(order);
+    try { window.localStorage.setItem("rt_manual_task_order", JSON.stringify(order)); } catch {}
+  };
   const [healthStripOpen, setHealthStripOpen] = useState(false);
   const [retroAnswers, setRetroAnswers] = useState({});
   const [rolodex, setRolodex] = useState([]);
@@ -2664,25 +2685,34 @@ export default function App({ user }) {
           // ─── DATA PREP ───────────────────────────────────────────────────
           // Visible tasks = non-dismissed. Open = not done. Completed = done.
           const visibleTasks = tasks.filter(t => !dismissedIds[t.id]);
-          const openTasks = visibleTasks.filter(t => !t.done).sort((a, b) => {
-            const psA = getProfileSortScore(a.client, a.raiPriority);
-            const psB = getProfileSortScore(b.client, b.raiPriority);
-            if (psA !== psB) return psB - psA;          // highest Profile Score first
-            if (a.alert !== b.alert) return a.alert ? -1 : 1;           // alerts above non-alerts
-            if (a.recurring !== b.recurring) return a.recurring ? -1 : 1; // recurring above one-offs
-            return (b.created_at || 0) - (a.created_at || 0);           // newer above older (stable tiebreak)
-          });
-          const completedTasks = visibleTasks.filter(t => t.done);
-          // Render order: same priority sort applied to ALL tasks (done included).
-          // Tasks stay in place when toggled — done state is visual only, no reordering.
-          const renderTasks = [...visibleTasks].sort((a, b) => {
+
+          // Sort comparator for Rai mode: Profile Score → alert → recurring → created_at
+          const raiCompare = (a, b) => {
             const psA = getProfileSortScore(a.client, a.raiPriority);
             const psB = getProfileSortScore(b.client, b.raiPriority);
             if (psA !== psB) return psB - psA;
             if (a.alert !== b.alert) return a.alert ? -1 : 1;
             if (a.recurring !== b.recurring) return a.recurring ? -1 : 1;
             return (b.created_at || 0) - (a.created_at || 0);
-          });
+          };
+
+          // Sort comparator for Manual mode: respect manualTaskOrder array; new tasks (not in order) go to bottom by created_at desc
+          const manualCompare = (a, b) => {
+            const ia = manualTaskOrder.indexOf(a.id);
+            const ib = manualTaskOrder.indexOf(b.id);
+            if (ia !== -1 && ib !== -1) return ia - ib;
+            if (ia !== -1) return -1;  // a is in saved order, b is not
+            if (ib !== -1) return 1;   // b is in saved order, a is not
+            return (b.created_at || 0) - (a.created_at || 0);  // both new, newest first
+          };
+
+          const activeCompare = rankMode === "manual" ? manualCompare : raiCompare;
+
+          const openTasks = visibleTasks.filter(t => !t.done).sort(activeCompare);
+          const completedTasks = visibleTasks.filter(t => t.done);
+          // Render order: same active comparator applied to ALL tasks (done included).
+          // Tasks stay in place when toggled — done state is visual only, no reordering.
+          const renderTasks = [...visibleTasks].sort(activeCompare);
           // ── DEBUG: log Matte Collection + Motley Fool sort breakdown ──
           if (typeof window !== "undefined" && !window.__rt_sort_logged) {
             window.__rt_sort_logged = true;
@@ -3148,7 +3178,48 @@ export default function App({ user }) {
               <div className="rt-tasks-col" style={{ gridArea: "tasks", minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 4px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>Your plate</span>
+                      {/* Ranked by Rai / Manual toggle — pill segmented control */}
+                      <div style={{ display: "inline-flex", background: C.surface, borderRadius: 999, padding: 3, gap: 0 }}>
+                        <button
+                          onClick={() => setRankMode("rai")}
+                          style={{
+                            padding: "6px 14px",
+                            borderRadius: 999,
+                            border: "none",
+                            background: rankMode === "rai" ? C.card : "transparent",
+                            fontFamily: "inherit",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: rankMode === "rai" ? C.btn : C.textSec,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            boxShadow: rankMode === "rai" ? C.shadowSm : "none",
+                            transition: "background 120ms"
+                          }}
+                        >
+                          <span style={{ fontSize: 10 }}>✨</span> Ranked by Rai
+                        </button>
+                        <button
+                          onClick={() => setRankMode("manual")}
+                          style={{
+                            padding: "6px 14px",
+                            borderRadius: 999,
+                            border: "none",
+                            background: rankMode === "manual" ? C.card : "transparent",
+                            fontFamily: "inherit",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: rankMode === "manual" ? C.text : C.textSec,
+                            cursor: "pointer",
+                            boxShadow: rankMode === "manual" ? C.shadowSm : "none",
+                            transition: "background 120ms"
+                          }}
+                        >
+                          Manual
+                        </button>
+                      </div>
                       <span style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, padding: "1px 8px", background: C.borderLight, borderRadius: 999 }}>{openTasks.length}</span>
                     </div>
                     {/* Mobile-only calendar trigger */}
