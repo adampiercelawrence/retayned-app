@@ -2506,7 +2506,7 @@ export default function App({ user }) {
           {(tier === "enterprise" ? navItemsEnterprise : navItemsCore).map(n => {
             const active = page === n.id;
             return (
-              <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, marginBottom: 2, background: active ? C.bg : "transparent", color: active ? C.text : C.text, fontWeight: active ? 600 : 500, boxShadow: active ? C.shadowSm : "none", cursor: "pointer" }}>
+              <div key={n.id} className="nav-item" onClick={() => goTo(n.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, marginBottom: 2, background: active ? C.deepCream : "transparent", color: active ? C.text : C.text, fontWeight: active ? 600 : 500, boxShadow: active ? "inset 0 1px 2px rgba(0,0,0,0.06)" : "none", cursor: "pointer" }}>
                 <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={n.icon} size={16} color={active ? C.primary : C.ink500} /></span><span style={{ fontSize: 14, flex: 1 }}>{n.label}</span>
                 {hasDot(n.id) && <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.danger, boxShadow: "0 0 0 2.5px " + C.surfaceWarm, flexShrink: 0 }} />}
               </div>
@@ -2626,7 +2626,7 @@ export default function App({ user }) {
           {(() => {
             const active = page === "settings";
             return (
-              <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", borderRadius: 8, color: active ? C.text : C.text, background: active ? C.bg : "transparent", fontWeight: active ? 600 : 500, boxShadow: active ? C.shadowSm : "none", cursor: "pointer" }}>
+              <div className="nav-item" onClick={() => goTo("settings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", borderRadius: 8, color: active ? C.text : C.text, background: active ? C.deepCream : "transparent", fontWeight: active ? 600 : 500, boxShadow: active ? "inset 0 1px 2px rgba(0,0,0,0.06)" : "none", cursor: "pointer" }}>
                 <span style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="settings" size={20} color={active ? C.primary : C.ink500} /></span><span style={{ fontSize: 14, flex: 1 }}>Settings</span>
               </div>
             );
