@@ -588,6 +588,8 @@ export default function App({ user }) {
   // Focus mode: laser-focus on top task, dim everything else. Only available in Rai mode.
   // Not persisted — resets to off on each session/page reload.
   const [focusMode, setFocusMode] = useState(false);
+  // One-shot flash trigger when entering Focus mode. Cleared after animation completes.
+  const [focusFlash, setFocusFlash] = useState(false);
   // Rank mode: 'rai' (default, sorted by Profile Score) or 'manual' (user drag-and-drop order).
   // Persisted in localStorage. Manual order also persisted, restored when user toggles back to manual.
   const [rankMode, _setRankMode] = useState(() => {
@@ -2312,18 +2314,46 @@ export default function App({ user }) {
         .rt-focus-on [data-focus-dim] {
           opacity: 0.18 !important;
           pointer-events: none !important;
-          transition: opacity 280ms ease;
+          transition: opacity 280ms ease 200ms;
         }
         .rt-focus-on .rt-row.rt-focus-top {
           border-color: ${C.btn} !important;
           box-shadow: 0 4px 14px rgba(91,33,182,0.14), 0 0 0 1px ${C.btn} !important;
           transform: scale(1.012);
-          transition: transform 280ms ease, box-shadow 280ms ease, border-color 280ms ease;
+          transition: transform 280ms ease 500ms, box-shadow 280ms ease 500ms, border-color 280ms ease 500ms;
+          position: relative;
+          z-index: 6;
         }
         .rt-focus-on .rt-row:not(.rt-focus-top) {
           opacity: 0.18 !important;
           pointer-events: none !important;
-          transition: opacity 280ms ease;
+          transition: opacity 280ms ease 200ms;
+        }
+        /* Curtain + flash overlay (pinned to viewport, NOT to .rt-today-v4 which doesn't span full app area) */
+        .rt-curtain {
+          position: fixed;
+          top: 0; left: 0; right: 0;
+          height: 0;
+          background: linear-gradient(180deg, rgba(28,50,36,0.78) 0%, rgba(28,50,36,0.60) 60%, rgba(28,50,36,0.0) 100%);
+          pointer-events: none;
+          z-index: 60;
+          transition: height 600ms cubic-bezier(0.45, 0.05, 0.35, 1);
+        }
+        .rt-curtain.is-on { height: 100vh; }
+        .rt-flash {
+          position: fixed;
+          inset: 0;
+          background: rgba(255, 245, 200, 0);
+          pointer-events: none;
+          z-index: 61;
+        }
+        .rt-flash.is-firing {
+          animation: rt-flash-anim 450ms ease-out 400ms;
+        }
+        @keyframes rt-flash-anim {
+          0%   { background: rgba(255, 245, 200, 0); }
+          25%  { background: rgba(255, 245, 200, 0.35); }
+          100% { background: rgba(255, 245, 200, 0); }
         }
         /* Today v4 — Grid layout, 3 breakpoints */
         /* Default: narrow desktop (901-1439px) — 2 cols, status + composer span full width, tasks + focus below */
@@ -3007,6 +3037,9 @@ export default function App({ user }) {
                 setFocusMode(false);
               } : undefined}
               style={{ width: "100%", display: "grid", gap: 20, alignItems: "start" }}>
+              {/* Focus mode curtain — always mounted so the height transition fires when class toggles */}
+              <div className={"rt-curtain" + (focusMode ? " is-on" : "")} />
+              {focusFlash && <div className="rt-flash is-firing" />}
               {/* STATUS BAND */}
               <div className="rt-band" data-focus-dim style={{ gridArea: "band", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, padding: "4px 4px 20px", borderBottom: "1px solid " + C.borderLight, flexWrap: "wrap" }}>
                 <div style={{ minWidth: 0, flex: "1 1 auto" }}>
@@ -3255,7 +3288,14 @@ export default function App({ user }) {
                       {/* Focus mode button — only enabled in Rai mode */}
                       {rankMode === "rai" && (
                         <button
-                          onClick={() => setFocusMode(!focusMode)}
+                          onClick={() => {
+                            const next = !focusMode;
+                            setFocusMode(next);
+                            if (next) {
+                              setFocusFlash(true);
+                              setTimeout(() => setFocusFlash(false), 900);
+                            }
+                          }}
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
