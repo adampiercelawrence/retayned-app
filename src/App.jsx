@@ -4,7 +4,7 @@ import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex a
 
 const C = {
   primary: "#33543E", primaryLight: "#558B68", primarySoft: "#E6EFE9", primaryGhost: "#F3F8F5",
-  bg: "#FAFAF7", card: "#FFFFFF", surface: "#EEEFEB", surfaceWarm: "#F2EEE8",
+  bg: "#FAFAF7", card: "#FFFFFF", surface: "#EEEFEB", surfaceWarm: "#EAE4D6", deepCream: "#EAE4D6",
   sidebar: "#FAFAF7",
   text: "#1E261F", textSec: "#6B6B66", textMuted: "#9A9A93",
   ink900: "#0A0A0A", ink700: "#2A2A28", ink500: "#6B6B66", ink400: "#9A9A93", ink300: "#C4C4BD",
