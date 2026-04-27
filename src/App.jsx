@@ -4,7 +4,7 @@ import { clients as clientsDb, tasks as tasksDb, healthChecks as hcDb, rolodex a
 
 const C = {
   primary: "#33543E", primaryLight: "#558B68", primarySoft: "#E6EFE9", primaryGhost: "#F3F8F5",
-  bg: "#F2EEE8", card: "#FFFFFF", surface: "#EEEFEB", surfaceWarm: "#EAE4D6",
+  bg: "#FAFAF7", card: "#FFFFFF", surface: "#EEEFEB", surfaceWarm: "#F2EEE8",
   sidebar: "#FAFAF7",
   text: "#1E261F", textSec: "#6B6B66", textMuted: "#9A9A93",
   ink900: "#0A0A0A", ink700: "#2A2A28", ink500: "#6B6B66", ink400: "#9A9A93", ink300: "#C4C4BD",
@@ -7162,10 +7162,10 @@ export default function App({ user }) {
           const dot = hasDot(n.id);
           const active = page === n.id || (n.id === "more" && showMore);
           return (
-            <div key={n.id} onClick={() => n.id === "more" ? setShowMore(!showMore) : goTo(n.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer", padding: "5px 10px", borderRadius: 10, background: active ? C.primarySoft : "transparent", position: "relative" }}>
-              <Icon name={n.icon} size={20} color={active ? C.primary : C.ink500} />
-              <span style={{ fontSize: 9.5, fontWeight: active ? 700 : 600, color: active ? C.primary : C.ink500 }}>{n.label}</span>
-              {dot && <div style={{ position: "absolute", top: 2, right: 6, width: 7, height: 7, borderRadius: "50%", background: C.danger, boxShadow: "0 0 0 2.5px " + (active ? C.primarySoft : C.surfaceWarm) }} />}
+            <div key={n.id} onClick={() => n.id === "more" ? setShowMore(!showMore) : goTo(n.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer", padding: "5px 10px", borderRadius: 10, background: active ? C.bg : "transparent", position: "relative" }}>
+              <Icon name={n.icon} size={20} color={active ? C.text : C.ink500} />
+              <span style={{ fontSize: 9.5, fontWeight: active ? 700 : 600, color: active ? C.text : C.ink500 }}>{n.label}</span>
+              {dot && <div style={{ position: "absolute", top: 2, right: 6, width: 7, height: 7, borderRadius: "50%", background: C.danger, boxShadow: "0 0 0 2.5px " + (active ? C.bg : C.surfaceWarm) }} />}
             </div>
           );
         })}
@@ -7175,8 +7175,8 @@ export default function App({ user }) {
           <div onClick={() => setShowMore(false)} style={{ position: "fixed", inset: 0, zIndex: 45 }} />
           <div style={{ position: "fixed", top: "calc(var(--app-h, 100vh) - 94px)", right: 20, transform: "translateY(-100%)", background: C.card, borderRadius: "12px 12px 12px 12px", border: "1px solid " + C.border, boxShadow: "0 -4px 24px rgba(0,0,0,0.08)", zIndex: 46, overflow: "hidden", minWidth: 180, animation: "fadeIn 0.15s ease" }}>
             {(tier === "enterprise" ? moreItemsEnterprise : moreItemsCore).map((m, i, arr) => (
-              <div key={m.id} onClick={() => goTo(m.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", cursor: "pointer", borderBottom: "1px solid " + C.borderLight, background: page === m.id ? C.primarySoft : "transparent" }}>
-                <span style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name={m.icon} size={18} color={page === m.id ? C.primary : C.textMuted} /></span><span style={{ fontSize: 13, fontWeight: page === m.id ? 700 : 500, color: page === m.id ? C.primary : C.text, flex: 1 }}>{m.label}</span>
+              <div key={m.id} onClick={() => goTo(m.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", cursor: "pointer", borderBottom: "1px solid " + C.borderLight, background: page === m.id ? C.bg : "transparent" }}>
+                <span style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name={m.icon} size={18} color={page === m.id ? C.text : C.textMuted} /></span><span style={{ fontSize: 13, fontWeight: page === m.id ? 700 : 500, color: page === m.id ? C.text : C.text, flex: 1 }}>{m.label}</span>
                 {hasDot(m.id) && <Dot />}
               </div>
             ))}
